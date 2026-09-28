@@ -1,22 +1,23 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { logout } from "@/features/auth/services/actions";
 import {
-  getActiveWorkspace,
   listMemberships,
+  getActiveWorkspace,
 } from "@/features/workspace/services/active-workspace";
-import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
-  Building2,
-  LayoutDashboard,
   LogOut,
-  MessageCircle,
+  Receipt,
   Settings,
+  Building2,
+  MessageCircle,
+  LayoutDashboard,
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { logout } from "@/features/auth/services/actions";
+import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 
 export default async function MainLayout({
   children,
@@ -117,6 +118,17 @@ export default async function MainLayout({
             </Button>
           </Link>
 
+          <Link href="/pedidos">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Receipt className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only sm:ml-2">Pedidos</span>
+            </Button>
+          </Link>
+
           <Link href="/dashboard">
             <Button
               variant="ghost"
@@ -170,6 +182,14 @@ export default async function MainLayout({
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
           <span>Inbox</span>
+        </Link>
+
+        <Link
+          href="/pedidos"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Receipt className="h-5 w-5" aria-hidden="true" />
+          <span>Pedidos</span>
         </Link>
 
         <Link

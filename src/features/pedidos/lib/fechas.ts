@@ -1,0 +1,85 @@
+// Fechas en la zona horaria del negocio (Golosita: America/Bogota).
+
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function esFechaValida(v: string | undefined | null): v is string {
+  if (!v || !FECHA_RE.test(v)) return false;
+  const d = new Date(`${v}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+}
+
+/** Fecha de hoy (YYYY-MM-DD) en la zona horaria dada. */
+export function hoyEnZona(zona: string, ahora: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: zona,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(ahora);
+}
+
+/** Suma días a una fecha YYYY-MM-DD. */
+export function sumarDias(fecha: string, dias: number): string {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Desfase de la zona en minutos para un instante (ej: Bogotá = -300). */
+function desfaseMinutos(zona: string, instante: Date): number {
+  const parte = new Intl.DateTimeFormat("en-US", {
+    timeZone: zona,
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(instante)
+    .find((p) => p.type === "timeZoneName")?.value; // "GMT-05:00" | "GMT"
+  const m = parte?.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 0;
+  const signo = m[1] === "-" ? -1 : 1;
+  return signo * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/** Medianoche local de `fecha` en `zona`, como instante UTC. */
+function medianocheLocal(fecha: string, zona: string): Date {
+  const utc = new Date(`${fecha}T00:00:00Z`);
+  const offset = desfaseMinutos(zona, utc);
+  return new Date(utc.getTime() - offset * 60_000);
+}
+
+/** Rango [desde, hasta) en ISO UTC que cubre el día local completo. */
+export function rangoDelDia(
+  fecha: string,
+  zona: string,
+): { desde: string; hasta: string } {
+  return {
+    desde: medianocheLocal(fecha, zona).toISOString(),
+    hasta: medianocheLocal(sumarDias(fecha, 1), zona).toISOString(),
+  };
+}
+
+/** "3:30 p. m." en la zona del negocio. */
+export function horaLocal(iso: string, zona: string): string {
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: zona,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** "lun 28 sep" en la zona del negocio. */
+export function fechaCorta(iso: string, zona: string): string {
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: zona,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(iso));
+}
+
+export function pesos(n: number | null | undefined): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(n ?? 0);
+}
