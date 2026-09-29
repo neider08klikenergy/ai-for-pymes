@@ -13,6 +13,10 @@ test("each provider may only make us download from its own host (SEC-08)", () =>
   assert.equal(validateMediaUrl("kapso", "https://api.ycloud.com/v2/media/x"), false);
   assert.equal(validateMediaUrl("kapso", "https://api.kapso.ai.evil.com/x"), false);
   assert.equal(validateMediaUrl("ycloud", "not a url"), false);
+  // Kapso también entrega por app.kapso.ai (Active Storage)
+  assert.equal(validateMediaUrl("kapso", "https://app.kapso.ai/rails/active_storage/blobs/redirect/abc/img.jpeg"), true);
+  assert.equal(validateMediaUrl("kapso", "http://app.kapso.ai/x"), false);
+  assert.equal(validateMediaUrl("ycloud", "https://app.kapso.ai/x"), false);
 });
 
 test("the API key goes to YCloud only; Kapso URLs are pre-signed", async () => {

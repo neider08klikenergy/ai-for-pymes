@@ -35,9 +35,10 @@ type Args = z.infer<typeof schema>;
 export const registrarPedidoTool: Tool<Args> = {
   name: "registrar_pedido",
   description:
-    "Crea el pedido con el precio oficial (queda 'pendiente de anticipo'). Úsala SOLO cuando el cliente " +
-    "confirmó sede, producto, sabor, tamaño, fecha/hora, nombre y decoración, y después de consultar_cupo. " +
-    "Devuelve número de pedido, total, anticipo y saldo contra entrega para informarle al cliente.",
+    "Crea el pedido con el precio oficial (queda 'pendiente de anticipo'). Es la ÚNICA forma de crear un " +
+    "pedido: si no la llamas, el pedido no existe. Llámala en el mismo turno en que el cliente confirma el " +
+    "resumen (sede, producto, sabor, tamaño, fecha/hora, nombre y decoración). Devuelve el número de pedido " +
+    "(ej: GOL-00012), total, anticipo y saldo; nunca digas que el pedido quedó registrado sin ese número.",
   sensitivity: "write",
   schema,
   enabledFor: () => true,
