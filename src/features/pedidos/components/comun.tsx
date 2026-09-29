@@ -72,7 +72,7 @@ export function toastResultado(r: ResultadoAccion): boolean {
     toast.error(r.error);
     return false;
   }
-  if (r.aviso === "enviado") {
+  if (r.aviso === "enviado" || r.aviso === "enviado_plantilla") {
     toast.success(r.mensaje, { description: r.avisoTexto ?? undefined });
   } else if (r.avisoTexto) {
     toast.warning(r.mensaje, { description: r.avisoTexto, duration: 8000 });
@@ -158,8 +158,9 @@ export function CampoAviso({
                 aria-hidden="true"
               />
               Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp
-              no deja enviar este texto. Quedará como nota en el chat para que
-              le escribas con una plantilla.
+              no deja enviar texto libre. Si la plantilla de este aviso está
+              aprobada (Settings → Templates), se envía la plantilla; si no, el
+              texto queda como nota en el chat.
             </p>
           )}
         </>

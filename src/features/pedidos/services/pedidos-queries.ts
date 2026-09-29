@@ -44,11 +44,23 @@ function textoBusqueda(q: string): string {
 }
 
 const SELECT_PEDIDO =
-  "id, numero, estado, nombre_cliente, telefono, linea, sabor, tamano, cantidad, detalle, " +
+  "id, contact_id, numero, estado, nombre_cliente, telefono, linea, sabor, tamano, cantidad, detalle, " +
   "modalidad, direccion_entrega, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
   "precio_validado, conversation_id, notas, created_at, sedes(id, codigo, nombre), " +
   "conversations(window_expires_at), " +
-  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, created_at)";
+  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, created_at), " +
+  "saldos_favor(monto_inicial, monto_disponible, vence_at, estado)";
+
+/** Solo dígitos: +57 320… y 57320… son el mismo cliente. */
+function tel(v: string | null | undefined): string | null {
+  const d = (v ?? "").replace(/\D/g, "");
+  return d || null;
+}
+
+function numeroRegla(v: unknown, porDefecto: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : porDefecto;
+}
 
 function aPedidoFila(raw: unknown): PedidoFila | null {
   const r = raw as Record<string, unknown>;
@@ -62,6 +74,8 @@ function aPedidoFila(raw: unknown): PedidoFila | null {
     sede: uno(r.sedes as SedeResumen | SedeResumen[] | null),
     ventana_abierta: ventanaAbierta(r.conversations),
     pagos,
+    saldo_favor_generado: uno(r.saldos_favor as PedidoFila["saldo_favor_generado"] | PedidoFila["saldo_favor_generado"][]),
+    saldo_favor_cliente: 0,
   };
 }
 
@@ -70,14 +84,13 @@ export async function cargarVistaPedidos(
   workspaceId: string,
   params: ParamsPedidos,
 ): Promise<VistaPedidos> {
-  const [{ data: reglaZona }, { data: sedesData }, { count: pagosPendientes }] =
+  const [{ data: reglasData }, { data: sedesData }, { count: pagosPendientes }] =
     await Promise.all([
       supabase
         .from("reglas_negocio")
-        .select("valor")
+        .select("clave, valor")
         .eq("workspace_id", workspaceId)
-        .eq("clave", "zona_horaria")
-        .maybeSingle(),
+        .in("clave", ["zona_horaria", "cancelacion_dias_calendario", "saldo_favor_meses"]),
       supabase
         .from("sedes")
         .select("id, codigo, nombre")
@@ -91,7 +104,13 @@ export async function cargarVistaPedidos(
         .eq("estado", "por_verificar"),
     ]);
 
-  const zona = zonaValida(reglaZona?.valor);
+  const regla = (clave: string) =>
+    (reglasData ?? []).find((r: { clave: string }) => r.clave === clave)?.valor as unknown;
+  const zona = zonaValida(regla("zona_horaria"));
+  const reglas = {
+    cancelacionDias: numeroRegla(regla("cancelacion_dias_calendario"), 3),
+    saldoFavorMeses: numeroRegla(regla("saldo_favor_meses"), 6),
+  };
   const hoy = hoyEnZona(zona);
   const filtros = leerFiltros(params, hoy);
   const sedes = (sedesData ?? []) as SedeResumen[];
@@ -107,6 +126,7 @@ export async function cargarVistaPedidos(
     pagos: [],
     pagosPendientes: pagosPendientes ?? 0,
     truncado: false,
+    reglas,
   };
 
   if (filtros.vista === "pagos") {
@@ -156,6 +176,8 @@ export async function cargarVistaPedidos(
   const filas = ((data ?? []) as unknown[])
     .map(aPedidoFila)
     .filter((p): p is PedidoFila => p !== null);
+
+  await sumarSaldosDeClientes(supabase, workspaceId, filas);
 
   return {
     ...base,
@@ -240,4 +262,47 @@ async function cargarPagos(
         : null,
     };
   });
+}
+
+/**
+ * Saldo a favor vigente de cada cliente, para ofrecer usarlo en sus pedidos
+ * abiertos. Se busca por contacto de WhatsApp o por teléfono.
+ */
+async function sumarSaldosDeClientes(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  pedidos: PedidoFila[],
+): Promise<void> {
+  const abiertos = pedidos.filter(
+    (p) => p.saldo > 0 && p.estado !== "cancelado" && p.estado !== "entregado",
+  );
+  if (abiertos.length === 0) return;
+
+  const { data, error } = await supabase
+    .from("saldos_favor")
+    .select("contact_id, telefono, monto_disponible")
+    .eq("workspace_id", workspaceId)
+    .eq("estado", "disponible")
+    .gt("monto_disponible", 0)
+    .gt("vence_at", new Date().toISOString());
+  if (error) {
+    // Sin la migración de saldo a favor la tabla no existe: la pantalla sigue.
+    console.warn("[pedidos] lectura de saldos a favor:", error.message);
+    return;
+  }
+
+  const saldos = (data ?? []) as {
+    contact_id: string | null;
+    telefono: string | null;
+    monto_disponible: number;
+  }[];
+  for (const p of abiertos) {
+    const t = tel(p.telefono);
+    p.saldo_favor_cliente = saldos
+      .filter(
+        (s) =>
+          (p.contact_id && s.contact_id === p.contact_id) || (t && tel(s.telefono) === t),
+      )
+      .reduce((acc, s) => acc + s.monto_disponible, 0);
+  }
 }

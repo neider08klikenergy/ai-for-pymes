@@ -9,7 +9,7 @@ export interface SedeResumen {
 
 export interface PagoResumen {
   id: string;
-  tipo: "anticipo" | "saldo" | "total";
+  tipo: "anticipo" | "saldo" | "total" | "saldo_favor";
   estado: "por_verificar" | "confirmado" | "rechazado";
   monto_esperado: number;
   monto_reportado: number | null;
@@ -18,8 +18,16 @@ export interface PagoResumen {
   created_at: string;
 }
 
+export interface SaldoFavorGenerado {
+  monto_inicial: number;
+  monto_disponible: number;
+  vence_at: string;
+  estado: "disponible" | "agotado" | "anulado";
+}
+
 export interface PedidoFila {
   id: string;
+  contact_id: string | null;
   numero: string;
   estado: EstadoPedido;
   sede: SedeResumen | null;
@@ -44,6 +52,10 @@ export interface PedidoFila {
   /** true/false según la ventana de 24 h de WhatsApp; null sin conversación. */
   ventana_abierta: boolean | null;
   pagos: PagoResumen[];
+  /** Saldo a favor que dejó este pedido al cancelarse. */
+  saldo_favor_generado: SaldoFavorGenerado | null;
+  /** Saldo a favor vigente del cliente (para pagar este pedido). */
+  saldo_favor_cliente: number;
 }
 
 export interface PagoPorVerificar {
@@ -85,4 +97,5 @@ export interface VistaPedidos {
   pagosPendientes: number;
   /** true si se cortó la lista en el límite. */
   truncado: boolean;
+  reglas: { cancelacionDias: number; saldoFavorMeses: number };
 }

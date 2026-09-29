@@ -1,9 +1,10 @@
-import { cn } from "@/lib/utils";
 import type {
-  ConversationWithContact,
   ConversationState,
+  ConversationWithContact,
 } from "@/features/inbox/types";
+import { cn } from "@/lib/utils";
 import { StateBadge } from "./state-badge";
+import { useZonaHoraria } from "@/shared/lib/zona-horaria-context";
 
 interface ConversationItemProps {
   conversation: ConversationWithContact;
@@ -22,7 +23,7 @@ function getInitials(name: string | null, phone: string): string {
   return phone.slice(-4);
 }
 
-function timeAgo(dateStr: string | null): string {
+function timeAgo(dateStr: string | null, timeZone: string): string {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60_000);
@@ -33,6 +34,7 @@ function timeAgo(dateStr: string | null): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
   return new Date(dateStr).toLocaleDateString("es", {
+    timeZone,
     day: "numeric",
     month: "short",
   });
@@ -52,7 +54,8 @@ export function ConversationItem({
   const displayName = contact.name ?? contact.phone;
   const initials = getInitials(contact.name, contact.phone);
   const preview = truncate(last_message?.body ?? null, 60);
-  const time = timeAgo(last_message_at);
+  const zona = useZonaHoraria();
+  const time = timeAgo(last_message_at, zona);
 
   return (
     <button

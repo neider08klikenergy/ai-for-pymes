@@ -16,7 +16,9 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { resolveTimeZone } from "@/shared/lib/timezone";
 import { logout } from "@/features/auth/services/actions";
+import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 
 export default async function MainLayout({
@@ -44,6 +46,18 @@ export default async function MainLayout({
   ]);
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
+
+  // Zona horaria del negocio (Settings → Negocio) para mostrar horas locales.
+  const { data: biRow } = active
+    ? await supabase
+        .from("business_info")
+        .select("structured")
+        .eq("workspace_id", active.workspace_id)
+        .maybeSingle()
+    : { data: null };
+  const zonaHoraria = resolveTimeZone(
+    (biRow?.structured as { timezone?: string } | null)?.timezone,
+  );
   const activeId = active?.workspace_id ?? null;
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
@@ -165,7 +179,9 @@ export default async function MainLayout({
         </div>
       </header>
 
-      <div className="flex-1 pb-14 md:pb-0">{children}</div>
+      <div className="flex-1 pb-14 md:pb-0">
+        <ZonaHorariaProvider zona={zonaHoraria}>{children}</ZonaHorariaProvider>
+      </div>
 
       {/* Mobile bottom nav — hidden on md+ */}
       <nav

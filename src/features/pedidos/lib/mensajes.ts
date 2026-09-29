@@ -60,11 +60,14 @@ export function mensajePedidoListo(p: DatosAviso): string {
   return lineas.join("\n");
 }
 
-export function mensajePedidoCancelado(p: DatosAviso): string {
+export function mensajePedidoCancelado(
+  p: DatosAviso,
+  saldo: { generar: boolean; meses: number } = { generar: p.pagado > 0, meses: 6 },
+): string {
   const lineas = [`Hola ${primerNombre(p.nombre_cliente)}, tu pedido ${p.numero} quedó cancelado.`];
-  if (p.pagado > 0) {
+  if (p.pagado > 0 && saldo.generar) {
     lineas.push(
-      `Los ${pesos(p.pagado)} que pagaste quedan como saldo a favor por 6 meses para tu próximo pedido.`,
+      `Los ${pesos(p.pagado)} que pagaste quedan como saldo a favor por ${saldo.meses} meses para tu próximo pedido.`,
     );
   }
   lineas.push("Si tienes alguna duda, escríbenos por aquí.");

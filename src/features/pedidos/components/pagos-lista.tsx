@@ -1,17 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { abrirComprobante } from "./comun";
-import { Button } from "@/components/ui/button";
-import type { PagoPorVerificar } from "../types";
-import { fechaCorta, horaLocal, pesos } from "../lib/fechas";
 import {
   FileImage,
   CheckCircle2,
   AlertTriangle,
   MessageCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { abrirComprobante } from "./comun";
+import { Button } from "@/components/ui/button";
+import type { PagoPorVerificar } from "../types";
+import { fechaCorta, horaLocal, pesos } from "../lib/fechas";
 
 function PagoCard({
   pago,

@@ -3,8 +3,8 @@
 import {
   Dialog,
   DialogTitle,
-  DialogHeader,
   DialogFooter,
+  DialogHeader,
   DialogContent,
   DialogDescription,
 } from "@/components/ui/dialog";
@@ -15,15 +15,21 @@ import {
   mensajePagoConfirmado,
   mensajePedidoCancelado,
 } from "../lib/mensajes";
-import { pesos } from "../lib/fechas";
-import { Label } from "@/components/ui/label";
+import {
+  revisarPago,
+  cancelarPedido,
+  cambiarEstadoPedido,
+} from "../services/pedidos-actions";
+import { AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CampoAviso, toastResultado } from "./comun";
 import type { PagoPorVerificar, PedidoFila } from "../types";
-import { cambiarEstadoPedido, revisarPago } from "../services/pedidos-actions";
+import { diasEntre, fechaLocalDe, hoyEnZona, pesos } from "../lib/fechas";
 
 // ── Confirmar / rechazar comprobante ─────────────────────────────────────────
 
@@ -173,22 +179,15 @@ export function RevisionDialog({
   );
 }
 
-// ── Marcar listo / cancelar (con aviso al cliente) ───────────────────────────
+// ── Marcar listo (con aviso al cliente) ──────────────────────────────────────
 
 export interface CambioPendiente {
   pedido: PedidoFila;
   hacia: "listo" | "cancelado";
 }
 
-export function CambioEstadoDialog({
-  cambio,
-  onClose,
-}: {
-  cambio: CambioPendiente;
-  onClose: () => void;
-}) {
-  const { pedido, hacia } = cambio;
-  const datos: DatosAviso = {
+function datosDe(pedido: PedidoFila): DatosAviso {
+  return {
     numero: pedido.numero,
     nombre_cliente: pedido.nombre_cliente,
     fecha_entrega: pedido.fecha_entrega,
@@ -197,18 +196,24 @@ export function CambioEstadoDialog({
     total: pedido.total,
     pagado: pedido.pagado,
   };
-  const cancelar = hacia === "cancelado";
+}
+
+export function ListoDialog({
+  pedido,
+  onClose,
+}: {
+  pedido: PedidoFila;
+  onClose: () => void;
+}) {
   const [avisar, setAvisar] = useState(true);
-  const [texto, setTexto] = useState(() =>
-    cancelar ? mensajePedidoCancelado(datos) : mensajePedidoListo(datos),
-  );
+  const [texto, setTexto] = useState(() => mensajePedidoListo(datosDe(pedido)));
   const [pendiente, startTransition] = useTransition();
 
   function enviar() {
     startTransition(async () => {
       const r = await cambiarEstadoPedido({
         pedidoId: pedido.id,
-        hacia,
+        hacia: "listo",
         aviso: avisar ? texto : null,
       });
       if (toastResultado(r)) onClose();
@@ -219,24 +224,145 @@ export function CambioEstadoDialog({
     <Dialog open onOpenChange={(o) => !o && !pendiente && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {cancelar ? "Cancelar" : "Marcar listo"} · {pedido.numero}
-          </DialogTitle>
+          <DialogTitle>Marcar listo · {pedido.numero}</DialogTitle>
           <DialogDescription>
-            {cancelar
-              ? pedido.pagado > 0
-                ? `El cliente ya pagó ${pesos(pedido.pagado)}. Según la política queda como saldo a favor por 6 meses. El cupo del día se libera.`
-                : "El pedido no tiene pagos confirmados. El cupo del día se libera."
-              : "El pedido pasa a 'Listo' para entregar."}
+            El pedido pasa a &quot;Listo&quot; para entregar.
           </DialogDescription>
         </DialogHeader>
-
         <CampoAviso
-          id="aviso-estado"
+          id="aviso-listo"
           avisar={avisar}
           onAvisar={setAvisar}
           texto={texto}
           onTexto={setTexto}
+          tieneChat={!!pedido.conversation_id}
+          ventanaAbierta={pedido.ventana_abierta}
+        />
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={pendiente}>
+            Volver
+          </Button>
+          <Button onClick={enviar} disabled={pendiente}>
+            {pendiente ? "Guardando…" : "Marcar listo"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Cancelar (con saldo a favor y aviso) ─────────────────────────────────────
+
+export function CancelarDialog({
+  pedido,
+  zona,
+  reglas,
+  onClose,
+}: {
+  pedido: PedidoFila;
+  zona: string;
+  reglas: { cancelacionDias: number; saldoFavorMeses: number };
+  onClose: () => void;
+}) {
+  const diasAntes = diasEntre(
+    hoyEnZona(zona),
+    fechaLocalDe(pedido.fecha_entrega, zona),
+  );
+  const aTiempo = diasAntes >= reglas.cancelacionDias;
+  const tienePago = pedido.pagado > 0;
+
+  const [generarSaldo, setGenerarSaldo] = useState(tienePago && aTiempo);
+  const [motivo, setMotivo] = useState("");
+  const [avisar, setAvisar] = useState(true);
+  const [textoEditado, setTextoEditado] = useState<string | null>(null);
+  const [pendiente, startTransition] = useTransition();
+
+  const texto =
+    textoEditado ??
+    mensajePedidoCancelado(datosDe(pedido), {
+      generar: generarSaldo,
+      meses: reglas.saldoFavorMeses,
+    });
+
+  function enviar() {
+    startTransition(async () => {
+      const r = await cancelarPedido({
+        pedidoId: pedido.id,
+        generarSaldo: tienePago && generarSaldo,
+        motivo,
+        aviso: avisar ? texto : null,
+      });
+      if (toastResultado(r)) onClose();
+    });
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && !pendiente && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Cancelar · {pedido.numero}</DialogTitle>
+          <DialogDescription>
+            Entrega en {diasAntes} {diasAntes === 1 ? "día" : "días"}. El cupo
+            del día se libera.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!aTiempo && (
+          <p className="flex items-start gap-1.5 rounded-lg bg-warning/10 p-2.5 text-xs text-warning">
+            <AlertTriangle
+              className="h-3.5 w-3.5 mt-0.5 shrink-0"
+              aria-hidden="true"
+            />
+            Fuera de plazo: la política pide cancelar con{" "}
+            {reglas.cancelacionDias} días calendario de anticipación. Decide con
+            el negocio si igual se deja saldo a favor.
+          </p>
+        )}
+
+        {tienePago ? (
+          <div className="flex items-start gap-2 rounded-lg border border-border/60 p-3">
+            <Checkbox
+              id="generar-saldo"
+              checked={generarSaldo}
+              onCheckedChange={(v) => {
+                setGenerarSaldo(v === true);
+                setTextoEditado(null);
+              }}
+            />
+            <Label
+              htmlFor="generar-saldo"
+              className="cursor-pointer leading-snug"
+            >
+              Dejar {pesos(pedido.pagado)} como saldo a favor del cliente
+              <span className="block text-xs font-normal text-muted-foreground">
+                Vigente {reglas.saldoFavorMeses} meses. No hay devolución en
+                efectivo.
+              </span>
+            </Label>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            El pedido no tiene pagos confirmados.
+          </p>
+        )}
+
+        <div className="grid gap-2">
+          <Label htmlFor="motivo-cancelacion">Motivo (opcional)</Label>
+          <Input
+            id="motivo-cancelacion"
+            value={motivo}
+            maxLength={300}
+            placeholder="Ej: el cliente cambió la fecha del evento"
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+        </div>
+
+        <CampoAviso
+          id="aviso-cancelar"
+          avisar={avisar}
+          onAvisar={setAvisar}
+          texto={texto}
+          onTexto={setTextoEditado}
           tieneChat={!!pedido.conversation_id}
           ventanaAbierta={pedido.ventana_abierta}
         />
@@ -245,16 +371,8 @@ export function CambioEstadoDialog({
           <Button variant="ghost" onClick={onClose} disabled={pendiente}>
             Volver
           </Button>
-          <Button
-            variant={cancelar ? "destructive" : "default"}
-            onClick={enviar}
-            disabled={pendiente}
-          >
-            {pendiente
-              ? "Guardando…"
-              : cancelar
-                ? "Cancelar pedido"
-                : "Marcar listo"}
+          <Button variant="destructive" onClick={enviar} disabled={pendiente}>
+            {pendiente ? "Cancelando…" : "Cancelar pedido"}
           </Button>
         </DialogFooter>
       </DialogContent>

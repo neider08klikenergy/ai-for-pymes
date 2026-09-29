@@ -1,8 +1,9 @@
-import { PenLine, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MessageRow } from "@/features/inbox/types";
 import { StatusIcon } from "./status-icon";
+import { PenLine, Bot } from "lucide-react";
+import type { MessageRow } from "@/features/inbox/types";
 import { MessageAttachment } from "./message-attachment";
+import { useZonaHoraria } from "@/shared/lib/zona-horaria-context";
 
 interface ChatMessageProps {
   message: MessageRow;
@@ -31,8 +32,9 @@ function OutboundAuthor({ message }: { message: MessageRow }) {
   );
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, timeZone: string): string {
   return new Date(dateStr).toLocaleTimeString("es", {
+    timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -49,7 +51,8 @@ function isInternalNote(message: MessageRow): boolean {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isOutbound = message.direction === "out";
-  const time = formatTime(message.created_at);
+  const zona = useZonaHoraria();
+  const time = formatTime(message.created_at, zona);
   const internal = isInternalNote(message);
 
   // Internal note — centered, amber tint, italic

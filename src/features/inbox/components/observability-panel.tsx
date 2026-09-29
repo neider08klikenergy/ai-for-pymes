@@ -1,15 +1,15 @@
 "use client";
-
 // F8-D2: Observability panel — shows KPI tiles + event log for a conversation.
 
-import { useCallback, useEffect, useState } from "react";
+import type {
+  EventLogEntry,
+  ConversationMetrics,
+} from "@/features/inbox/services/observability";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type {
-  ConversationMetrics,
-  EventLogEntry,
-} from "@/features/inbox/services/observability";
+import { useZonaHoraria } from "@/shared/lib/zona-horaria-context";
 
 interface ObservabilityPanelProps {
   conversationId: string;
@@ -63,9 +63,10 @@ const LEVEL_INDICATOR: Record<string, string> = {
   debug: "bg-zinc-500",
 };
 
-function formatTimestamp(iso: string): string {
+function formatTimestamp(iso: string, timeZone: string): string {
   try {
     return new Date(iso).toLocaleTimeString("es-MX", {
+      timeZone,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -102,6 +103,7 @@ interface ApiResponse {
 export function ObservabilityPanel({
   conversationId,
 }: ObservabilityPanelProps) {
+  const zona = useZonaHoraria();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,7 +237,7 @@ export function ObservabilityPanel({
                           {style.label}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">
-                          {formatTimestamp(event.created_at)}
+                          {formatTimestamp(event.created_at, zona)}
                         </span>
                       </div>
                       {payloadPreview && (

@@ -1,8 +1,13 @@
 "use client";
 
 import {
+  aplicarSaldoFavor,
+  cambiarEstadoPedido,
+} from "../services/pedidos-actions";
+import {
+  ListoDialog,
   RevisionDialog,
-  CambioEstadoDialog,
+  CancelarDialog,
   type CambioPendiente,
   type RevisionPendiente,
 } from "./dialogos";
@@ -11,13 +16,12 @@ import { cn } from "@/lib/utils";
 import { toastResultado } from "./comun";
 import { PagosLista } from "./pagos-lista";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { useState, useTransition } from "react";
 import { PedidoDetalle } from "./pedido-detalle";
+import { Button } from "@/components/ui/button";
 import { siguienteEstado } from "../lib/estados";
+import { useState, useTransition } from "react";
 import { CalendarioPedidos } from "./pedidos-calendario";
 import type { PedidoFila, VistaPedidos } from "../types";
-import { cambiarEstadoPedido } from "../services/pedidos-actions";
 import { CalendarDays, Clock, Receipt, Table2, Wallet } from "lucide-react";
 import { urlPedidos, type FiltrosPedidos, type Vista } from "../lib/filtros";
 import { FiltrosTabla, TablaPedidos, type AccionesFila } from "./pedidos-tabla";
@@ -81,6 +85,14 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
         aviso: null,
       });
       toastResultado(r);
+      setOcupadoId(null);
+    });
+  }
+
+  function aplicarSaldo(p: PedidoFila) {
+    setOcupadoId(p.id);
+    startTransition(async () => {
+      toastResultado(await aplicarSaldoFavor(p.id));
       setOcupadoId(null);
     });
   }
@@ -217,6 +229,7 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
         onClose={() => setSeleccionadoId(null)}
         onAvanzar={avanzar}
         onCancelar={(p) => setCambio({ pedido: p, hacia: "cancelado" })}
+        onAplicarSaldo={aplicarSaldo}
       />
 
       {revision && (
@@ -227,10 +240,19 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
           onClose={() => setRevision(null)}
         />
       )}
-      {cambio && (
-        <CambioEstadoDialog
-          key={`${cambio.pedido.id}:${cambio.hacia}`}
-          cambio={cambio}
+      {cambio?.hacia === "listo" && (
+        <ListoDialog
+          key={`listo:${cambio.pedido.id}`}
+          pedido={cambio.pedido}
+          onClose={() => setCambio(null)}
+        />
+      )}
+      {cambio?.hacia === "cancelado" && (
+        <CancelarDialog
+          key={`cancelar:${cambio.pedido.id}`}
+          pedido={cambio.pedido}
+          zona={zona}
+          reglas={vista.reglas}
           onClose={() => setCambio(null)}
         />
       )}

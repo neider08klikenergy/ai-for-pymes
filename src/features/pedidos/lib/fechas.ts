@@ -131,3 +131,10 @@ export function semanasDelMes(mes: string): string[][] {
   } while (dia.slice(0, 7) === mes);
   return semanas;
 }
+
+/** Días calendario de `desde` a `hasta` (YYYY-MM-DD). */
+export function diasEntre(desde: string, hasta: string): number {
+  const a = Date.parse(`${desde}T12:00:00Z`);
+  const b = Date.parse(`${hasta}T12:00:00Z`);
+  return Math.round((b - a) / 86_400_000);
+}

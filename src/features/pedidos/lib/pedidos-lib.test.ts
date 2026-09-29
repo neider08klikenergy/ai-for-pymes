@@ -6,6 +6,7 @@ import {
   hoyEnZona,
   rangoDelDia,
   semanasDelMes,
+  diasEntre,
   sumarDias,
   sumarMeses,
 } from "./fechas";
@@ -16,6 +17,7 @@ import {
   mensajePedidoCancelado,
   mensajePedidoListo,
 } from "./mensajes";
+import { contarVariables, parametrosPlantilla, PLANTILLAS, type EventoPlantilla } from "./plantillas";
 
 test("producción avanza en orden y no salta pasos", () => {
   assert.equal(siguienteEstado("confirmado"), "en_produccion");
@@ -87,6 +89,11 @@ test("rechazo, listo y cancelación", () => {
   assert.match(mensajePedidoListo({ ...datos, modalidad: "domicilio" }), /sale hacia tu dirección/);
   assert.match(mensajePedidoCancelado({ ...datos, pagado: 90000 }), /saldo a favor por 6 meses/);
   assert.doesNotMatch(mensajePedidoCancelado(datos), /saldo a favor/);
+  // Cancelado fuera de plazo sin saldo: no promete saldo aunque haya pagado
+  assert.doesNotMatch(
+    mensajePedidoCancelado({ ...datos, pagado: 90000 }, { generar: false, meses: 6 }),
+    /saldo a favor/,
+  );
 });
 
 // ── Filtros y calendario ─────────────────────────────────────────────────────
@@ -124,4 +131,35 @@ test("calendario de octubre 2026: arranca el lunes 28 sep y cubre todo el mes", 
   assert.equal(s.at(-1)!.at(-1), "2026-11-01");
   assert.ok(s.every((w) => w.length === 7));
   assert.equal(sumarMeses("2026-12", 1), "2027-01");
+});
+
+test("días calendario entre fechas (plazo de cancelación)", () => {
+  assert.equal(diasEntre("2026-09-29", "2026-10-02"), 3);
+  assert.equal(diasEntre("2026-12-30", "2027-01-02"), 3);
+  assert.equal(diasEntre("2026-10-02", "2026-10-01"), -1);
+});
+
+test("cada plantilla recibe exactamente las variables que declara, sin vacíos ni saltos", () => {
+  for (const evento of Object.keys(PLANTILLAS) as EventoPlantilla[]) {
+    const def = PLANTILLAS[evento];
+    const n = contarVariables(def.cuerpo);
+    assert.equal(def.ejemplos.length, n, `${evento}: ejemplos`);
+    const params = parametrosPlantilla(evento, datos, "America/Bogota", {
+      monto: 90000,
+      motivo: "no aparece\nen la cuenta",
+      saldoFavor: { monto: 90000, vence: "29 mar 2027" },
+    });
+    assert.equal(params.length, n, `${evento}: parámetros`);
+    for (const v of params) {
+      assert.ok(v.trim().length > 0 && !/\n/.test(v), `${evento}: "${v}"`);
+    }
+    assert.match(def.nombre, /^[a-z0-9_]+$/);
+  }
+});
+
+test("plantilla de pago confirmado: saldo después del pago", () => {
+  const p = parametrosPlantilla("pago_confirmado", datos, "America/Bogota", { monto: 90000 });
+  assert.equal(p[0], "Neider");
+  assert.match(p[1], /90\.000/);
+  assert.match(p[5], /60\.000/);
 });
