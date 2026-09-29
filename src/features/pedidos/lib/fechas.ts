@@ -83,3 +83,51 @@ export function pesos(n: number | null | undefined): string {
     maximumFractionDigits: 0,
   }).format(n ?? 0);
 }
+
+/** Fecha local (YYYY-MM-DD) de un instante, en la zona del negocio. */
+export function fechaLocalDe(iso: string, zona: string): string {
+  return hoyEnZona(zona, new Date(iso));
+}
+
+const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export function esMesValido(v: string | undefined | null): v is string {
+  return !!v && MES_RE.test(v);
+}
+
+/** Suma meses a un mes YYYY-MM. */
+export function sumarMeses(mes: string, n: number): string {
+  const [y, m] = mes.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+/** "Octubre de 2026" */
+export function nombreMes(mes: string): string {
+  const t = new Intl.DateTimeFormat("es-CO", {
+    timeZone: "UTC",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${mes}-01T12:00:00Z`));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/**
+ * Semanas del calendario del mes (lunes a domingo), con los días de relleno
+ * del mes anterior y siguiente. Cada día es YYYY-MM-DD.
+ */
+export function semanasDelMes(mes: string): string[][] {
+  const primero = `${mes}-01`;
+  const diaSemana = (new Date(`${primero}T12:00:00Z`).getUTCDay() + 6) % 7; // lunes = 0
+  let dia = sumarDias(primero, -diaSemana);
+  const semanas: string[][] = [];
+  do {
+    const semana: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      semana.push(dia);
+      dia = sumarDias(dia, 1);
+    }
+    semanas.push(semana);
+  } while (dia.slice(0, 7) === mes);
+  return semanas;
+}

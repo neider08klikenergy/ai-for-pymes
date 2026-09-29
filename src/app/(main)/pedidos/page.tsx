@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { hoyEnZona } from "@/features/pedidos/lib/fechas";
+import type { ParamsPedidos } from "@/features/pedidos/lib/filtros";
 import { PedidosBoard } from "@/features/pedidos/components/pedidos-board";
 import { cargarVistaPedidos } from "@/features/pedidos/services/pedidos-queries";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function PedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; sede?: string }>;
+  searchParams: Promise<ParamsPedidos>;
 }) {
   const supabase = await createClient();
   const {
@@ -29,17 +29,13 @@ export default async function PedidosPage({
     );
   }
 
-  const params = await searchParams;
-  const vista = await cargarVistaPedidos(supabase, membership.workspace_id, {
-    fecha: params.fecha,
-    sede: params.sede,
-  });
+  const vista = await cargarVistaPedidos(
+    supabase,
+    membership.workspace_id,
+    await searchParams,
+  );
 
   return (
-    <PedidosBoard
-      vista={vista}
-      hoy={hoyEnZona(vista.zona)}
-      puedeActuar={membership.role !== "viewer"}
-    />
+    <PedidosBoard vista={vista} puedeActuar={membership.role !== "viewer"} />
   );
 }

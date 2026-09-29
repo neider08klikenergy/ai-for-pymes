@@ -1,9 +1,21 @@
 import type { EstadoPedido } from "./lib/estados";
+import type { FiltrosPedidos } from "./lib/filtros";
 
 export interface SedeResumen {
   id: string;
   codigo: string;
   nombre: string;
+}
+
+export interface PagoResumen {
+  id: string;
+  tipo: "anticipo" | "saldo" | "total";
+  estado: "por_verificar" | "confirmado" | "rechazado";
+  monto_esperado: number;
+  monto_reportado: number | null;
+  referencia: string | null;
+  motivo_rechazo: string | null;
+  created_at: string;
 }
 
 export interface PedidoFila {
@@ -28,6 +40,10 @@ export interface PedidoFila {
   precio_validado: boolean;
   conversation_id: string | null;
   notas: string | null;
+  created_at: string;
+  /** true/false según la ventana de 24 h de WhatsApp; null sin conversación. */
+  ventana_abierta: boolean | null;
+  pagos: PagoResumen[];
 }
 
 export interface PagoPorVerificar {
@@ -49,16 +65,24 @@ export interface PagoPorVerificar {
     nombre_cliente: string;
     fecha_entrega: string;
     total: number;
+    pagado: number;
+    modalidad: "recogida" | "domicilio";
     sede_nombre: string | null;
     conversation_id: string | null;
+    ventana_abierta: boolean | null;
   } | null;
 }
 
 export interface VistaPedidos {
   zona: string;
-  fecha: string;
-  sedeCodigo: string | null;
+  hoy: string;
+  filtros: FiltrosPedidos;
   sedes: SedeResumen[];
+  /** Tabla: pedidos del rango. Calendario: pedidos del mes (sin cancelados). */
   pedidos: PedidoFila[];
+  /** Solo en la vista de pagos. */
   pagos: PagoPorVerificar[];
+  pagosPendientes: number;
+  /** true si se cortó la lista en el límite. */
+  truncado: boolean;
 }

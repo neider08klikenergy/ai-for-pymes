@@ -3,15 +3,18 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { esEstadoPedido } from "../lib/estados";
-import { esFechaValida, hoyEnZona, rangoDelDia } from "../lib/fechas";
+import { hoyEnZona, rangoDelDia, semanasDelMes } from "../lib/fechas";
+import { leerFiltros, type ParamsPedidos } from "../lib/filtros";
 import type {
   PagoPorVerificar,
+  PagoResumen,
   PedidoFila,
   SedeResumen,
   VistaPedidos,
 } from "../types";
 
 const ZONA_POR_DEFECTO = "America/Bogota";
+const LIMITE_PEDIDOS = 300;
 
 function zonaValida(z: unknown): string {
   if (typeof z !== "string" || !z) return ZONA_POR_DEFECTO;
@@ -28,81 +31,162 @@ function uno<T>(v: T | T[] | null | undefined): T | null {
   return v ?? null;
 }
 
+function ventanaAbierta(conv: unknown): boolean | null {
+  const c = uno(conv as { window_expires_at: string | null } | null);
+  if (!c) return null;
+  if (!c.window_expires_at) return true;
+  return new Date(c.window_expires_at) > new Date();
+}
+
+/** Escapa los comodines de LIKE y lo que rompería el filtro .or() de PostgREST. */
+function textoBusqueda(q: string): string {
+  return q.replace(/[%_\\]/g, "\\$&").replace(/[,()*"]/g, " ").trim();
+}
+
+const SELECT_PEDIDO =
+  "id, numero, estado, nombre_cliente, telefono, linea, sabor, tamano, cantidad, detalle, " +
+  "modalidad, direccion_entrega, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
+  "precio_validado, conversation_id, notas, created_at, sedes(id, codigo, nombre), " +
+  "conversations(window_expires_at), " +
+  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, created_at)";
+
+function aPedidoFila(raw: unknown): PedidoFila | null {
+  const r = raw as Record<string, unknown>;
+  if (!esEstadoPedido(r.estado)) return null;
+  const pagos = ((r.pagos_pedido as PagoResumen[] | null) ?? []).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
+  return {
+    ...(r as unknown as PedidoFila),
+    detalle: (r.detalle as Record<string, string>) ?? {},
+    sede: uno(r.sedes as SedeResumen | SedeResumen[] | null),
+    ventana_abierta: ventanaAbierta(r.conversations),
+    pagos,
+  };
+}
+
 export async function cargarVistaPedidos(
   supabase: SupabaseClient,
   workspaceId: string,
-  filtros: { fecha?: string; sede?: string },
+  params: ParamsPedidos,
 ): Promise<VistaPedidos> {
-  const [{ data: reglaZona }, { data: sedesData }] = await Promise.all([
-    supabase
-      .from("reglas_negocio")
-      .select("valor")
-      .eq("workspace_id", workspaceId)
-      .eq("clave", "zona_horaria")
-      .maybeSingle(),
-    supabase
-      .from("sedes")
-      .select("id, codigo, nombre")
-      .eq("workspace_id", workspaceId)
-      .eq("activa", true)
-      .order("nombre"),
-  ]);
+  const [{ data: reglaZona }, { data: sedesData }, { count: pagosPendientes }] =
+    await Promise.all([
+      supabase
+        .from("reglas_negocio")
+        .select("valor")
+        .eq("workspace_id", workspaceId)
+        .eq("clave", "zona_horaria")
+        .maybeSingle(),
+      supabase
+        .from("sedes")
+        .select("id, codigo, nombre")
+        .eq("workspace_id", workspaceId)
+        .eq("activa", true)
+        .order("nombre"),
+      supabase
+        .from("pagos_pedido")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("estado", "por_verificar"),
+    ]);
 
   const zona = zonaValida(reglaZona?.valor);
-  const fecha = esFechaValida(filtros.fecha) ? filtros.fecha : hoyEnZona(zona);
+  const hoy = hoyEnZona(zona);
+  const filtros = leerFiltros(params, hoy);
   const sedes = (sedesData ?? []) as SedeResumen[];
   const sede = sedes.find((s) => s.codigo === filtros.sede) ?? null;
-  const { desde, hasta } = rangoDelDia(fecha, zona);
+  filtros.sede = sede?.codigo ?? null;
 
-  let qPedidos = supabase
+  const base: VistaPedidos = {
+    zona,
+    hoy,
+    filtros,
+    sedes,
+    pedidos: [],
+    pagos: [],
+    pagosPendientes: pagosPendientes ?? 0,
+    truncado: false,
+  };
+
+  if (filtros.vista === "pagos") {
+    return { ...base, pagos: await cargarPagos(supabase, workspaceId) };
+  }
+
+  // Rango de fechas: el de los filtros (tabla) o el de la cuadrícula del mes.
+  let desdeDia = filtros.desde;
+  let hastaDia = filtros.hasta;
+  if (filtros.vista === "calendario") {
+    const semanas = semanasDelMes(filtros.mes);
+    desdeDia = semanas[0][0];
+    hastaDia = semanas[semanas.length - 1][6];
+  }
+  const desde = rangoDelDia(desdeDia, zona).desde;
+  const hasta = rangoDelDia(hastaDia, zona).hasta;
+
+  let q = supabase
     .from("pedidos")
-    .select(
-      "id, numero, estado, nombre_cliente, telefono, linea, sabor, tamano, cantidad, detalle, " +
-        "modalidad, direccion_entrega, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
-        "precio_validado, conversation_id, notas, sedes(id, codigo, nombre)",
-    )
+    .select(SELECT_PEDIDO)
     .eq("workspace_id", workspaceId)
     .gte("fecha_entrega", desde)
     .lt("fecha_entrega", hasta)
-    .order("fecha_entrega", { ascending: true });
-  if (sede) qPedidos = qPedidos.eq("sede_id", sede.id);
+    .order("fecha_entrega", { ascending: true })
+    .limit(LIMITE_PEDIDOS + 1);
 
-  const qPagos = supabase
+  if (sede) q = q.eq("sede_id", sede.id);
+
+  if (filtros.vista === "calendario") {
+    q = q.neq("estado", "cancelado");
+  } else if (filtros.estado === "activos") {
+    q = q.not("estado", "in", "(entregado,cancelado)");
+  } else if (filtros.estado !== "todos") {
+    q = q.eq("estado", filtros.estado);
+  }
+
+  const busqueda = filtros.vista === "tabla" ? textoBusqueda(filtros.q) : "";
+  if (busqueda) {
+    q = q.or(
+      `numero.ilike.%${busqueda}%,nombre_cliente.ilike.%${busqueda}%,telefono.ilike.%${busqueda}%`,
+    );
+  }
+
+  const { data, error } = await q;
+  if (error) console.error("[pedidos] lectura de pedidos:", error.message);
+
+  const filas = ((data ?? []) as unknown[])
+    .map(aPedidoFila)
+    .filter((p): p is PedidoFila => p !== null);
+
+  return {
+    ...base,
+    pedidos: filas.slice(0, LIMITE_PEDIDOS),
+    truncado: filas.length > LIMITE_PEDIDOS,
+  };
+}
+
+async function cargarPagos(
+  supabase: SupabaseClient,
+  workspaceId: string,
+): Promise<PagoPorVerificar[]> {
+  const { data, error } = await supabase
     .from("pagos_pedido")
     .select(
       "id, tipo, monto_esperado, monto_reportado, referencia, banco, fecha_pago, descripcion_ia, " +
         "created_at, media, message_id, " +
-        "pedidos(id, numero, nombre_cliente, fecha_entrega, total, conversation_id, sedes(nombre))",
+        "pedidos(id, numero, nombre_cliente, fecha_entrega, total, pagado, modalidad, conversation_id, " +
+        "sedes(nombre), conversations(window_expires_at))",
     )
     .eq("workspace_id", workspaceId)
     .eq("estado", "por_verificar")
     .order("created_at", { ascending: true })
-    .limit(50);
+    .limit(100);
 
-  const [{ data: pedidosData, error: ePed }, { data: pagosData, error: ePag }] =
-    await Promise.all([qPedidos, qPagos]);
-
-  if (ePed) console.error("[pedidos] lectura de pedidos:", ePed.message);
-  if (ePag) console.error("[pedidos] lectura de pagos:", ePag.message);
-
-  const pedidos: PedidoFila[] = ((pedidosData ?? []) as unknown[]).flatMap(
-    (raw) => {
-      const r = raw as Record<string, unknown>;
-      if (!esEstadoPedido(r.estado)) return [];
-      return [
-        {
-          ...(r as unknown as PedidoFila),
-          detalle: (r.detalle as Record<string, string>) ?? {},
-          sede: uno(r.sedes as SedeResumen | SedeResumen[] | null),
-        },
-      ];
-    },
-  );
+  if (error) console.error("[pedidos] lectura de pagos:", error.message);
 
   // El archivo del comprobante: messages.meta.storage_path lo escribe el
   // descargador de medios después de recibir el mensaje, así que se lee aquí
   // (y no la copia de pagos_pedido.media, que puede haber quedado vacía).
-  const pagosRaw = (pagosData ?? []) as unknown as Array<
+  const pagosRaw = (data ?? []) as unknown as Array<
     Record<string, unknown> & { message_id: string | null }
   >;
   const messageIds = pagosRaw
@@ -121,7 +205,9 @@ export async function cargarVistaPedidos(
     }
   }
 
-  const pagos: PagoPorVerificar[] = pagosRaw.map((p) => {
+  const texto = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+
+  return pagosRaw.map((p) => {
     const meta = p.message_id ? metaPorMensaje.get(p.message_id) : undefined;
     const media = (p.media as Record<string, unknown> | null) ?? {};
     const ped = uno(p.pedidos as Record<string, unknown> | Record<string, unknown>[] | null);
@@ -131,21 +217,13 @@ export async function cargarVistaPedidos(
       tipo: p.tipo as PagoPorVerificar["tipo"],
       monto_esperado: p.monto_esperado as number,
       monto_reportado: (p.monto_reportado as number | null) ?? null,
-      referencia: (p.referencia as string | null) ?? null,
-      banco: (p.banco as string | null) ?? null,
-      fecha_pago: (p.fecha_pago as string | null) ?? null,
-      descripcion_ia:
-        (p.descripcion_ia as string | null) ??
-        (typeof meta?.description === "string" ? meta.description : null),
+      referencia: texto(p.referencia),
+      banco: texto(p.banco),
+      fecha_pago: texto(p.fecha_pago),
+      descripcion_ia: texto(p.descripcion_ia) ?? texto(meta?.description),
       created_at: p.created_at as string,
-      storage_path:
-        (typeof meta?.storage_path === "string" && meta.storage_path) ||
-        (typeof media.storage_path === "string" && media.storage_path) ||
-        null,
-      mime_type:
-        (typeof meta?.mime_type === "string" && meta.mime_type) ||
-        (typeof media.mime_type === "string" && media.mime_type) ||
-        null,
+      storage_path: texto(meta?.storage_path) ?? texto(media.storage_path),
+      mime_type: texto(meta?.mime_type) ?? texto(media.mime_type),
       pedido: ped
         ? {
             id: ped.id as string,
@@ -153,19 +231,13 @@ export async function cargarVistaPedidos(
             nombre_cliente: ped.nombre_cliente as string,
             fecha_entrega: ped.fecha_entrega as string,
             total: ped.total as number,
+            pagado: ped.pagado as number,
+            modalidad: ped.modalidad as "recogida" | "domicilio",
             sede_nombre: sedePed?.nombre ?? null,
             conversation_id: (ped.conversation_id as string | null) ?? null,
+            ventana_abierta: ventanaAbierta(ped.conversations),
           }
         : null,
     };
   });
-
-  return {
-    zona,
-    fecha,
-    sedeCodigo: sede?.codigo ?? null,
-    sedes,
-    pedidos,
-    pagos,
-  };
 }
