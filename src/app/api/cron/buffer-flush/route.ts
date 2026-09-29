@@ -1,10 +1,11 @@
-import { timingSafeEqual } from "node:crypto";
-import { NextResponse } from "next/server";
 import {
   hasTimeToClaim,
   processNextBatch,
   reconcileOrphanedMessages,
 } from "@/features/inbox/services/buffer";
+import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
+import { revisarSeguimiento } from "@/features/notificaciones/services/seguimiento";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Buffer drain — called every minute by pg_cron (job `buffer-flush`, see
@@ -39,6 +40,17 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Seguimiento de conversaciones que esperan a una persona (8 min): retoma
+  // con la IA o avisa al equipo. Va ANTES de reconcileOrphanedMessages: los
+  // mensajes que retoma los encola juntos en un solo lote, y así el rescate de
+  // huérfanos no los toma uno por uno. Nunca bloquea el drenado del buffer.
+  let seguimiento: Awaited<ReturnType<typeof revisarSeguimiento>> | null = null;
+  try {
+    seguimiento = await revisarSeguimiento();
+  } catch (err) {
+    console.error("[buffer-flush] seguimiento falló:", err);
+  }
+
   // Safety net: inbound messages a persistently failing upsertBatch() left
   // without a batch get one now.
   const recovered = await reconcileOrphanedMessages();
@@ -62,5 +74,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const processedCount = results.filter((r) => r.processed).length;
 
-  return NextResponse.json({ ok: true, processed: processedCount, recovered });
+  return NextResponse.json({
+    ok: true,
+    processed: processedCount,
+    recovered,
+    seguimiento,
+  });
 }

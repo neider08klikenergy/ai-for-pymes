@@ -20,6 +20,7 @@ import { resolveTimeZone } from "@/shared/lib/timezone";
 import { logout } from "@/features/auth/services/actions";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import { CampanaNotificaciones } from "@/features/notificaciones/components/campana-notificaciones";
 
 export default async function MainLayout({
   children,
@@ -106,6 +107,7 @@ export default async function MainLayout({
 
         {/* Right: agency link (super admin only) + dashboard + settings + logout */}
         <div className="flex items-center gap-1 shrink-0">
+          {activeId && <CampanaNotificaciones />}
           <ThemeToggle />
 
           {isSuperAdmin && (

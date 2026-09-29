@@ -222,5 +222,17 @@ export async function applyTransition(
         err instanceof Error ? err.message : err,
       );
     }
+    // Aviso al equipo en el panel (campana). Nunca lanza.
+    try {
+      const { notificarHandoff } = await import("@/features/notificaciones/services/crear");
+      const { motivoHandoff } = await import("@/features/notificaciones/lib/seguimiento");
+      await notificarHandoff({
+        workspaceId: conv.workspace_id as string,
+        conversationId,
+        motivo: motivoHandoff(trigger ?? (userId ? "manual" : "agent")),
+      });
+    } catch (err) {
+      console.error("[decision-engine] aviso del panel falló:", err);
+    }
   }
 }

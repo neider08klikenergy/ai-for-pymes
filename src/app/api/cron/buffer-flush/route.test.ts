@@ -13,10 +13,23 @@ mock.module("@/features/inbox/services/buffer.ts", {
       return queue.shift() ?? { processed: false };
     },
     reconcileOrphanedMessages: async () => {
+      orden.push("reconcile");
       reconcileCalls++;
       return 2;
     },
     hasTimeToClaim: () => timeLeft,
+  },
+});
+
+const orden: string[] = [];
+let seguimientoFalla = false;
+mock.module("@/features/notificaciones/services/seguimiento.ts", {
+  exports: {
+    revisarSeguimiento: async () => {
+      orden.push("seguimiento");
+      if (seguimientoFalla) throw new Error("boom");
+      return { revisadas: 1, retomadas: 0, recordadas: 0 };
+    },
   },
 });
 
@@ -49,7 +62,12 @@ test("runs the drain with the right bearer", async () => {
   processCalls.length = 0;
   const res = await GET(req("Bearer s3cret"));
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { ok: true, processed: 0, recovered: 2 });
+  assert.deepEqual(await res.json(), {
+    ok: true,
+    processed: 0,
+    recovered: 2,
+    seguimiento: { revisadas: 1, retomadas: 0, recordadas: 0 },
+  });
   assert.equal(processCalls.length, 1);
 });
 
@@ -85,4 +103,17 @@ test("no batch is claimed without time left to finish it", async () => {
   await GET(req("Bearer s3cret"));
   assert.equal(processCalls.length, 0);
   timeLeft = true;
+});
+
+test("el seguimiento corre antes del rescate de huérfanos y si falla no frena el drenado", async () => {
+  process.env.CRON_SECRET = "s3cret";
+  orden.length = 0;
+  seguimientoFalla = true;
+  timeLeft = true;
+  queue = [];
+  const res = await GET(req("Bearer s3cret"));
+  assert.equal(res.status, 200);
+  assert.deepEqual(orden, ["seguimiento", "reconcile"]);
+  assert.equal((await res.json()).seguimiento, null);
+  seguimientoFalla = false;
 });
