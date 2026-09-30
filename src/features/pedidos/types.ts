@@ -40,6 +40,10 @@ export interface PedidoFila {
   detalle: Record<string, string>;
   modalidad: "recogida" | "domicilio";
   direccion_entrega: string | null;
+  /** Incluido en total. 0 si recoge en sede. */
+  valor_domicilio: number;
+  /** tarifa: de la configuración · persona: lo dio el equipo en el chat. */
+  domicilio_origen: "tarifa" | "persona" | null;
   fecha_entrega: string;
   total: number;
   anticipo_requerido: number;

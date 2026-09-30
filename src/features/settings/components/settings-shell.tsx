@@ -1,16 +1,18 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BusinessInfoForm } from "./business-info-form";
-import { ToolsCatalog } from "./tools-catalog";
-import { IntegrationsTab } from "./integrations-tab";
+import { KbTab } from "./kb-tab";
 import { TeamTab } from "./team-tab";
+import { ToolsCatalog } from "./tools-catalog";
 import { TemplatesTab } from "./templates-tab";
 import { AutomationsTab } from "./automations-tab";
-import { KbTab } from "./kb-tab";
-import { AgentsTab } from "@/features/agents/components/agents-tab";
+import { IntegrationsTab } from "./integrations-tab";
 import type { AgentDto } from "@/features/agents/types";
+import { BusinessInfoForm } from "./business-info-form";
+import { AgentsTab } from "@/features/agents/components/agents-tab";
+import type { AjustesPedidos } from "@/features/pedidos/lib/ajustes";
 import type { JevSettings } from "@/features/jev-judge/components/jev-panel";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AjustesPedidosPanel } from "@/features/pedidos/components/ajustes-pedidos";
 
 interface ToolItem {
   id: string;
@@ -31,6 +33,8 @@ interface Props {
   initialTemplates?: unknown[];
   initialAgents?: AgentDto[];
   jev: JevSettings;
+  /** Cuentas de pago, domicilios y sedes; null si el workspace no usa pedidos. */
+  ajustesPedidos?: AjustesPedidos | null;
 }
 
 export function SettingsShell({
@@ -42,6 +46,7 @@ export function SettingsShell({
   initialTemplates = [],
   initialAgents = [],
   jev,
+  ajustesPedidos = null,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -95,6 +100,15 @@ export function SettingsShell({
           <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
+          {ajustesPedidos && (
+            <div className="mt-6 p-6 rounded-lg border border-border/60 bg-card">
+              <AjustesPedidosPanel
+                workspaceId={workspaceId}
+                ajustes={ajustesPedidos}
+                puedeEditar={role === "admin" || role === "manager"}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="tools">

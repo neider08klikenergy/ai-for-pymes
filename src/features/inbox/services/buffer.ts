@@ -14,6 +14,10 @@ import {
 } from "@/features/jev-judge/apply";
 import { enforceModelPolicy } from "./model-policy";
 import type { ToolContext } from "@/features/tools/core/tool";
+import {
+  PASAR_A_PERSONA,
+  motivoDePasarAPersona,
+} from "@/features/tools/tools/pasar-a-persona";
 import { resolveSystemPrompt } from "./prompt-resolver";
 import { buildSystemPrompt } from "./prompt-builder";
 import { getActiveAgent } from "@/features/agents/services/active-agent";
@@ -609,12 +613,13 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     ) {
       progress.replySent = true;
       await markBatchProcessed(batch, mergedText, supabase);
+      await pasarAPersonaSiSePidio(supabase, batch);
       return done();
     }
 
     // A reply an earlier attempt already generated (and paid for).
     if (pendingReply) {
-      await deliverReply(
+      const sent = await deliverReply(
         supabase,
         batch,
         mergedText,
@@ -622,6 +627,7 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         isLastAttempt,
         progress,
       );
+      if (sent) await pasarAPersonaSiSePidio(supabase, batch);
       return done();
     }
 
@@ -880,6 +886,17 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       // Then its outcome. A write the tool itself reported as failed changed
       // nothing, so it no longer counts; otherwise it stays counted.
       onToolExecuted: async (execution) => {
+        // pasar_a_persona: el handoff se hace DESPUÉS de entregar la respuesta
+        // (si se hiciera ya, deliverReply no enviaría el "dame un momento").
+        if (execution.name === PASAR_A_PERSONA && execution.ok) {
+          batch.meta = {
+            ...batch.meta,
+            persona_tras_respuesta:
+              motivoDePasarAPersona(execution.output) ?? "La IA pidió ayuda de una persona",
+          };
+          await saveBatchMeta(supabase, batch);
+          return;
+        }
         if (execution.sensitivity !== "write") return;
         const index = writeRuns.findIndex((w) => w.id === execution.callId);
         if (index < 0) return;
@@ -956,6 +973,9 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     if (!delivered) {
       return done();
     }
+
+    // ── 9a. The agent asked for a person (pasar_a_persona) ──────────────────
+    await pasarAPersonaSiSePidio(supabase, batch);
 
     // ── 9b. v1.5 opt-in: AI auto-tagging + summary (fire-and-forget) ─────────
     if (
@@ -1218,11 +1238,13 @@ async function handOff(
   supabase: ReturnType<typeof svc>,
   batch: MessageBatch,
   trigger: string,
+  extra: { motivo?: string; sinAcuse?: boolean } = {},
 ): Promise<void> {
   try {
     await applyTransition(batch.conversation_id, "handoff_pending", {
       trigger,
       workspaceId: batch.workspace_id,
+      ...extra,
     });
   } catch (transitionErr) {
     if (transitionErr instanceof Error && transitionErr.name === "TransitionError") {
@@ -1254,6 +1276,21 @@ async function handOff(
       "handoff_failed",
     );
   }
+}
+
+/**
+ * The agent called pasar_a_persona during this turn: now that its reply
+ * ("dame un momento…") went out, the conversation goes to the team with the
+ * motivo the agent gave. No automatic acknowledgement: the agent already told
+ * the contact.
+ */
+async function pasarAPersonaSiSePidio(
+  supabase: ReturnType<typeof svc>,
+  batch: MessageBatch,
+): Promise<void> {
+  const motivo = batch.meta.persona_tras_respuesta;
+  if (typeof motivo !== "string" || !motivo.trim()) return;
+  await handOff(supabase, batch, PASAR_A_PERSONA, { motivo, sinAcuse: true });
 }
 
 /**

@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed Golosita (workspace del fork) · AI for PYMES
 -- Ejecutar en Supabase → SQL Editor DESPUÉS de:
---   1) aplicar la migración 20261001000000_modulo_pedidos.sql
+--   1) aplicar las migraciones del módulo (20261001… a 20261005000000_pagos_domicilios.sql)
 --   2) crear el workspace "Golosita" en el panel de agencia
 -- Idempotente: se puede correr varias veces (actualiza precios y reglas).
 -- ⚠️ Precios con validado = false hasta que Mónica apruebe el tarifario.
@@ -26,19 +26,35 @@ BEGIN
     (v_ws, 'saldo_pago_momento',           '"entrega"',         'El 40% restante se paga al entregar, antes de recibir el ponqué'),
     (v_ws, 'zona_horaria',                 '"America/Bogota"',  'Zona horaria del negocio'),
     (v_ws, 'prefijo_pedido',               '"GOL"',             'Prefijo del número de pedido')
-    -- PENDIENTE: datos de la cuenta para el anticipo. Cuando Mónica los envíe:
-    -- ,(v_ws, 'datos_pago', '"Nequi 3XX XXX XXXX a nombre de ... / Bancolombia ahorros ..."', 'Datos para transferir el anticipo')
+    -- Datos oficiales enviados por Mónica (30 sep 2026)
+    -- Notas que van debajo de las cuentas de pago (las cuentas están en cuentas_pago)
+    ,(v_ws, 'nota_pagos', '"🚫 No se aceptan pagos desde otros bancos si la transferencia no es inmediata.\nSi necesitas factura electrónica, pídela al momento de pagar."', 'Se agrega debajo de las cuentas de pago')
+    ,(v_ws, 'politica_privacidad_url', '"https://golosita.co/pages/politica-de-privacidad-y-tratamiento-de-datos"', 'Política de privacidad y tratamiento de datos')
   ON CONFLICT (workspace_id, clave) DO UPDATE SET valor = EXCLUDED.valor, descripcion = EXCLUDED.descripcion, updated_at = now();
 
-  -- Sedes (horarios oficiales; cupo diario PROVISIONAL)
+  -- Sedes (horarios oficiales). Cupo diario (30 sep): Caudal máx. 10 entre semana, Buque 5;
+  -- fines de semana y Amarilo pendientes de confirmar con Alejandra.
   INSERT INTO sedes (workspace_id, codigo, nombre, direccion, telefono, acepta_personalizados, horarios, cupo_diario) VALUES
-    (v_ws, 'caudal', 'Golosita Caudal (Grama)', 'Calle 45 # 31-08, una cuadra arriba de la glorieta de la Grama, casa esquinera rosada, Villavicencio', '+573103208950', true, '{"lunes": ["10:00", "19:30"], "jueves": ["09:45", "19:30"], "martes": ["09:45", "19:30"], "sabado": ["09:45", "19:30"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["09:45", "19:30"], "miercoles": ["09:45", "19:30"]}', 30),
+    (v_ws, 'caudal', 'Golosita Caudal (Grama)', 'Calle 45 # 31-08, una cuadra arriba de la glorieta de la Grama, casa esquinera rosada, Villavicencio', '+573103208950', true, '{"lunes": ["10:00", "19:30"], "jueves": ["09:45", "19:30"], "martes": ["09:45", "19:30"], "sabado": ["09:45", "19:30"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["09:45", "19:30"], "miercoles": ["09:45", "19:30"]}', 10),
     (v_ws, 'buque', 'Golosita Buque', 'Local 1, edificio San José Plaza, después del puente nuevo de Servimédicos (Calle 26c # 43a-26), Villavicencio', '+573155119729', false, '{"lunes": ["10:40", "19:00"], "jueves": ["10:40", "19:00"], "martes": ["10:40", "19:00"], "sabado": ["10:40", "19:00"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["10:40", "19:00"], "miercoles": ["10:40", "19:00"]}', 5),
     (v_ws, 'amarilo', 'Golosita Amarilo', 'CC Rosablanca, local 246, Villavicencio', '+573103032040', false, '{"lunes": ["13:00", "20:00"], "jueves": ["12:30", "20:00"], "martes": ["13:00", "20:00"], "sabado": ["12:30", "20:00"], "domingo": ["12:30", "20:00"], "festivo": ["12:30", "20:00"], "viernes": ["12:30", "20:00"], "miercoles": ["12:30", "20:00"]}', 3)
   ON CONFLICT (workspace_id, codigo) DO UPDATE SET
     nombre = EXCLUDED.nombre, direccion = EXCLUDED.direccion, telefono = EXCLUDED.telefono,
     acepta_personalizados = EXCLUDED.acepta_personalizados, horarios = EXCLUDED.horarios,
     cupo_diario = EXCLUDED.cupo_diario;
+
+  -- Cuentas de pago oficiales (Mónica, 30 sep 2026). Reemplazan la regla de
+  -- texto 'datos_pago'. Solo se crean si el workspace aún no tiene cuentas,
+  -- para no pisar lo que el equipo edite en Settings → Negocio.
+  DELETE FROM reglas_negocio WHERE workspace_id = v_ws AND clave = 'datos_pago';
+  IF NOT EXISTS (SELECT 1 FROM cuentas_pago WHERE workspace_id = v_ws) THEN
+    INSERT INTO cuentas_pago (workspace_id, tipo, banco, numero, titular, documento, orden) VALUES
+      (v_ws, 'ahorros', 'Bancolombia', '84400002267',  'GOLOSITA 1984 SAS', 'NIT 901524286', 1),
+      (v_ws, 'ahorros', 'Davivienda',  '098400013581', 'GOLOSITA 1984 SAS', 'NIT 901524286', 2),
+      (v_ws, 'llave',   'Bre-B',       '0029375128',   'GOLOSITA 1984 SAS', 'NIT 901524286', 3);
+  END IF;
+  -- Domicilios: los hace un tercero y el valor depende de la distancia. Sin
+  -- tarifas configuradas, el agente pide el valor a una persona del equipo.
 
   -- Tarifario (transcrito de ANEXO A MENU, por validar)
   INSERT INTO precios (workspace_id, linea, sabor, tamano, porciones, precio, incluye, validado) VALUES

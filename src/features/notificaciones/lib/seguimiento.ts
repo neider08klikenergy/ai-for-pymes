@@ -113,6 +113,7 @@ export const MENSAJE_ESPERA =
 const MOTIVO_HANDOFF: Record<string, string> = {
   keyword: "El cliente pidió hablar con una persona",
   agent: "La IA pasó la conversación a una persona",
+  pasar_a_persona: "La IA pidió ayuda de una persona",
   manual: "Se pasó la conversación a una persona",
   cost_cut: "Se alcanzó el límite de gasto de IA",
   write_tool_unfinished: "La IA hizo una acción pero no pudo terminar su respuesta",

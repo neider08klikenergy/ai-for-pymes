@@ -130,3 +130,27 @@ test("a tool whose onStart throws never runs, and run() rejects with that error"
   );
   assert.equal(callCount(), 0);
 });
+
+test("onExecuted receives what the tool returned", async () => {
+  registry.register({
+    name: "test_read_output",
+    description: "test tool",
+    sensitivity: "read",
+    schema: z.object({}),
+    enabledFor: () => true,
+    run: async () => ({ ok: true, output: { motivo: "Cotizar domicilio" } }),
+  });
+  let seen: unknown = null;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+  try {
+    await registry.run("test_read_output", {}, ctx, {
+      onExecuted: (e) => {
+        seen = e.output;
+      },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.deepEqual(seen, { motivo: "Cotizar domicilio" });
+});

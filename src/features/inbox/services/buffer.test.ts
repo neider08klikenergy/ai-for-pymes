@@ -141,6 +141,8 @@ let decideResult: Row | Error = {
 };
 const decideArgs: Row[] = [];
 const transitions: Array<{ to: string; trigger: unknown }> = [];
+/** Extra options of each transition (motivo, sinAcuse), same order. */
+const transitionExtras: Row[] = [];
 /** Set to make applyTransition throw this error. */
 let transitionError: Error | null = null;
 mock.module("./decision-engine.ts", {
@@ -155,6 +157,7 @@ mock.module("./decision-engine.ts", {
       calls.push("transition");
       if (transitionError) throw transitionError;
       transitions.push({ to, trigger: opts.trigger });
+      transitionExtras.push({ motivo: opts.motivo, sinAcuse: opts.sinAcuse });
     },
   },
 });
@@ -223,7 +226,12 @@ mock.module("./model-policy.ts", {
 });
 
 /** ok "running": the tool started and was still running when the turn ended. */
-type Execution = { name: string; sensitivity: string; ok: boolean | null | "running" };
+type Execution = {
+  name: string;
+  sensitivity: string;
+  ok: boolean | null | "running";
+  output?: unknown;
+};
 const generateArgs: Row[] = [];
 /** Tools that actually ran (their start hook let them). */
 const toolsRun: string[] = [];
@@ -248,7 +256,13 @@ mock.module("./openrouter.ts", {
         await opts.onToolStart?.({ callId, name: tool.name, sensitivity: tool.sensitivity });
         toolsRun.push(tool.name);
         if (tool.ok === "running") continue;
-        await opts.onToolExecuted?.({ callId, name: tool.name, sensitivity: tool.sensitivity, ok: tool.ok });
+        await opts.onToolExecuted?.({
+          callId,
+          name: tool.name,
+          sensitivity: tool.sensitivity,
+          ok: tool.ok,
+          ...(tool.output !== undefined ? { output: tool.output } : {}),
+        });
       }
       if (generated.throwAfterTools) throw generated.throwAfterTools;
       return {
@@ -381,6 +395,7 @@ function reset(meta: Row = {}) {
   toolsRun.length = 0;
   kbError = null;
   transitions.length = 0;
+  transitionExtras.length = 0;
   transitionError = null;
   rpcCalls.length = 0;
   rateAllowed = true;
@@ -786,6 +801,61 @@ test("if a person took the conversation during the turn, the reply is not sent",
   assert.equal(result.processed, true);
   assert.ok(!calls.includes("dispatch"));
   assert.equal(batchRow().status, "processed");
+});
+
+// ── pasar_a_persona: handoff after the reply ─────────────────────────────────
+
+test("pasar_a_persona: the reply goes out first, then a person takes over with the agent's motivo", async () => {
+  reset();
+  generated = {
+    text: "Dame un momento y te confirmo el valor del domicilio 🙌",
+    tools: [
+      {
+        name: "pasar_a_persona",
+        sensitivity: "read",
+        ok: true,
+        output: { ok: true, motivo: "Cotizar domicilio a Barzal" },
+      },
+    ],
+  };
+  const result = await processNextBatch();
+  assert.equal(result.processed, true);
+  assert.equal(dispatchArgs.length, 1, "the reply was sent");
+  assert.ok(calls.indexOf("dispatch") < calls.lastIndexOf("transition"), "send before handoff");
+  assert.deepEqual(transitions, [{ to: "handoff_pending", trigger: "pasar_a_persona" }]);
+  assert.deepEqual(transitionExtras, [{ motivo: "Cotizar domicilio a Barzal", sinAcuse: true }]);
+  const saved = batchUpdates().map((u) => (u.meta as Row | undefined)?.persona_tras_respuesta);
+  assert.ok(saved.includes("Cotizar domicilio a Barzal"), "the motivo is saved on the batch");
+});
+
+test("pasar_a_persona: a retry that only re-sends the saved reply still hands off", async () => {
+  reset({ retry_count: 1, pending_reply: "Dame un momento", persona_tras_respuesta: "Cotizar domicilio" });
+  await processNextBatch();
+  assert.ok(!calls.includes("generate"));
+  assert.equal(dispatchArgs.length, 1);
+  assert.deepEqual(transitionExtras, [{ motivo: "Cotizar domicilio", sinAcuse: true }]);
+});
+
+test("pasar_a_persona: if the reply was not sent (a person took over), no second handoff", async () => {
+  reset();
+  tables.conversations[0].state = "human_active";
+  generated = {
+    text: "Dame un momento",
+    tools: [{ name: "pasar_a_persona", sensitivity: "read", ok: true, output: { motivo: "x" } }],
+  };
+  await processNextBatch();
+  assert.ok(!calls.includes("dispatch"));
+  assert.equal(transitions.length, 0);
+});
+
+test("pasar_a_persona that failed does not hand off", async () => {
+  reset();
+  generated = {
+    text: "Hola",
+    tools: [{ name: "pasar_a_persona", sensitivity: "read", ok: false }],
+  };
+  await processNextBatch();
+  assert.equal(transitions.length, 0);
 });
 
 // ── write tools: never run twice ──────────────────────────────────────────────

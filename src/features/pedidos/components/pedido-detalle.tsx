@@ -98,6 +98,18 @@ export function PedidoDetalle({
                     ? `Domicilio: ${pedido.direccion_entrega ?? "sin dirección"}`
                     : "Recoge en sede"}
                 </Fila>
+                {pedido.modalidad === "domicilio" && (
+                  <Fila label="Domicilio">
+                    {pesos(pedido.valor_domicilio)}
+                    <span className="text-xs text-muted-foreground">
+                      {pedido.domicilio_origen === "persona"
+                        ? " · valor dado por el equipo en el chat"
+                        : pedido.domicilio_origen === "tarifa"
+                          ? " · según tarifa"
+                          : ""}
+                    </span>
+                  </Fila>
+                )}
                 {d.decoracion && <Fila label="Decoración">{d.decoracion}</Fila>}
                 {d.mensaje && <Fila label="Mensaje">“{d.mensaje}”</Fila>}
                 {d.forma && <Fila label="Forma">{d.forma}</Fila>}
@@ -164,7 +176,9 @@ export function PedidoDetalle({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Anticipo requerido: {pesos(pedido.anticipo_requerido)}
+                Anticipo mínimo: {pesos(pedido.anticipo_requerido)}
+                {pedido.valor_domicilio > 0 &&
+                  ` · producto ${pesos(pedido.total - pedido.valor_domicilio)} + domicilio ${pesos(pedido.valor_domicilio)}`}
               </p>
               {!pedido.precio_validado && (
                 <p className="flex items-center gap-1 text-xs text-warning">

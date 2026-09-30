@@ -33,9 +33,11 @@ export function mensajePagoConfirmado(p: DatosAviso, monto: number, zona: string
     `Tu pedido ${p.numero} quedó confirmado para el ${cuando(p, zona)} ${donde(p)}.`,
   ];
   lineas.push(
-    saldo > 0
-      ? `El saldo de ${pesos(saldo)} lo pagas al momento de la entrega.`
-      : "Tu pedido quedó pagado en su totalidad.",
+    saldo <= 0
+      ? "Tu pedido quedó pagado en su totalidad."
+      : p.modalidad === "domicilio"
+        ? `El saldo de ${pesos(saldo)} (incluye el domicilio) lo transfieres antes del envío.`
+        : `El saldo de ${pesos(saldo)} lo pagas al momento de la entrega.`,
   );
   lineas.push("¡Gracias por elegir Golosita! 💛");
   return lineas.join("\n");
@@ -56,7 +58,13 @@ export function mensajePedidoListo(p: DatosAviso): string {
       ? `🎂 ¡Hola ${primerNombre(p.nombre_cliente)}! Tu pedido ${p.numero} ya está listo y pronto sale hacia tu dirección.`
       : `🎂 ¡Hola ${primerNombre(p.nombre_cliente)}! Tu pedido ${p.numero} ya está listo para recoger ${donde(p)}.`,
   ];
-  if (saldo > 0) lineas.push(`Recuerda el saldo de ${pesos(saldo)} al momento de la entrega.`);
+  if (saldo > 0) {
+    lineas.push(
+      p.modalidad === "domicilio"
+        ? `Para despacharlo, transfiere el saldo de ${pesos(saldo)} (incluye el domicilio) y envíanos el comprobante por aquí.`
+        : `Recuerda el saldo de ${pesos(saldo)} al momento de la entrega.`,
+    );
+  }
   return lineas.join("\n");
 }
 

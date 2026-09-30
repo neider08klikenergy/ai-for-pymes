@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
-import { listAgents } from "@/features/agents/services/agent-queries";
-import { SettingsShell } from "@/features/settings/components/settings-shell";
-import { countJudgmentsToday } from "@/features/jev-judge/usage";
 import { readJevUses } from "@/features/jev-judge/uses";
+import { countJudgmentsToday } from "@/features/jev-judge/usage";
+import { listAgents } from "@/features/agents/services/agent-queries";
+import { createClient as createSbClient } from "@supabase/supabase-js";
+import { SettingsShell } from "@/features/settings/components/settings-shell";
 import { isWhatsAppProvider } from "@/features/inbox/services/whatsapp-provider";
+import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
+import { cargarAjustesPedidos } from "@/features/pedidos/services/ajustes-queries";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -78,6 +79,10 @@ export default async function SettingsPage() {
   const whatsappConfig =
     (whatsapp?.config as Record<string, unknown> | null) ?? {};
   const judgmentsToday = await countJudgmentsToday(svc, workspaceId);
+  // Cuentas de pago, domicilios y sedes (solo si el workspace usa pedidos).
+  const ajustesPedidos = await cargarAjustesPedidos(svc, workspaceId).catch(
+    () => null,
+  );
 
   // Mask credentials server-side before passing to client components
   function maskRecord(
@@ -89,19 +94,19 @@ export default async function SettingsPage() {
     );
   }
 
-  const maskedIntegrations = (canReadConfig ? (integrationsData ?? []) : []).map(
-    (row: Record<string, unknown>) => ({
-      provider: row.provider,
-      enabled: row.enabled,
-      config: (row.config as Record<string, unknown>) ?? {},
-      credentials: maskRecord(
-        (row.credentials as Record<string, unknown>) ?? null,
-      ),
-      oauth_tokens: maskRecord(
-        (row.oauth_tokens as Record<string, unknown>) ?? null,
-      ),
-    }),
-  );
+  const maskedIntegrations = (
+    canReadConfig ? (integrationsData ?? []) : []
+  ).map((row: Record<string, unknown>) => ({
+    provider: row.provider,
+    enabled: row.enabled,
+    config: (row.config as Record<string, unknown>) ?? {},
+    credentials: maskRecord(
+      (row.credentials as Record<string, unknown>) ?? null,
+    ),
+    oauth_tokens: maskRecord(
+      (row.oauth_tokens as Record<string, unknown>) ?? null,
+    ),
+  }));
 
   const enabledToolIds = new Set(
     (toolConfigsData ?? [])
@@ -143,6 +148,7 @@ export default async function SettingsPage() {
         keyReady: Boolean(process.env.TYPESAFE_API_KEY),
         judgmentsToday,
       }}
+      ajustesPedidos={ajustesPedidos}
     />
   );
 }

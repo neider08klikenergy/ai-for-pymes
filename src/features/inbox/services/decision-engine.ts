@@ -126,6 +126,13 @@ export interface TransitionOptions {
    * membership cannot be tricked into moving another tenant's conversation.
    */
   workspaceId?: string;
+  /** Motivo concreto para el aviso del panel (si no, se deduce del trigger). */
+  motivo?: string;
+  /**
+   * No enviar el acuse automático al contacto: quien pidió el handoff (la IA
+   * con pasar_a_persona) ya le respondió en el mismo turno.
+   */
+  sinAcuse?: boolean;
 }
 
 /**
@@ -142,7 +149,7 @@ export async function applyTransition(
   to: ConversationState,
   opts: TransitionOptions = {},
 ): Promise<void> {
-  const { userId, trigger, workspaceId } = opts;
+  const { userId, trigger, workspaceId, motivo, sinAcuse } = opts;
   const supabase = svc();
 
   // 1. Load current state (scoped to the workspace when the caller gives one)
@@ -208,7 +215,7 @@ export async function applyTransition(
   // 5. Side effects of the new state. Deliberately last and deliberately
   //    non-throwing: the transition above is already committed and must stand
   //    even if notifying anyone fails.
-  if (to === "handoff_pending") {
+  if (to === "handoff_pending" && !sinAcuse) {
     try {
       const { notifyHandoffPending } = await import("./handoff-notifier");
       await notifyHandoffPending({
@@ -222,6 +229,8 @@ export async function applyTransition(
         err instanceof Error ? err.message : err,
       );
     }
+  }
+  if (to === "handoff_pending") {
     // Aviso al equipo en el panel (campana). Nunca lanza.
     try {
       const { notificarHandoff } = await import("@/features/notificaciones/services/crear");
@@ -229,7 +238,7 @@ export async function applyTransition(
       await notificarHandoff({
         workspaceId: conv.workspace_id as string,
         conversationId,
-        motivo: motivoHandoff(trigger ?? (userId ? "manual" : "agent")),
+        motivo: motivo?.trim() || motivoHandoff(trigger ?? (userId ? "manual" : "agent")),
       });
     } catch (err) {
       console.error("[decision-engine] aviso del panel falló:", err);

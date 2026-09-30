@@ -163,3 +163,11 @@ test("plantilla de pago confirmado: saldo después del pago", () => {
   assert.match(p[1], /90\.000/);
   assert.match(p[5], /60\.000/);
 });
+
+test("domicilio: el saldo incluye el domicilio y se transfiere antes del envío", () => {
+  const dom = { ...datos, modalidad: "domicilio" as const, total: 158000 };
+  const conf = mensajePagoConfirmado(dom, 90000, "America/Bogota");
+  assert.match(conf, /68\.000 \(incluye el domicilio\) lo transfieres antes del envío/);
+  assert.match(mensajePagoConfirmado(dom, 158000, "America/Bogota"), /pagado en su totalidad/);
+  assert.match(mensajePedidoListo({ ...dom, pagado: 150000 }), /transfiere el saldo de \$\s?8\.000/);
+});

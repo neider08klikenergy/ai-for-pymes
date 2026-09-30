@@ -25,7 +25,9 @@ const GUIA_ERRORES: Record<string, string> = {
   NO_DISPONIBLE:
     "No se puede agendar. Explica el motivo al cliente y ofrécele otra fecha u hora.",
   FALTA_NOMBRE_CLIENTE: "Pide el nombre de la persona que recibe el pedido.",
-  FALTA_DIRECCION_DOMICILIO: "Pide la dirección de entrega para el domicilio.",
+  FALTA_DIRECCION_DOMICILIO: "Pide la dirección de entrega para el domicilio (con el barrio).",
+  FALTA_VALOR_DOMICILIO:
+    "Falta el valor del domicilio. Usa cotizar_domicilio; si requiere una persona, dile al cliente que en un momento le confirmas el valor y llama pasar_a_persona. No registres el pedido hasta tener el valor.",
   PEDIDO_NO_ENCONTRADO:
     "No hay un pedido pendiente en esta conversación. Pide el número de pedido o toma primero el pedido.",
   COMPROBANTE_DUPLICADO:

@@ -45,7 +45,7 @@ function textoBusqueda(q: string): string {
 
 const SELECT_PEDIDO =
   "id, contact_id, numero, estado, nombre_cliente, telefono, linea, sabor, tamano, cantidad, detalle, " +
-  "modalidad, direccion_entrega, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
+  "modalidad, direccion_entrega, valor_domicilio, domicilio_origen, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
   "precio_validado, conversation_id, notas, created_at, sedes(id, codigo, nombre), " +
   "conversations(window_expires_at), " +
   "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, created_at), " +

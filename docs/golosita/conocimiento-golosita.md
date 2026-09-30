@@ -16,7 +16,7 @@ Sede Caudal (Grama): lunes 10:00 am a 7:30 pm; martes a sábado 9:45 am a 7:30 p
 
 ## Anticipo y agendamiento de personalizados
 
-Los ponqués personalizados se agendan únicamente después de recibir el abono del 60% del valor total por transferencia bancaria, y después de enviar todos los datos del pedido. El 40% restante se paga al momento de la entrega. Se hacen únicamente en la sede Caudal y requieren mínimo 48 horas de anticipación. Si necesitas factura electrónica, infórmalo al momento del abono.
+Los ponqués personalizados se agendan únicamente después de recibir el abono (mínimo el 60% del valor total, o el 100% si lo prefieres) por transferencia bancaria, y después de enviar todos los datos del pedido. Sin abono no hay cupo: si el pago no llega a tiempo, el ponqué no entra a producción. El 40% restante se paga al momento de la entrega. Si cotizaste en días anteriores pero no hiciste el abono, debes confirmar de nuevo la disponibilidad: los cupos se llenan rápido. Se hacen únicamente en la sede Caudal y requieren mínimo 48 horas de anticipación. Si necesitas factura electrónica, infórmalo al momento del abono.
 
 ## Cancelaciones y cambios
 
@@ -40,8 +40,14 @@ Tamaños de ponqué personalizado: personal (1/8 lb) aprox. 6 porciones; 1/4 lb 
 
 ## Medios de pago
 
-Recibimos transferencias a Bancolombia, Davivienda, Nequi y llave Bre-B, y efectivo o tarjeta en las sedes Caudal y Buque. Para validar un pago por Nequi, envía la captura del detalle del movimiento con fecha y hora.
+Los pagos son por transferencia a las cuentas oficiales de GOLOSITA 1984 SAS. Los números de cuenta se comparten al registrar el pedido (los da el sistema, no se copian de aquí), así siempre salen los vigentes.
+
+No se aceptan pagos desde otros bancos si la transferencia no es inmediata. Antes de transferir debes haber enviado los datos del proceso de compra; de lo contrario no se puede agendar el pedido. No se hacen devoluciones de dinero. Si necesitas factura electrónica, debes pedirla. En las sedes Caudal y Buque también se recibe efectivo o tarjeta. Para validar el pago envía la captura del comprobante con fecha, hora y referencia.
 
 ## Domicilios
 
-El domicilio lo realiza una empresa externa y tiene un costo adicional según la distancia. Para cotizarlo necesitamos: nombre y teléfono de quien recibe, dirección, qué deseas y método de pago (transferencia o efectivo). Si es un regalo, podemos incluir un mensaje corto.
+El domicilio lo realiza una empresa externa y tiene un costo adicional según la distancia. El valor del domicilio se le confirma al cliente antes de pagar, para que pueda elegir si paga todo, solo el producto o el anticipo. Para cotizarlo necesitamos: nombre y teléfono de quien recibe, dirección con barrio y qué deseas. Normalmente el saldo del pedido y el valor del domicilio se pagan por transferencia antes del envío; en casos excepcionales se le paga al domiciliario al recibir. Si es un regalo, podemos incluir un mensaje corto.
+
+## Privacidad y tratamiento de datos
+
+Golosita trata tus datos personales según su política de privacidad y tratamiento de datos: https://golosita.co/pages/politica-de-privacidad-y-tratamiento-de-datos

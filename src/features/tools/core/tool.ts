@@ -33,6 +33,8 @@ export interface ToolStart {
  */
 export interface ToolExecution extends ToolStart {
   ok: boolean | null;
+  /** What the tool returned (absent when it threw or timed out). */
+  output?: unknown;
 }
 
 export interface ToolRunOptions {
