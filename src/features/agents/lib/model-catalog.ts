@@ -105,6 +105,20 @@ export const MODEL_CATALOG: CatalogProvider[] = [
         recommendation: "Rápido y barato para alto volumen.",
       },
       {
+        id: "google/gemini-2.5-flash",
+        label: "Gemini 2.5 Flash",
+        tier: "balanced",
+        recommendation:
+          "Tiene capa gratuita en Google AI Studio: úsalo con tu propia key de Google (BYOK en OpenRouter) para pruebas sin pagar.",
+      },
+      {
+        id: "google/gemini-2.5-flash-lite",
+        label: "Gemini 2.5 Flash Lite",
+        tier: "fast",
+        recommendation:
+          "Capa gratuita de Google con más peticiones por minuto que Flash. Para pruebas y alto volumen sin pagar.",
+      },
+      {
         id: "google/gemini-3.1-pro-preview",
         label: "Gemini 3.1 Pro",
         tier: "premium",
