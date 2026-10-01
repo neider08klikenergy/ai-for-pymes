@@ -1,40 +1,41 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import {
-  Send,
-  StickyNote,
+  Bot,
   User,
-  AlertCircle,
+  Send,
   UserCheck,
   BarChart2,
-  Bot,
+  StickyNote,
+  AlertCircle,
 } from "lucide-react";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { useRealtimeMessages } from "@/features/inbox/hooks/use-realtime-messages";
-import type { WorkspaceRole } from "@/features/inbox/hooks/use-role";
 import {
   canHandoff,
   canSendMessages,
   canTakeConversation,
   canViewObservability,
 } from "@/features/inbox/hooks/use-role";
-import { AiToggleButton } from "./ai-toggle-button";
+import type {
+  MessageRow,
+  ConversationWithContact,
+} from "@/features/inbox/types";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { CrmPanel } from "./crm-panel";
+import { RoleGate } from "./role-gate";
+import { useRouter } from "next/navigation";
 import { ChatMessage } from "./chat-message";
+import { Button } from "@/components/ui/button";
 import { WindowBanner } from "./window-banner";
 import { TemplatePicker } from "./template-picker";
-import { CrmPanel } from "./crm-panel";
+import { AiToggleButton } from "./ai-toggle-button";
+import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useRef, useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ObservabilityPanel } from "./observability-panel";
-import { RoleGate } from "./role-gate";
-import type {
-  ConversationWithContact,
-  MessageRow,
-} from "@/features/inbox/types";
+import type { WorkspaceRole } from "@/features/inbox/hooks/use-role";
+import { useRealtimeMessages } from "@/features/inbox/hooks/use-realtime-messages";
+import { ChannelBadge, contactSubtitle, isSocialKey } from "./channel-badge";
 
 interface ChatThreadProps {
   conversation: ConversationWithContact;
@@ -207,10 +208,16 @@ export function ChatThread({
         >
           <div className="space-y-0.5 min-w-0">
             <h2 className="font-display text-sm font-semibold text-foreground truncate">
-              {conversation.contact.name ?? conversation.contact.phone}
+              {conversation.contact.name ??
+                contactSubtitle(
+                  conversation.contact.phone,
+                  conversation.channel,
+                )}
             </h2>
-            <p className="font-mono text-[10px] text-muted-foreground">
-              {conversation.contact.phone}
+            <p className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+              <ChannelBadge channel={conversation.channel} withLabel />
+              {!isSocialKey(conversation.contact.phone) &&
+                conversation.contact.phone}
             </p>
           </div>
 

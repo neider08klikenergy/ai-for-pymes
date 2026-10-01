@@ -32,16 +32,17 @@ BEGIN
     ,(v_ws, 'politica_privacidad_url', '"https://golosita.co/pages/politica-de-privacidad-y-tratamiento-de-datos"', 'Política de privacidad y tratamiento de datos')
   ON CONFLICT (workspace_id, clave) DO UPDATE SET valor = EXCLUDED.valor, descripcion = EXCLUDED.descripcion, updated_at = now();
 
-  -- Sedes (horarios oficiales). Cupo diario (30 sep): Caudal máx. 10 entre semana, Buque 5;
-  -- fines de semana y Amarilo pendientes de confirmar con Alejandra.
-  INSERT INTO sedes (workspace_id, codigo, nombre, direccion, telefono, acepta_personalizados, horarios, cupo_diario) VALUES
-    (v_ws, 'caudal', 'Golosita Caudal (Grama)', 'Calle 45 # 31-08, una cuadra arriba de la glorieta de la Grama, casa esquinera rosada, Villavicencio', '+573103208950', true, '{"lunes": ["10:00", "19:30"], "jueves": ["09:45", "19:30"], "martes": ["09:45", "19:30"], "sabado": ["09:45", "19:30"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["09:45", "19:30"], "miercoles": ["09:45", "19:30"]}', 10),
-    (v_ws, 'buque', 'Golosita Buque', 'Local 1, edificio San José Plaza, después del puente nuevo de Servimédicos (Calle 26c # 43a-26), Villavicencio', '+573155119729', false, '{"lunes": ["10:40", "19:00"], "jueves": ["10:40", "19:00"], "martes": ["10:40", "19:00"], "sabado": ["10:40", "19:00"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["10:40", "19:00"], "miercoles": ["10:40", "19:00"]}', 5),
-    (v_ws, 'amarilo', 'Golosita Amarilo', 'CC Rosablanca, local 246, Villavicencio', '+573103032040', false, '{"lunes": ["13:00", "20:00"], "jueves": ["12:30", "20:00"], "martes": ["13:00", "20:00"], "sabado": ["12:30", "20:00"], "domingo": ["12:30", "20:00"], "festivo": ["12:30", "20:00"], "viernes": ["12:30", "20:00"], "miercoles": ["12:30", "20:00"]}', 3)
+  -- Sedes (horarios oficiales). Cupo de personalizados (Alejandra, 30 sep): Caudal agenda
+  -- solo hasta 15 por día; de 15 a 20 decide una persona; 20 es el tope. Solo Caudal hace
+  -- personalizados (Buque y Amarilo no usan el cupo).
+  INSERT INTO sedes (workspace_id, codigo, nombre, direccion, telefono, acepta_personalizados, horarios, cupo_diario, cupo_maximo) VALUES
+    (v_ws, 'caudal', 'Golosita Caudal (Grama)', 'Calle 45 # 31-08, una cuadra arriba de la glorieta de la Grama, casa esquinera rosada, Villavicencio', '+573103208950', true, '{"lunes": ["10:00", "19:30"], "jueves": ["09:45", "19:30"], "martes": ["09:45", "19:30"], "sabado": ["09:45", "19:30"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["09:45", "19:30"], "miercoles": ["09:45", "19:30"]}', 15, 20),
+    (v_ws, 'buque', 'Golosita Buque', 'Local 1, edificio San José Plaza, después del puente nuevo de Servimédicos (Calle 26c # 43a-26), Villavicencio', '+573155119729', false, '{"lunes": ["10:40", "19:00"], "jueves": ["10:40", "19:00"], "martes": ["10:40", "19:00"], "sabado": ["10:40", "19:00"], "domingo": ["11:00", "19:00"], "festivo": ["11:00", "19:00"], "viernes": ["10:40", "19:00"], "miercoles": ["10:40", "19:00"]}', 5, NULL),
+    (v_ws, 'amarilo', 'Golosita Amarilo', 'CC Rosablanca, local 246, Villavicencio', '+573103032040', false, '{"lunes": ["13:00", "20:00"], "jueves": ["12:30", "20:00"], "martes": ["13:00", "20:00"], "sabado": ["12:30", "20:00"], "domingo": ["12:30", "20:00"], "festivo": ["12:30", "20:00"], "viernes": ["12:30", "20:00"], "miercoles": ["12:30", "20:00"]}', 3, NULL)
   ON CONFLICT (workspace_id, codigo) DO UPDATE SET
     nombre = EXCLUDED.nombre, direccion = EXCLUDED.direccion, telefono = EXCLUDED.telefono,
     acepta_personalizados = EXCLUDED.acepta_personalizados, horarios = EXCLUDED.horarios,
-    cupo_diario = EXCLUDED.cupo_diario;
+    cupo_diario = EXCLUDED.cupo_diario, cupo_maximo = EXCLUDED.cupo_maximo;
 
   -- Cuentas de pago oficiales (Mónica, 30 sep 2026). Reemplazan la regla de
   -- texto 'datos_pago'. Solo se crean si el workspace aún no tiene cuentas,

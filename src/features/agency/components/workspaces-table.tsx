@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
-  Building2,
   Plus,
   Wifi,
-  WifiOff,
-  ExternalLink,
-  Settings,
   Trash2,
+  WifiOff,
+  Building2,
+  Settings,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import type { WorkspaceWithStats } from "../types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateWorkspaceSheet } from "./create-workspace-sheet";
-import { switchWorkspace } from "@/features/workspace/services/actions";
 import { deleteWorkspaceForClient } from "../services/agency-actions";
-import { cn } from "@/lib/utils";
-import type { WorkspaceWithStats } from "../types";
+import { switchWorkspace } from "@/features/workspace/services/actions";
 
 interface Props {
   workspaces: WorkspaceWithStats[];
@@ -210,7 +210,11 @@ export function WorkspacesTable({ workspaces }: Props) {
                   className="border-success/30 bg-success/10 text-success gap-1 w-fit"
                 >
                   <Wifi className="h-3 w-3" aria-hidden="true" />
-                  {workspace.whatsapp_provider === "kapso" ? "Kapso" : "YCloud"}
+                  {workspace.whatsapp_provider === "zernio"
+                    ? "Zernio"
+                    : workspace.whatsapp_provider === "kapso"
+                      ? "Kapso"
+                      : "YCloud"}
                 </Badge>
               ) : (
                 <Badge

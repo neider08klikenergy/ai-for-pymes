@@ -591,7 +591,7 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     // ── 4. Load conversation record ─────────────────────────────────────────
     const { data: conversation, error: convError } = await supabase
       .from("conversations")
-      .select("id, workspace_id, contact_id, ai_enabled, summary")
+      .select("id, workspace_id, contact_id, ai_enabled, summary, channel")
       .eq("id", batch.conversation_id)
       .eq("workspace_id", batch.workspace_id)
       .single();
@@ -804,7 +804,16 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     ]
       .filter(Boolean)
       .join("\n\n");
-    const bizContext = buildBusinessInfoContext(businessInfo);
+    // Instagram / Facebook (Zernio): el agente lo sabe, porque ahí no hay
+    // teléfono ni plantillas para avisos posteriores.
+    const channel = (conversation as { channel?: unknown }).channel;
+    const channelContext =
+      channel === "instagram" || channel === "facebook"
+        ? `Canal: el cliente escribe por ${channel === "instagram" ? "Instagram" : "Facebook Messenger"} (mensaje directo), no por WhatsApp.`
+        : "";
+    const bizContext = [buildBusinessInfoContext(businessInfo), channelContext]
+      .filter(Boolean)
+      .join("\n\n");
     const promptBase =
       resolvedPrompt?.body ??
       "Eres un asistente de WhatsApp. Responde de forma concisa y útil en español.";

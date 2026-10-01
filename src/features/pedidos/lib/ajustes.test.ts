@@ -56,3 +56,20 @@ test("describirCuenta arma el texto igual que pd_datos_pago", () => {
   assert.equal(describirCuenta({ tipo: "llave", banco: "Bre-B", numero: "0029" }), "Llave Bre-B 0029");
   assert.equal(describirCuenta({ tipo: "billetera", banco: "Nequi", numero: "300" }), "Nequi 300");
 });
+
+test("sede: tope del día opcional, y nunca menor que el cupo automático", () => {
+  const base = {
+    id: uuid,
+    nombre: "Caudal",
+    direccion: null,
+    telefono: null,
+    cupo_diario: 15,
+    acepta_personalizados: true,
+    activa: true,
+  };
+  assert.equal(SedeSchema.parse({ ...base, cupo_maximo: "20" }).cupo_maximo, 20);
+  assert.equal(SedeSchema.parse({ ...base, cupo_maximo: "" }).cupo_maximo, null);
+  assert.equal(SedeSchema.parse(base).cupo_maximo, null);
+  assert.equal(SedeSchema.safeParse({ ...base, cupo_maximo: 10 }).success, false);
+  assert.equal(SedeSchema.safeParse({ ...base, cupo_diario: 0, cupo_maximo: 10 }).success, true);
+});

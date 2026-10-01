@@ -25,11 +25,13 @@ import {
   whatsappSender,
   WhatsAppConfigError,
   type SendResult,
+  type SendTarget,
   type TemplateComponents,
   type WhatsAppSender,
 } from "./whatsapp-sender";
 import { YCloudError } from "./ycloud-client";
 import { KapsoError } from "./kapso-client";
+import { ZernioError, ZernioConfigError } from "./zernio-client";
 import {
   parseWhatsAppError,
   formatErrorForLog,
@@ -123,7 +125,16 @@ function toWhatsAppError(sendErr: unknown): WhatsAppError {
   if (sendErr instanceof YCloudError || sendErr instanceof KapsoError) {
     return parseWhatsAppError(sendErr.body, sendErr.status);
   }
-  if (sendErr instanceof WhatsAppConfigError) {
+  if (sendErr instanceof ZernioError) {
+    // El error de Meta, si lo hay, viene en platformError; si no, el texto de Zernio.
+    const body = sendErr.body as { platformError?: unknown } | null;
+    const platformError =
+      body && typeof body === "object" && body.platformError && typeof body.platformError === "object"
+        ? body.platformError
+        : null;
+    return parseWhatsAppError(platformError ?? sendErr.body, sendErr.status);
+  }
+  if (sendErr instanceof WhatsAppConfigError || sendErr instanceof ZernioConfigError) {
     return {
       code: null,
       message: sendErr.message,
@@ -153,6 +164,9 @@ interface ContactPhoneRow {
 interface ConversationWindowRow {
   window_expires_at: string | null;
   contact_id: string;
+  channel: string | null;
+  external_conversation_id: string | null;
+  external_account_id: string | null;
 }
 
 /**
@@ -184,10 +198,11 @@ async function loadConversationAndPhone(
   window_expires_at: string | null;
   toPhone: string;
   optIn: boolean;
+  target: SendTarget;
 } | null> {
   const { data: conv, error: convError } = await supabase
     .from("conversations")
-    .select("window_expires_at, contact_id")
+    .select("window_expires_at, contact_id, channel, external_conversation_id, external_account_id")
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
@@ -216,7 +231,38 @@ async function loadConversationAndPhone(
     window_expires_at: convRow.window_expires_at,
     toPhone: contactRow.phone,
     optIn: contactRow.opt_in !== false,
+    target: {
+      channel: convRow.channel ?? "whatsapp",
+      externalConversationId: convRow.external_conversation_id ?? null,
+      externalAccountId: convRow.external_account_id ?? null,
+    },
   };
+}
+
+/**
+ * Zernio abre una conversación nueva cuando escribimos primero a un número:
+ * se guarda su id para responder en ella la próxima vez.
+ */
+async function rememberExternalConversation(
+  supabase: Db,
+  workspaceId: string,
+  conversationId: string,
+  target: SendTarget,
+  sent: SendResult,
+): Promise<SendResult> {
+  if (sent.externalConversationId && !target.externalConversationId) {
+    await supabase
+      .from("conversations")
+      .update({ external_conversation_id: sent.externalConversationId })
+      .eq("id", conversationId)
+      .eq("workspace_id", workspaceId)
+      .is("external_conversation_id", null)
+      .then(
+        () => {},
+        () => {},
+      );
+  }
+  return sent;
 }
 
 const NOT_FOUND: DispatchResult = {
@@ -454,7 +500,7 @@ export async function dispatchText(
     if (noteWhenBlocked) await logNotFound(supabase, workspaceId, conversationId);
     return NOT_FOUND;
   }
-  const { window_expires_at, toPhone } = loaded;
+  const { window_expires_at, toPhone, target } = loaded;
 
   // SEC-10: Block outbound to opted-out contacts
   if (!loaded.optIn) {
@@ -537,7 +583,14 @@ export async function dispatchText(
     workspaceId,
     rowId: queued.id,
     rowMeta,
-    send: () => sender.sendText(toPhone, body),
+    send: async () =>
+      rememberExternalConversation(
+        supabase,
+        workspaceId,
+        conversationId,
+        target,
+        await sender.sendText(toPhone, body, target),
+      ),
     what: "sendText",
     recordRetryableFailure,
   });
@@ -570,7 +623,7 @@ export async function dispatchTemplate(
     supabase,
   );
   if (!loaded) return NOT_FOUND;
-  const { toPhone } = loaded;
+  const { toPhone, target } = loaded;
 
   // SEC-10: Block outbound to opted-out contacts
   if (!loaded.optIn) return OPT_OUT;
@@ -615,13 +668,20 @@ export async function dispatchTemplate(
     workspaceId,
     rowId: queued.id,
     rowMeta,
-    send: () =>
-      sender.sendTemplate({
-        to: toPhone,
-        templateName,
-        language: templateLanguage,
-        components,
-      }),
+    send: async () =>
+      rememberExternalConversation(
+        supabase,
+        workspaceId,
+        conversationId,
+        target,
+        await sender.sendTemplate({
+          to: toPhone,
+          templateName,
+          language: templateLanguage,
+          components,
+          target,
+        }),
+      ),
     what: "sendTemplate",
     recordRetryableFailure: true,
   });

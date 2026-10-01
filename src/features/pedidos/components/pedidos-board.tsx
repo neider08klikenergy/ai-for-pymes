@@ -16,10 +16,10 @@ import { cn } from "@/lib/utils";
 import { toastResultado } from "./comun";
 import { PagosLista } from "./pagos-lista";
 import { useRouter } from "next/navigation";
-import { PedidoDetalle } from "./pedido-detalle";
 import { Button } from "@/components/ui/button";
-import { siguienteEstado } from "../lib/estados";
 import { useState, useTransition } from "react";
+import { siguienteEstado } from "../lib/estados";
+import { PedidoDetalle } from "./pedido-detalle";
 import { CalendarioPedidos } from "./pedidos-calendario";
 import type { PedidoFila, VistaPedidos } from "../types";
 import { CalendarDays, Clock, Receipt, Table2, Wallet } from "lucide-react";
@@ -204,6 +204,8 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
           mostrarSede={filtros.sede === null}
           acciones={acciones}
           onCambiar={ir}
+          cupos={vista.cupos}
+          puedeActuar={puedeActuar}
         />
       )}
 

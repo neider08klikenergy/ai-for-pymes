@@ -374,3 +374,79 @@ export async function aplicarSaldoFavor(pedidoId: string): Promise<ResultadoAcci
     avisoTexto: null,
   };
 }
+
+// ── Cupo de personalizados de un día ─────────────────────────────────────────
+
+const CupoDiaSchema = z.object({
+  sedeId: z.string().uuid(),
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Cupo automático de ese día; null = el de la sede. */
+  cupo: z.number().int().min(0).max(500).nullable(),
+  cerrado: z.boolean(),
+  nota: z.string().trim().max(200).nullable().optional(),
+});
+
+/**
+ * Abre cupo extra, cierra cupos o vuelve al cupo normal de la sede para un
+ * día. Lo hace el equipo de la tienda (RLS cupos_dia_write: admin, manager,
+ * agent).
+ */
+export async function ajustarCupoDia(input: {
+  sedeId: string;
+  fecha: string;
+  cupo: number | null;
+  cerrado: boolean;
+  nota?: string | null;
+}): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const parsed = CupoDiaSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  const { sedeId, fecha, cupo, cerrado } = parsed.data;
+  const nota = parsed.data.nota?.trim() || null;
+
+  const supabase = await createClient();
+  const { data: sede } = await supabase
+    .from("sedes")
+    .select("id, workspace_id, nombre")
+    .eq("id", sedeId)
+    .maybeSingle();
+  if (!sede) return { ok: false, error: "Sede no encontrada" };
+
+  const acceso = await checkWorkspaceMember(sede.workspace_id as string, { minRole: "agent" });
+  if (!acceso.ok) return { ok: false, error: "No tienes permiso para cambiar cupos" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Sin ajuste: se borra la fila y queda el cupo normal de la sede.
+  const { error } =
+    cupo === null && !cerrado
+      ? await supabase.from("cupos_dia").delete().eq("sede_id", sedeId).eq("fecha", fecha)
+      : await supabase.from("cupos_dia").upsert(
+          {
+            workspace_id: sede.workspace_id,
+            sede_id: sedeId,
+            fecha,
+            cupo,
+            cerrado,
+            nota,
+            updated_by: user?.id ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "sede_id,fecha" },
+        );
+  if (error) {
+    console.error("[pedidos] ajustar cupo:", error.message);
+    return { ok: false, error: "No se pudo guardar el cupo" };
+  }
+
+  revalidatePath("/pedidos");
+  return {
+    ok: true,
+    mensaje: cerrado
+      ? "Cupos cerrados para ese día"
+      : cupo === null
+        ? "Cupo normal de la sede"
+        : `Cupo del día: ${cupo}`,
+  };
+}

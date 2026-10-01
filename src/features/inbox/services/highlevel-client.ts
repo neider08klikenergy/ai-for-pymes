@@ -246,6 +246,8 @@ export async function syncContactToHL(
   }
 
   const contact = contactData as ContactRow;
+  // Instagram/Facebook: 'ig:…' / 'fb:…' no es un teléfono; HighLevel lo rechazaría.
+  if (/^(ig|fb):/.test(contact.phone)) return null;
   const { firstName, lastName } = splitName(contact.name);
 
   // Create (with locationId) or update by hl_contact_id. Never with `tags`:

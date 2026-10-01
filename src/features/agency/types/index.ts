@@ -6,7 +6,7 @@ export interface WorkspaceWithStats {
   member_count: number;
   conversation_count: number;
   /** The workspace's active WhatsApp provider, or null when not connected. */
-  whatsapp_provider: "ycloud" | "kapso" | null;
+  whatsapp_provider: "ycloud" | "kapso" | "zernio" | null;
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

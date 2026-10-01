@@ -16,7 +16,7 @@ export async function cargarAjustesPedidos(
   const [sedesRes, cuentasRes, tarifasRes, notaRes, herramientaRes] = await Promise.all([
     supabase
       .from("sedes")
-      .select("id, codigo, nombre, direccion, telefono, cupo_diario, acepta_personalizados, activa")
+      .select("id, codigo, nombre, direccion, telefono, cupo_diario, cupo_maximo, acepta_personalizados, activa")
       .eq("workspace_id", workspaceId)
       .order("created_at"),
     supabase

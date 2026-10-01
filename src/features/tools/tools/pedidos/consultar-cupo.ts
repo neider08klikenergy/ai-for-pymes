@@ -23,7 +23,9 @@ export const consultarCupoTool: Tool<Args> = {
   description:
     "Verifica si se puede entregar en esa sede, fecha y hora: anticipación mínima, horario de la sede, " +
     "si la sede hace personalizados y si queda cupo ese día. Úsala ANTES de registrar un pedido. " +
-    "Si disponible=false, explica los motivos y ofrece otra fecha.",
+    "Si requiere_persona=true (motivo CUPO_EN_REVISION), el cupo lo aprueba el equipo: toma todos los datos, " +
+    "dile al cliente que confirmas la disponibilidad con el equipo y llama pasar_a_persona. " +
+    "Si disponible=false por otro motivo (SIN_CUPO, CUPOS_CERRADOS, anticipación, horario), explícalo y ofrece otra fecha.",
   sensitivity: "read",
   schema,
   enabledFor: () => true,

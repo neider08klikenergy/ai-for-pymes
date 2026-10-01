@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 
 // Shared by Settings → Integraciones and the onboarding wizard.
 
-export type WhatsAppProviderId = "ycloud" | "kapso";
+export type WhatsAppProviderId = "zernio" | "ycloud" | "kapso";
 
-const OPTIONS: readonly WhatsAppProviderId[] = ["ycloud", "kapso"];
+const OPTIONS: readonly WhatsAppProviderId[] = ["zernio", "ycloud", "kapso"];
 
 export const WHATSAPP_LABEL: Record<WhatsAppProviderId, string> = {
+  zernio: "Zernio",
   ycloud: "YCloud",
   kapso: "Kapso",
 };
@@ -24,12 +25,15 @@ export function WhatsAppProviderPicker({
   onChange,
   active = null,
   labelledBy,
+  options = OPTIONS,
 }: {
   value: WhatsAppProviderId;
   onChange: (provider: WhatsAppProviderId) => void;
   /** The provider the workspace uses today, tagged "activo". */
   active?: WhatsAppProviderId | null;
   labelledBy: string;
+  /** Proveedores a mostrar (el onboarding no ofrece Zernio: se conecta después). */
+  options?: readonly WhatsAppProviderId[];
 }) {
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -42,8 +46,8 @@ export function WhatsAppProviderPicker({
           : 0;
     if (!step) return;
     e.preventDefault();
-    const next = (index + step + OPTIONS.length) % OPTIONS.length;
-    onChange(OPTIONS[next]);
+    const next = (index + step + options.length) % options.length;
+    onChange(options[next]);
     buttons.current[next]?.focus();
   }
 
@@ -53,7 +57,7 @@ export function WhatsAppProviderPicker({
       aria-labelledby={labelledBy}
       className="inline-flex w-fit rounded-md border border-input p-0.5"
     >
-      {OPTIONS.map((p, i) => (
+      {options.map((p, i) => (
         <button
           key={p}
           ref={(el) => {

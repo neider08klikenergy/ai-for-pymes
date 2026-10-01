@@ -21,6 +21,8 @@ export interface SedeAjuste {
   direccion: string | null;
   telefono: string | null;
   cupo_diario: number;
+  /** Tope del día; entre cupo_diario y este decide una persona. null = igual al diario. */
+  cupo_maximo: number | null;
   acepta_personalizados: boolean;
   activa: boolean;
 }
@@ -72,8 +74,15 @@ export const SedeSchema = z.object({
   direccion: textoOpcional(300),
   telefono: textoOpcional(40),
   cupo_diario: z.coerce.number().int().min(0, "El cupo no puede ser negativo").max(1000),
+  cupo_maximo: z
+    .union([z.literal(""), z.null(), z.coerce.number().int().min(0).max(1000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   acepta_personalizados: z.boolean(),
   activa: z.boolean(),
+}).refine((s) => s.cupo_maximo === null || s.cupo_diario === 0 || s.cupo_maximo >= s.cupo_diario, {
+  message: "El tope del día no puede ser menor que el cupo automático",
+  path: ["cupo_maximo"],
 });
 
 export const CuentaSchema = z.object({

@@ -8,16 +8,17 @@ import {
 import {
   horaLocal,
   nombreMes,
-  fechaCorta,
   sumarMeses,
+  fechaCorta,
   fechaLocalDe,
   semanasDelMes,
 } from "../lib/fechas";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ESTADO_PUNTO } from "./comun";
-import type { PedidoFila } from "../types";
+import { CupoDelDia } from "./cupo-dia";
 import { Button } from "@/components/ui/button";
+import type { CupoDia, PedidoFila } from "../types";
 import type { FiltrosPedidos } from "../lib/filtros";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TablaPedidos, type AccionesFila } from "./pedidos-tabla";
@@ -33,8 +34,13 @@ export function CalendarioPedidos({
   mostrarSede,
   acciones,
   onCambiar,
+  cupos = [],
+  puedeActuar = true,
 }: {
   pedidos: PedidoFila[];
+  /** Cupo de personalizados del día elegido, por sede. */
+  cupos?: CupoDia[];
+  puedeActuar?: boolean;
   filtros: FiltrosPedidos;
   hoy: string;
   zona: string;
@@ -217,6 +223,15 @@ export function CalendarioPedidos({
               ({delDia.length})
             </span>
           </h3>
+          {cupos
+            .filter((c) => c.fecha === diaSel)
+            .map((c) => (
+              <CupoDelDia
+                key={`${c.sede_id}-${c.fecha}`}
+                cupo={c}
+                puedeActuar={puedeActuar}
+              />
+            ))}
           <TablaPedidos
             pedidos={delDia}
             zona={zona}

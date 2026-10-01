@@ -60,3 +60,14 @@ test("a link on the wrong host is refused without any request", async () => {
     globalThis.fetch = realFetch;
   }
 });
+
+test("Zernio: API de Zernio y CDN de Meta (https); nada más", () => {
+  assert.equal(validateMediaUrl("zernio", "https://zernio.com/api/v1/whatsapp/media/1"), true);
+  assert.equal(validateMediaUrl("zernio", "https://scontent-bog1-1.cdninstagram.com/v/x.jpg"), true);
+  assert.equal(validateMediaUrl("zernio", "https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1"), true);
+  assert.equal(validateMediaUrl("zernio", "https://scontent.xx.fbcdn.net/v/y.png"), true);
+  assert.equal(validateMediaUrl("zernio", "http://zernio.com/api/v1/whatsapp/media/1"), false);
+  assert.equal(validateMediaUrl("zernio", "https://evil.com/fbcdn.net"), false);
+  assert.equal(validateMediaUrl("zernio", "https://fbcdn.net.evil.com/x"), false);
+  assert.equal(validateMediaUrl("kapso", "https://zernio.com/api/v1/whatsapp/media/1"), false);
+});

@@ -6,6 +6,7 @@ import { esEstadoPedido } from "../lib/estados";
 import { hoyEnZona, rangoDelDia, semanasDelMes } from "../lib/fechas";
 import { leerFiltros, type ParamsPedidos } from "../lib/filtros";
 import type {
+  CupoDia,
   PagoPorVerificar,
   PagoResumen,
   PedidoFila,
@@ -93,7 +94,7 @@ export async function cargarVistaPedidos(
         .in("clave", ["zona_horaria", "cancelacion_dias_calendario", "saldo_favor_meses"]),
       supabase
         .from("sedes")
-        .select("id, codigo, nombre")
+        .select("id, codigo, nombre, acepta_personalizados")
         .eq("workspace_id", workspaceId)
         .eq("activa", true)
         .order("nombre"),
@@ -127,6 +128,7 @@ export async function cargarVistaPedidos(
     pagosPendientes: pagosPendientes ?? 0,
     truncado: false,
     reglas,
+    cupos: [],
   };
 
   if (filtros.vista === "pagos") {
@@ -179,11 +181,44 @@ export async function cargarVistaPedidos(
 
   await sumarSaldosDeClientes(supabase, workspaceId, filas);
 
+  const cupos =
+    filtros.vista === "calendario" && filtros.dia
+      ? await cargarCupos(supabase, workspaceId, sedes, sede, filtros.dia)
+      : [];
+
   return {
     ...base,
     pedidos: filas.slice(0, LIMITE_PEDIDOS),
     truncado: filas.length > LIMITE_PEDIDOS,
+    cupos,
   };
+}
+
+/** Cupo del día en las sedes que hacen personalizados (o en la filtrada). */
+async function cargarCupos(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  sedes: SedeResumen[],
+  sede: SedeResumen | null,
+  dia: string,
+): Promise<CupoDia[]> {
+  const candidatas = (sede ? [sede] : sedes).filter((s) => s.acepta_personalizados);
+  const resultados = await Promise.all(
+    candidatas.map(async (s) => {
+      const { data, error } = await supabase.rpc("pd_estado_cupo_dia", {
+        p_ws: workspaceId,
+        p_sede_id: s.id,
+        p_fecha: dia,
+      });
+      if (error) {
+        // Antes de la migración 20261007 la función no existe: sin panel de cupo.
+        console.error("[pedidos] cupo del día:", error.message);
+        return null;
+      }
+      return (data ?? null) as CupoDia | null;
+    }),
+  );
+  return resultados.filter((c): c is CupoDia => c !== null);
 }
 
 async function cargarPagos(

@@ -1,20 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient as svcClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import { requireWorkspaceMember, readJsonBody } from "@/lib/auth/workspace-access";
 import {
   KapsoError,
-  listAllPhoneNumbers,
   rankKapsoNumbers,
+  listAllPhoneNumbers,
 } from "@/features/inbox/services/kapso-client";
-import { decryptCredentials } from "@/shared/lib/integration-secrets";
 import {
-  isWhatsAppProvider,
   whatsappApiKey,
-  WHATSAPP_PROVIDER_LABELS,
+  isWhatsAppProvider,
   WHATSAPP_PROVIDERS,
   type WhatsAppProvider,
+  WHATSAPP_PROVIDER_LABELS,
 } from "@/features/inbox/services/whatsapp-provider";
+import {
+  readJsonBody,
+  requireWorkspaceMember,
+} from "@/lib/auth/workspace-access";
+import {
+  zernioApiKey,
+  zernioWebhookSecret,
+} from "@/features/inbox/services/zernio-client";
+import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient as svcClient } from "@supabase/supabase-js";
+import { decryptCredentials } from "@/shared/lib/integration-secrets";
+import { zernioErrorMessage } from "@/features/inbox/services/zernio-routes";
+import { syncZernioAccounts } from "@/features/inbox/services/zernio-accounts";
 
 // "Test connection" for a workspace's WhatsApp provider, with what is on the
 // screen — saved or not. The body may name the provider being configured and
@@ -58,18 +67,25 @@ export async function POST(
 
   // Same gate as reading and saving integrations: the test uses the stored
   // credentials on the caller's behalf.
-  const auth = await requireWorkspaceMember(workspaceId, { minRole: "manager" });
+  const auth = await requireWorkspaceMember(workspaceId, {
+    minRole: "manager",
+  });
   if (!auth.ok) return auth.response;
 
   const parsedBody = await readJsonBody(req);
   if (!parsedBody.ok) return parsedBody.response;
   const parsed = bodySchema.safeParse(parsedBody.body ?? {});
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "Proveedor inválido" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Proveedor inválido" },
+      { status: 400 },
+    );
   }
   const requested = parsed.data.provider;
   const typedKey =
-    parsed.data.apiKey && parsed.data.apiKey !== MASKED ? parsed.data.apiKey.trim() : "";
+    parsed.data.apiKey && parsed.data.apiKey !== MASKED
+      ? parsed.data.apiKey.trim()
+      : "";
 
   const svc = svcClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,11 +98,14 @@ export async function POST(
     .eq("workspace_id", workspaceId);
   query = requested
     ? query.eq("provider", requested)
-    : query.in("provider", WHATSAPP_PROVIDERS as unknown as string[]).eq("enabled", true);
+    : query
+        .in("provider", WHATSAPP_PROVIDERS as unknown as string[])
+        .eq("enabled", true);
   const { data } = await query.maybeSingle();
 
   const stored = data && isWhatsAppProvider(data.provider) ? data : null;
-  const provider: WhatsAppProvider | null = requested ?? stored?.provider ?? null;
+  const provider: WhatsAppProvider | null =
+    requested ?? stored?.provider ?? null;
   if (!provider) {
     return NextResponse.json({
       ok: false,
@@ -94,6 +113,10 @@ export async function POST(
     });
   }
   const label = WHATSAPP_PROVIDER_LABELS[provider];
+
+  // Zernio: la key es de la plataforma (variable de entorno); se prueba
+  // leyendo los canales conectados al perfil del workspace.
+  if (provider === "zernio") return testZernio(svc, workspaceId);
 
   let apiKey = typedKey;
   if (!apiKey && stored) {
@@ -143,11 +166,18 @@ async function testYCloud(apiKey: string) {
       "[integrations/test] YCloud fetch error:",
       err instanceof Error ? err.message : "unknown",
     );
-    return NextResponse.json({ ok: false, error: "No se pudo conectar con YCloud" });
+    return NextResponse.json({
+      ok: false,
+      error: "No se pudo conectar con YCloud",
+    });
   }
 }
 
-async function testKapso(apiKey: string, config: KapsoTestConfig, typedKey: boolean) {
+async function testKapso(
+  apiKey: string,
+  config: KapsoTestConfig,
+  typedKey: boolean,
+) {
   try {
     const numbers = rankKapsoNumbers(await listAllPhoneNumbers(apiKey));
     // Choices to pick from: only for someone who holds the key.
@@ -187,7 +217,9 @@ async function testKapso(apiKey: string, config: KapsoTestConfig, typedKey: bool
     // A drifted waba_id doesn't break sending, only templates — warn, don't fail.
     const wabaId = config.waba_id?.trim();
     if (wabaId && match.waba_id && wabaId !== match.waba_id) {
-      warnings.push("El WABA ID no corresponde a este número — las plantillas no van a funcionar");
+      warnings.push(
+        "El WABA ID no corresponde a este número — las plantillas no van a funcionar",
+      );
     }
     if (match.kind === "sandbox") {
       warnings.push("Este es un número sandbox, no recibe mensajes reales");
@@ -204,10 +236,54 @@ async function testKapso(apiKey: string, config: KapsoTestConfig, typedKey: bool
       "[integrations/test] Kapso fetch error:",
       err instanceof Error ? err.message : "unknown",
     );
-    const denied = err instanceof KapsoError && (err.status === 401 || err.status === 403);
+    const denied =
+      err instanceof KapsoError && (err.status === 401 || err.status === 403);
     return NextResponse.json({
       ok: false,
-      error: denied ? "API Key inválida o sin acceso" : "No se pudo conectar con Kapso",
+      error: denied
+        ? "API Key inválida o sin acceso"
+        : "No se pudo conectar con Kapso",
     });
+  }
+}
+
+async function testZernio(
+  supabase: Parameters<typeof syncZernioAccounts>[0],
+  workspaceId: string,
+) {
+  if (!zernioApiKey()) {
+    return NextResponse.json({
+      ok: false,
+      error: "Falta la variable ZERNIO_API_KEY en Vercel",
+    });
+  }
+  try {
+    const accounts = await syncZernioAccounts(supabase, workspaceId);
+    const warnings: string[] = [];
+    if (!zernioWebhookSecret()) {
+      warnings.push(
+        "Falta ZERNIO_WEBHOOK_SECRET en Vercel: no van a llegar mensajes",
+      );
+    }
+    if (accounts.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        error:
+          "La API key funciona, pero este workspace aún no tiene canales conectados",
+        warnings,
+      });
+    }
+    return NextResponse.json({
+      ok: true,
+      provider: "zernio",
+      accounts,
+      warnings,
+    });
+  } catch (err) {
+    console.error(
+      "[integrations/test] Zernio error:",
+      err instanceof Error ? err.message : "unknown",
+    );
+    return NextResponse.json({ ok: false, error: zernioErrorMessage(err) });
   }
 }

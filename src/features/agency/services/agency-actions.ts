@@ -352,7 +352,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   const { data: integrations } = await service
     .from("integrations")
     .select("workspace_id, provider")
-    .in("provider", ["ycloud", "kapso"])
+    .in("provider", ["ycloud", "kapso", "zernio"])
     .eq("enabled", true)
     .in("workspace_id", ids);
 
@@ -369,9 +369,9 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     convMap.set(id, (convMap.get(id) ?? 0) + 1);
   }
 
-  const whatsappMap = new Map<string, "ycloud" | "kapso">();
+  const whatsappMap = new Map<string, "ycloud" | "kapso" | "zernio">();
   for (const i of integrations ?? []) {
-    const row = i as { workspace_id: string; provider: "ycloud" | "kapso" };
+    const row = i as { workspace_id: string; provider: "ycloud" | "kapso" | "zernio" };
     whatsappMap.set(row.workspace_id, row.provider);
   }
 

@@ -10,6 +10,7 @@ import {
   templateOfficialId,
 } from "./ycloud-client";
 import { fetchKapsoTemplates } from "./kapso-client";
+import { listWhatsAppTemplates } from "./zernio-client";
 import { phoneString } from "./phone";
 import {
   decryptWhatsAppCredentials,
@@ -89,7 +90,7 @@ const META_STATUS_MAP: Record<string, TemplateRow["status"]> = {
   DISABLED: "paused",
 };
 
-function mapTemplateStatus(raw: string): TemplateRow["status"] {
+export function mapTemplateStatus(raw: string): TemplateRow["status"] {
   return META_STATUS_MAP[raw.toUpperCase()] ?? "submitted";
 }
 
@@ -144,6 +145,17 @@ async function fetchProviderTemplates(
   apiKey: string,
   config: Record<string, unknown>,
 ): Promise<{ items: unknown[]; truncated: boolean }> {
+  if (provider === "zernio") {
+    // Zernio: plantillas de la cuenta de WhatsApp conectada al perfil.
+    const accounts = Array.isArray(config.accounts)
+      ? (config.accounts as Array<{ id?: unknown; platform?: unknown }>)
+      : [];
+    const wa = accounts.find((a) => a.platform === "whatsapp" && typeof a.id === "string");
+    if (!wa) {
+      throw new Error("[templates] conecta WhatsApp en Zernio para sincronizar plantillas");
+    }
+    return { items: await listWhatsAppTemplates(wa.id as string), truncated: false };
+  }
   if (provider === "kapso") {
     // Kapso's template endpoints are Meta's, scoped to a WABA id in the path.
     // It is configured per workspace — the API can't discover it without it.

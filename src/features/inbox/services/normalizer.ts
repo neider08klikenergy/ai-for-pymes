@@ -16,6 +16,20 @@ export interface InboundMessage {
   customerName: string | null;
   /** The provider's own type, before clamping (e.g. "reaction"). */
   rawType?: string;
+  /** Canal de la conversación (Zernio). Por defecto WhatsApp. */
+  channel?: "whatsapp" | "instagram" | "facebook";
+  /** Zernio: conversación y cuenta con las que se responde. */
+  externalConversationId?: string;
+  externalAccountId?: string;
+}
+
+/**
+ * Instagram y Facebook no tienen teléfono: la clave del contacto ya viene
+ * lista ('ig:<id>' / 'fb:<id>') y no se normaliza como número.
+ */
+function contactKey(from: string, channel: string | undefined, defaultCc: string): string {
+  if (channel && channel !== "whatsapp") return from;
+  return normalizePhone(from, defaultCc);
 }
 
 function svc() {
@@ -59,7 +73,8 @@ export async function processInbound(
     ((biRow?.structured as { default_country_code?: string } | null)
       ?.default_country_code as string) ?? DEFAULT_COUNTRY_CODE;
 
-  const phone = normalizePhone(normalized.from, defaultCc);
+  const channel = normalized.channel ?? "whatsapp";
+  const phone = contactKey(normalized.from, channel, defaultCc);
 
   // 1. Upsert contact
   // A user messaging the business first is implicit opt-in for service
@@ -103,10 +118,16 @@ export async function processInbound(
       {
         workspace_id: workspaceId,
         contact_id: contact.id,
-        channel: "whatsapp",
+        channel,
         last_message_at: new Date().toISOString(),
         window_expires_at: windowExpiresAt,
         unread_count: 1,
+        ...(normalized.externalConversationId
+          ? { external_conversation_id: normalized.externalConversationId }
+          : {}),
+        ...(normalized.externalAccountId
+          ? { external_account_id: normalized.externalAccountId }
+          : {}),
       },
       {
         onConflict: "workspace_id,contact_id,channel",
@@ -196,7 +217,11 @@ export interface ProcessEchoResult {
  */
 export async function processOutboundEcho(
   workspaceId: string,
-  echo: OutboundEcho,
+  echo: OutboundEcho & {
+    channel?: "whatsapp" | "instagram" | "facebook";
+    /** Origen guardado en meta (por defecto "business_app"). */
+    origin?: string;
+  },
 ): Promise<ProcessEchoResult> {
   const supabase = svc();
 
@@ -209,7 +234,8 @@ export async function processOutboundEcho(
     ((biRow?.structured as { default_country_code?: string } | null)
       ?.default_country_code as string) ?? DEFAULT_COUNTRY_CODE;
 
-  const phone = normalizePhone(echo.to, defaultCc);
+  const channel = echo.channel ?? "whatsapp";
+  const phone = contactKey(echo.to, channel, defaultCc);
 
   // Look up rather than upsert: an echo is not opt-in evidence, and a business
   // messaging someone first must not silently mark them as having consented.
@@ -233,7 +259,7 @@ export async function processOutboundEcho(
     .select("id, state, ai_enabled")
     .eq("workspace_id", workspaceId)
     .eq("contact_id", contactId)
-    .eq("channel", "whatsapp")
+    .eq("channel", channel)
     .maybeSingle();
 
   if (!convRow) {
@@ -259,7 +285,7 @@ export async function processOutboundEcho(
         status: "sent",
         // `origin` is what lets the 24h guard recognise this as a record of an
         // already-delivered message rather than a new send.
-        meta: { origin: "business_app" },
+        meta: { origin: "business_app", ...(echo.origin ? { via: echo.origin } : {}) },
       },
       { onConflict: "workspace_id,wamid", ignoreDuplicates: true },
     )

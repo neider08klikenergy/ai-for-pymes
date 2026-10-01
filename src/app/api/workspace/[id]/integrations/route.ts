@@ -1,10 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
-import { createClient as svcClient } from "@supabase/supabase-js";
-import { z } from "zod";
 import {
-  requireWorkspaceMember,
   readJsonBody,
+  requireWorkspaceMember,
 } from "@/lib/auth/workspace-access";
 import {
   encryptCredentials,
@@ -16,17 +12,20 @@ import {
   WHATSAPP_PROVIDER_LABELS,
   WORKSPACE_WHATSAPP_SETTINGS,
 } from "@/features/inbox/services/whatsapp-provider";
-
 import {
   isCatalogModel,
   MODEL_NOT_IN_CATALOG,
 } from "@/features/agents/lib/model-catalog";
-import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
+import { z } from "zod";
+import { randomBytes } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
 import { phoneString } from "@/features/inbox/services/phone";
+import { createClient as svcClient } from "@supabase/supabase-js";
 import { workspaceCountryCode } from "@/features/inbox/services/country-code";
+import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
 
 const IntegrationSchema = z.object({
-  provider: z.enum(["ycloud", "kapso", "openrouter", "highlevel"]),
+  provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel"]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -62,7 +61,9 @@ async function ycloudApiKey(
     const plain = (await decryptCredentials(stored, workspaceId, "ycloud")) as {
       ycloud_api_key?: unknown;
     };
-    return typeof plain.ycloud_api_key === "string" ? plain.ycloud_api_key : null;
+    return typeof plain.ycloud_api_key === "string"
+      ? plain.ycloud_api_key
+      : null;
   } catch {
     return null;
   }
@@ -175,13 +176,20 @@ export async function PUT(
   // stored is accepted unchanged, so an older workspace can still save its
   // other settings.
   if (parsed.data.provider === "openrouter") {
-    const storedConfig = (existing?.config as Record<string, unknown> | null) ?? {};
+    const storedConfig =
+      (existing?.config as Record<string, unknown> | null) ?? {};
     // `model` is the key older configs used; getWorkspaceModel still reads it.
     for (const key of ["default_model", "fallback_model", "model"] as const) {
       const value = parsed.data.config?.[key];
       if (value === undefined || value === null || value === "") continue;
-      if (typeof value !== "string" || (!isCatalogModel(value) && value !== storedConfig[key])) {
-        return NextResponse.json({ error: MODEL_NOT_IN_CATALOG }, { status: 400 });
+      if (
+        typeof value !== "string" ||
+        (!isCatalogModel(value) && value !== storedConfig[key])
+      ) {
+        return NextResponse.json(
+          { error: MODEL_NOT_IN_CATALOG },
+          { status: 400 },
+        );
       }
     }
   }
@@ -248,7 +256,11 @@ export async function PUT(
   // legacy plaintext row is migrated in place the first time it is saved.
   let encryptedCreds: Record<string, unknown>;
   try {
-    encryptedCreds = await encryptCredentials(mergedCreds, workspaceId, provider);
+    encryptedCreds = await encryptCredentials(
+      mergedCreds,
+      workspaceId,
+      provider,
+    );
   } catch (err) {
     console.error(
       "[PUT /api/workspace/[id]/integrations] encrypt error:",
@@ -267,16 +279,22 @@ export async function PUT(
   // own). The replaced row keeps its credentials, so switching back needs no
   // re-entry.
   if (isWhatsAppProvider(provider)) {
-    const { data: switchedFrom, error } = await svc.rpc("save_whatsapp_integration", {
-      p_workspace_id: workspaceId,
-      p_provider: provider,
-      p_enabled: enabled,
-      p_credentials: encryptedCreds,
-      p_config: config ?? {},
-      p_workspace_keys: [...WORKSPACE_WHATSAPP_SETTINGS],
-    });
+    const { data: switchedFrom, error } = await svc.rpc(
+      "save_whatsapp_integration",
+      {
+        p_workspace_id: workspaceId,
+        p_provider: provider,
+        p_enabled: enabled,
+        p_credentials: encryptedCreds,
+        p_config: config ?? {},
+        p_workspace_keys: [...WORKSPACE_WHATSAPP_SETTINGS],
+      },
+    );
     if (error) {
-      console.error("[PUT /api/workspace/[id]/integrations] save error:", error.message);
+      console.error(
+        "[PUT /api/workspace/[id]/integrations] save error:",
+        error.message,
+      );
       return NextResponse.json(
         { error: "No se pudo guardar la integración. Intenta de nuevo." },
         { status: 500 },
@@ -284,9 +302,14 @@ export async function PUT(
     }
     return NextResponse.json({
       ok: true,
-      ...(typeof switchedFrom === "string" && switchedFrom ? { switchedFrom } : {}),
+      ...(typeof switchedFrom === "string" && switchedFrom
+        ? { switchedFrom }
+        : {}),
       ...(provider === "ycloud" && typedPhone
-        ? { phoneNumber: config?.phone_number, ...(phoneWarning ? { warning: phoneWarning } : {}) }
+        ? {
+            phoneNumber: config?.phone_number,
+            ...(phoneWarning ? { warning: phoneWarning } : {}),
+          }
         : {}),
     });
   }
@@ -309,7 +332,10 @@ export async function PUT(
   );
 
   if (error) {
-    console.error("[PUT /api/workspace/[id]/integrations] upsert error:", error.message);
+    console.error(
+      "[PUT /api/workspace/[id]/integrations] upsert error:",
+      error.message,
+    );
     return NextResponse.json(
       { error: "No se pudo guardar la integración. Intenta de nuevo." },
       { status: 500 },

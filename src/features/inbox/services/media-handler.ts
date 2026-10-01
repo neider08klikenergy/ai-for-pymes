@@ -1,5 +1,6 @@
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import type { WhatsAppProvider } from "./whatsapp-provider";
+import { zernioApiKey } from "./zernio-client";
 
 function svc() {
   return createSbClient(
@@ -14,7 +15,18 @@ function svc() {
 const ALLOWED_MEDIA_HOSTS: Record<WhatsAppProvider, readonly string[]> = {
   ycloud: ["api.ycloud.com"],
   kapso: ["api.kapso.ai", "app.kapso.ai"],
+  // Zernio: WhatsApp sirve el archivo desde su API (con la API key); Instagram
+  // y Facebook entregan un enlace firmado del CDN de Meta (sin credenciales).
+  zernio: ["zernio.com"],
 };
+
+/** Zernio (Instagram/Facebook): dominios del CDN de Meta, por sufijo. */
+const ZERNIO_META_CDN_SUFFIXES = [".fbcdn.net", ".fbsbx.com", ".cdninstagram.com"];
+
+/** Hosts de Zernio a los que sí se les manda la API key. */
+function isZernioApiHost(hostname: string): boolean {
+  return hostname === "zernio.com" || hostname.endsWith(".zernio.com");
+}
 const BUCKET = "whatsapp-media";
 
 /** MIME type → file extension map */
@@ -97,10 +109,15 @@ export function validateMediaUrl(
 ): boolean {
   try {
     const u = new URL(url);
-    return (
-      u.protocol === "https:" &&
-      ALLOWED_MEDIA_HOSTS[provider].includes(u.hostname)
-    );
+    if (u.protocol !== "https:") return false;
+    if (ALLOWED_MEDIA_HOSTS[provider].includes(u.hostname)) return true;
+    if (provider === "zernio") {
+      return (
+        isZernioApiHost(u.hostname) ||
+        ZERNIO_META_CDN_SUFFIXES.some((suffix) => u.hostname.endsWith(suffix))
+      );
+    }
+    return false;
   } catch {
     return false;
   }
@@ -137,7 +154,10 @@ export async function downloadAndStoreMedia(
       opts.link,
       opts.provider === "ycloud"
         ? { headers: { "X-API-Key": opts.apiKey ?? "" } }
-        : undefined,
+        : opts.provider === "zernio" && isZernioApiHost(new URL(opts.link).hostname)
+          ? // Solo al API de Zernio: nunca se manda la key al CDN de Meta.
+            { headers: { Authorization: `Bearer ${zernioApiKey()}` } }
+          : undefined,
     );
   } catch (err) {
     console.error("[media-handler] fetch failed:", err);
@@ -190,7 +210,7 @@ export async function downloadAndStoreMedia(
 
   if (opts.mediaId) {
     if (opts.provider === "kapso") meta.kapso_media_id = opts.mediaId;
-    else meta.ycloud_media_id = opts.mediaId;
+    else if (opts.provider === "ycloud") meta.ycloud_media_id = opts.mediaId;
   }
   if (opts.caption) meta.caption = opts.caption;
   if (opts.filename) meta.filename = opts.filename;

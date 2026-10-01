@@ -1,32 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import {
-  TrendingUp,
-  HeadphonesIcon,
-  CalendarDays,
-  Sparkles,
-  ChevronRight,
-  ChevronLeft,
-  Loader2,
-  CheckCircle2,
   Copy,
+  Loader2,
+  Sparkles,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  CalendarDays,
+  HeadphonesIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  describeKapsoNumber,
+  WHATSAPP_LABEL,
   e164FromDisplay,
   KapsoNumberSelect,
+  describeKapsoNumber,
   WhatsAppProviderPicker,
-  WHATSAPP_LABEL,
   type KapsoNumberOption,
   type WhatsAppProviderId,
 } from "@/features/settings/components/whatsapp-provider-picker";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { completeOnboarding } from "../services/onboarding-actions";
 import type { OnboardingInput } from "../services/onboarding-actions";
 
@@ -39,7 +39,7 @@ interface WizardState {
   businessName: string;
   industry: string;
   description: string;
-  whatsappProvider: WhatsAppProviderId;
+  whatsappProvider: Exclude<WhatsAppProviderId, "zernio">;
   whatsappApiKey: string;
   whatsappPhone: string;
   whatsappSigningSecret: string;
@@ -281,8 +281,9 @@ function Step3({
           <Label id="onboarding-provider-label">Proveedor</Label>
           <WhatsAppProviderPicker
             value={provider}
+            options={["ycloud", "kapso"]}
             onChange={(p) => {
-              if (p === provider) return;
+              if (p === provider || p === "zernio") return;
               // Keys, secrets and Meta ids belong to one provider: never send
               // YCloud's key to Kapso's test (or the other way around).
               onChange({
@@ -327,13 +328,17 @@ function Step3({
         {provider === "kapso" && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="kapso-phone-number-id">Phone Number ID (Meta)</Label>
+              <Label htmlFor="kapso-phone-number-id">
+                Phone Number ID (Meta)
+              </Label>
               <Input
                 id="kapso-phone-number-id"
                 inputMode="numeric"
                 placeholder="123456789012345"
                 value={state.kapsoPhoneNumberId}
-                onChange={(e) => onChange({ kapsoPhoneNumberId: e.target.value })}
+                onChange={(e) =>
+                  onChange({ kapsoPhoneNumberId: e.target.value })
+                }
               />
               <p className="text-xs text-muted-foreground">
                 Se autocompleta al probar la conexión.
@@ -367,7 +372,9 @@ function Step3({
             type="password"
             placeholder="whsec_..."
             value={state.whatsappSigningSecret}
-            onChange={(e) => onChange({ whatsappSigningSecret: e.target.value })}
+            onChange={(e) =>
+              onChange({ whatsappSigningSecret: e.target.value })
+            }
             autoComplete="off"
           />
         </div>
@@ -623,7 +630,8 @@ export function OnboardingWizard() {
         }
         const first = numbers[0];
         patch({
-          kapsoPhoneNumberId: state.kapsoPhoneNumberId || first?.phone_number_id || "",
+          kapsoPhoneNumberId:
+            state.kapsoPhoneNumberId || first?.phone_number_id || "",
           kapsoWabaId: state.kapsoWabaId || first?.waba_id || "",
           whatsappPhone:
             state.whatsappPhone || e164FromDisplay(first?.display_phone_number),
@@ -633,7 +641,9 @@ export function OnboardingWizard() {
         );
       } else {
         const balance =
-          typeof json.balance?.balance === "number" ? json.balance.balance : "?";
+          typeof json.balance?.balance === "number"
+            ? json.balance.balance
+            : "?";
         const currency = json.balance?.currency ?? "";
         toast.success(`${label} conectado — Saldo: ${balance} ${currency}`);
       }
@@ -669,7 +679,8 @@ export function OnboardingWizard() {
             patch({
               kapsoPhoneNumberId: n.phone_number_id ?? "",
               kapsoWabaId: n.waba_id ?? "",
-              whatsappPhone: e164FromDisplay(n.display_phone_number) || state.whatsappPhone,
+              whatsappPhone:
+                e164FromDisplay(n.display_phone_number) || state.whatsappPhone,
             });
             setKapsoChoices([]);
             toast.info(`Elegiste ${describeKapsoNumber(n)}`);

@@ -9,13 +9,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decryptCredentials } from "@/shared/lib/integration-secrets";
+import { zernioApiKey, zernioWebhookSecret } from "./zernio-client";
 
-export const WHATSAPP_PROVIDERS = ["ycloud", "kapso"] as const;
+export const WHATSAPP_PROVIDERS = ["ycloud", "kapso", "zernio"] as const;
 export type WhatsAppProvider = (typeof WHATSAPP_PROVIDERS)[number];
 
 export const WHATSAPP_PROVIDER_LABELS: Record<WhatsAppProvider, string> = {
   ycloud: "YCloud",
   kapso: "Kapso",
+  zernio: "Zernio",
 };
 
 /** Thrown (inside the message) when a workspace has no active WhatsApp provider. */
@@ -47,6 +49,7 @@ export const WORKSPACE_WHATSAPP_SETTINGS = [
 const SENDER_ID_KEY: Record<WhatsAppProvider, string> = {
   ycloud: "phone_number", // the E.164 number
   kapso: "phone_number_id", // Meta's phone number id
+  zernio: "profile_id", // the workspace's Zernio profile
 };
 
 function present(value: unknown): boolean {
@@ -66,6 +69,17 @@ export function missingWhatsAppFields(
   config: Record<string, unknown>,
 ): string[] {
   const missing: string[] = [];
+  if (provider === "zernio") {
+    // Zernio: una cuenta para toda la plataforma (variables de entorno) y los
+    // canales conectados por OAuth en el perfil del workspace.
+    if (!present(zernioApiKey())) missing.push("la variable ZERNIO_API_KEY en Vercel");
+    if (!present(zernioWebhookSecret())) missing.push("la variable ZERNIO_WEBHOOK_SECRET en Vercel");
+    const accounts = Array.isArray(config.account_ids) ? config.account_ids : [];
+    if (!present(config.profile_id) || accounts.length === 0) {
+      missing.push("conectar al menos un canal (WhatsApp, Instagram o Facebook)");
+    }
+    return missing;
+  }
   if (!present(whatsappApiKey(provider, credentials))) missing.push("la API Key");
   if (!present(credentials.webhook_signing_secret)) {
     missing.push("el Webhook Signing Secret");
@@ -107,9 +121,10 @@ async function loadActiveRow(
   // instead of failing every lookup until the migration lands.
   if (error?.code === "22P02") {
     console.error(
-      "[whatsapp] 'kapso' is not in integration_provider yet — run `setup.mjs db-push`",
+      "[whatsapp] a provider is not in integration_provider yet — run `supabase db push`",
     );
-    ({ data, error } = await lookup(["ycloud"]));
+    ({ data, error } = await lookup(["ycloud", "kapso"]));
+    if (error?.code === "22P02") ({ data, error } = await lookup(["ycloud"]));
   }
   if (error) {
     throw new Error(`[whatsapp] integration lookup failed: ${error.message}`);
@@ -175,6 +190,7 @@ export function whatsappApiKey(
   provider: WhatsAppProvider,
   credentials: Record<string, unknown>,
 ): string {
+  if (provider === "zernio") return zernioApiKey();
   const key =
     provider === "kapso" ? credentials.kapso_api_key : credentials.ycloud_api_key;
   return typeof key === "string" ? key : "";

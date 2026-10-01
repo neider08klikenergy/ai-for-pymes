@@ -6,10 +6,42 @@ import { listAgents } from "@/features/agents/services/agent-queries";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { SettingsShell } from "@/features/settings/components/settings-shell";
 import { isWhatsAppProvider } from "@/features/inbox/services/whatsapp-provider";
-import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { cargarAjustesPedidos } from "@/features/pedidos/services/ajustes-queries";
+import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 
-export default async function SettingsPage() {
+const TABS = new Set([
+  "agentes",
+  "integraciones",
+  "negocio",
+  "tools",
+  "templates",
+  "knowledge-base",
+  "equipo",
+  "automatizaciones",
+]);
+
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const tab = first(sp.tab);
+  const initialTab = tab && TABS.has(tab) ? tab : "agentes";
+  // Resultado de conectar un canal en Zernio (vuelve de /api/zernio/callback).
+  const zernioResult = first(sp.zernio);
+  const avisoZernio =
+    zernioResult === "conectado" || zernioResult === "error"
+      ? {
+          ok: zernioResult === "conectado",
+          canal: first(sp.canal) ?? "",
+          detalle: first(sp.detalle) ?? "",
+        }
+      : null;
   const supabase = await createClient();
 
   const {
@@ -149,6 +181,8 @@ export default async function SettingsPage() {
         judgmentsToday,
       }}
       ajustesPedidos={ajustesPedidos}
+      initialTab={initialTab}
+      avisoZernio={avisoZernio}
     />
   );
 }

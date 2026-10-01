@@ -23,7 +23,7 @@ const GUIA_ERRORES: Record<string, string> = {
   FECHA_INVALIDA:
     "Fecha no válida. Envía la fecha como YYYY-MM-DDTHH:MM (hora local) tomada de la tabla de fechas.",
   NO_DISPONIBLE:
-    "No se puede agendar. Explica el motivo al cliente y ofrécele otra fecha u hora.",
+    "No se puede agendar. Si el motivo es CUPO_EN_REVISION, no ofrezcas otra fecha todavía: dile al cliente que confirmas la disponibilidad con el equipo y llama pasar_a_persona. Con cualquier otro motivo, explícalo y ofrece otra fecha u hora.",
   FALTA_NOMBRE_CLIENTE: "Pide el nombre de la persona que recibe el pedido.",
   FALTA_DIRECCION_DOMICILIO: "Pide la dirección de entrega para el domicilio (con el barrio).",
   FALTA_VALOR_DOMICILIO:

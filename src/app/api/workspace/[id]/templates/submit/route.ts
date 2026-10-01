@@ -6,38 +6,42 @@
 // phone number and goes in the body; Kapso's is configured per workspace
 // (the API can't discover it) and goes in the request path.
 
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
-  createYCloudTemplate,
+  YCloudError,
   resolveWabaId,
   WabaNotFoundError,
-  YCloudError,
+  createYCloudTemplate,
 } from "@/features/inbox/services/ycloud-client";
-import { phoneString } from "@/features/inbox/services/phone";
 import {
-  createKapsoTemplate,
   KapsoError,
+  createKapsoTemplate,
 } from "@/features/inbox/services/kapso-client";
 import {
-  decryptWhatsAppCredentials,
-  loadWhatsAppIntegration,
+  ZernioError,
+  createWhatsAppTemplate as createZernioTemplate,
+} from "@/features/inbox/services/zernio-client";
+import {
   whatsappApiKey,
+  loadWhatsAppIntegration,
   WHATSAPP_PROVIDER_LABELS,
+  decryptWhatsAppCredentials,
 } from "@/features/inbox/services/whatsapp-provider";
 import {
   formatErrorForLog,
   parseTemplateError,
 } from "@/features/inbox/services/whatsapp-errors";
 import {
+  type TemplateButton,
   buildTemplatePayload,
   createTemplateSchema,
-  type CreateTemplateInput,
-  type TemplateButton,
   type TemplateVariable,
+  type CreateTemplateInput,
 } from "@/features/settings/lib/template-form";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { phoneString } from "@/features/inbox/services/phone";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
   return createSbClient(
@@ -131,7 +135,9 @@ export async function POST(
   // Meta only takes authentication templates from its own library: sending
   // one as UTILITY with free text is rejected every time. Rows synced before
   // the category was normalized may carry it uppercase.
-  const rowCategory = String(row.category ?? "").trim().toLowerCase();
+  const rowCategory = String(row.category ?? "")
+    .trim()
+    .toLowerCase();
   if (rowCategory === "authentication") {
     return NextResponse.json(
       {
@@ -168,7 +174,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "Conecta WhatsApp (YCloud o Kapso) en Integraciones antes de enviar plantillas",
+          "Conecta WhatsApp (Zernio, YCloud o Kapso) en Integraciones antes de enviar plantillas",
       },
       { status: 400 },
     );
@@ -189,7 +195,24 @@ export async function POST(
     const payload = buildTemplatePayload(valid.data);
     let result: { id: string };
 
-    if (whatsapp.provider === "kapso") {
+    if (whatsapp.provider === "zernio") {
+      const accounts = Array.isArray(whatsapp.config.accounts)
+        ? (whatsapp.config.accounts as Array<{
+            id?: unknown;
+            platform?: unknown;
+          }>)
+        : [];
+      const wa = accounts.find(
+        (a) => a.platform === "whatsapp" && typeof a.id === "string",
+      );
+      if (!wa) {
+        return NextResponse.json(
+          { error: "Conecta WhatsApp en Zernio antes de enviar plantillas" },
+          { status: 400 },
+        );
+      }
+      result = await createZernioTemplate(wa.id as string, payload);
+    } else if (whatsapp.provider === "kapso") {
       const wabaId = (whatsapp.config.waba_id as string | undefined) ?? "";
       if (!wabaId) {
         return NextResponse.json(
@@ -205,7 +228,9 @@ export async function POST(
       const phoneNumber = phoneString(whatsapp.config.phone_number) ?? "";
       if (!phoneNumber) {
         return NextResponse.json(
-          { error: "Falta el número de WhatsApp en la configuración de YCloud" },
+          {
+            error: "Falta el número de WhatsApp en la configuración de YCloud",
+          },
           { status: 400 },
         );
       }
@@ -241,10 +266,19 @@ export async function POST(
     if (err instanceof WabaNotFoundError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
-    if (err instanceof YCloudError || err instanceof KapsoError) {
+    if (
+      err instanceof YCloudError ||
+      err instanceof KapsoError ||
+      err instanceof ZernioError
+    ) {
       // `err.message` carries Meta's raw text: server log only. The team gets
       // the catalog's Spanish reason.
-      const waError = parseTemplateError(err.body, err.status);
+      const body =
+        err instanceof ZernioError
+          ? ((err.body as { platformError?: unknown } | null)?.platformError ??
+            err.body)
+          : err.body;
+      const waError = parseTemplateError(body, err.status);
       console.error(
         `[templates/submit] ${label} error:`,
         formatErrorForLog(waError),

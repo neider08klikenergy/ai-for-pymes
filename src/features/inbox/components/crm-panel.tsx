@@ -5,23 +5,24 @@
  * Shows contact info, stage, tags, opt-in status with inline editing.
  */
 
-import { useState, useTransition, KeyboardEvent } from "react";
-import { User, RefreshCw, Save, ChevronDown, ChevronUp, X } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
-import { updateContact, syncContactHL } from "../services/contact-actions";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { contactSubtitle } from "./channel-badge";
 import type { ContactRow } from "@/features/inbox/types";
+import { useState, useTransition, KeyboardEvent } from "react";
+import { User, RefreshCw, Save, ChevronDown, ChevronUp, X } from "lucide-react";
+import { updateContact, syncContactHL } from "../services/contact-actions";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -172,7 +173,7 @@ export function CrmPanel({
               <Initials name={name || contact.name} />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-muted-foreground font-mono truncate">
-                  {contact.phone}
+                  {contactSubtitle(contact.phone)}
                 </p>
               </div>
             </div>

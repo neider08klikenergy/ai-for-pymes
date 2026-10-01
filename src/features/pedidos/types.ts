@@ -5,6 +5,23 @@ export interface SedeResumen {
   id: string;
   codigo: string;
   nombre: string;
+  acepta_personalizados?: boolean;
+}
+
+/** Cupo de personalizados de una sede en un día (pd_estado_cupo_dia). */
+export interface CupoDia {
+  sede_id: string;
+  sede: string;
+  fecha: string;
+  usados: number;
+  cupo_automatico: number;
+  cupo_maximo: number;
+  cupo_sede: number;
+  cupo_maximo_sede: number | null;
+  ajustado: boolean;
+  cerrado: boolean;
+  nota: string | null;
+  sin_limite: boolean;
 }
 
 export interface PagoResumen {
@@ -102,4 +119,6 @@ export interface VistaPedidos {
   /** true si se cortó la lista en el límite. */
   truncado: boolean;
   reglas: { cancelacionDias: number; saldoFavorMeses: number };
+  /** Calendario con un día elegido: cupo de personalizados por sede. */
+  cupos: CupoDia[];
 }

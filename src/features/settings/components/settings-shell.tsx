@@ -1,13 +1,16 @@
 "use client";
 
+import { toast } from "sonner";
 import { KbTab } from "./kb-tab";
+import { useEffect } from "react";
 import { TeamTab } from "./team-tab";
+import { useRouter } from "next/navigation";
 import { ToolsCatalog } from "./tools-catalog";
 import { TemplatesTab } from "./templates-tab";
 import { AutomationsTab } from "./automations-tab";
 import { IntegrationsTab } from "./integrations-tab";
-import type { AgentDto } from "@/features/agents/types";
 import { BusinessInfoForm } from "./business-info-form";
+import type { AgentDto } from "@/features/agents/types";
 import { AgentsTab } from "@/features/agents/components/agents-tab";
 import type { AjustesPedidos } from "@/features/pedidos/lib/ajustes";
 import type { JevSettings } from "@/features/jev-judge/components/jev-panel";
@@ -35,7 +38,17 @@ interface Props {
   jev: JevSettings;
   /** Cuentas de pago, domicilios y sedes; null si el workspace no usa pedidos. */
   ajustesPedidos?: AjustesPedidos | null;
+  /** Pestaña inicial (?tab=…). */
+  initialTab?: string;
+  /** Resultado de conectar un canal en Zernio, para avisarlo una vez. */
+  avisoZernio?: { ok: boolean; canal: string; detalle: string } | null;
 }
+
+const CANAL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Facebook",
+};
 
 export function SettingsShell({
   workspaceId,
@@ -47,7 +60,33 @@ export function SettingsShell({
   initialAgents = [],
   jev,
   ajustesPedidos = null,
+  initialTab = "agentes",
+  avisoZernio = null,
 }: Props) {
+  const router = useRouter();
+  useEffect(() => {
+    if (!avisoZernio) return;
+    const canal = CANAL[avisoZernio.canal] ?? "El canal";
+    const t = setTimeout(() => {
+      if (avisoZernio.ok) {
+        toast.success(`${canal} quedó conectado en Zernio`, {
+          description:
+            "Si Zernio aún no es el proveedor activo, guarda con «Guardar y cambiar a Zernio».",
+        });
+      } else {
+        toast.error(
+          `No se pudo conectar ${canal === "El canal" ? "el canal" : canal}`,
+          {
+            description: avisoZernio.detalle || undefined,
+          },
+        );
+      }
+      // Limpia la URL para que el aviso no se repita al recargar.
+      router.replace("/settings?tab=integraciones");
+    }, 0);
+    return () => clearTimeout(t);
+  }, [avisoZernio, router]);
+
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
     free_text: string | null;
@@ -59,7 +98,7 @@ export function SettingsShell({
         Configuración del Workspace
       </h1>
 
-      <Tabs defaultValue="agentes">
+      <Tabs defaultValue={initialTab}>
         {/* Scroll the tab strip within its own track instead of letting 11 tabs
             push horizontal overflow onto the whole page. */}
         <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">

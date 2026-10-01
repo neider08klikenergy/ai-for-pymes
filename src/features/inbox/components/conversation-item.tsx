@@ -5,6 +5,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { StateBadge } from "./state-badge";
 import { useZonaHoraria } from "@/shared/lib/zona-horaria-context";
+import { ChannelBadge, contactSubtitle, isSocialKey } from "./channel-badge";
 
 interface ConversationItemProps {
   conversation: ConversationWithContact;
@@ -51,8 +52,12 @@ export function ConversationItem({
   onClick,
 }: ConversationItemProps) {
   const { contact, last_message, unread_count, last_message_at } = conversation;
-  const displayName = contact.name ?? contact.phone;
-  const initials = getInitials(contact.name, contact.phone);
+  const subtitle = contactSubtitle(contact.phone, conversation.channel);
+  const displayName = contact.name ?? subtitle;
+  const initials = getInitials(
+    contact.name,
+    isSocialKey(contact.phone) ? "" : contact.phone,
+  );
   const preview = truncate(last_message?.body ?? null, 60);
   const zona = useZonaHoraria();
   const time = timeAgo(last_message_at, zona);
@@ -111,8 +116,9 @@ export function ConversationItem({
           )}
         </div>
 
-        <p className="font-mono text-[10px] text-muted-foreground/60">
-          {contact.phone}
+        <p className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground/60">
+          <ChannelBadge channel={conversation.channel} />
+          {subtitle}
         </p>
       </div>
     </button>

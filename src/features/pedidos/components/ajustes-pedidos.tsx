@@ -7,8 +7,8 @@ import {
   Plus,
   Truck,
   Store,
-  Pencil,
   Search,
+  Pencil,
   Trash2,
   Landmark,
 } from "lucide-react";
@@ -24,16 +24,16 @@ import {
   Select,
   SelectItem,
   SelectValue,
-  SelectTrigger,
   SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
 import {
   TIPOS_CUENTA,
   describirCuenta,
-  TIPO_CUENTA_LABEL,
   type CuentaPago,
   type SedeAjuste,
   type TipoCuenta,
+  TIPO_CUENTA_LABEL,
   type AjustesPedidos,
   type TarifaDomicilio,
 } from "../lib/ajustes";
@@ -53,9 +53,9 @@ import { pesos } from "../lib/fechas";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 const TODAS = "__todas";
@@ -790,9 +790,10 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
 
 // ── Sedes ─────────────────────────────────────────────────────────────────────
 
-type SedeForm = Omit<SedeAjuste, "direccion" | "telefono"> & {
+type SedeForm = Omit<SedeAjuste, "direccion" | "telefono" | "cupo_maximo"> & {
   direccion: string;
   telefono: string;
+  cupo_maximo: string;
 };
 
 function Sedes({
@@ -820,7 +821,11 @@ function Sedes({
               <p className="text-sm font-medium">{s.nombre}</p>
               <p className="text-xs text-muted-foreground">
                 {s.cupo_diario > 0
-                  ? `Cupo: ${s.cupo_diario} pedidos por día`
+                  ? `Cupo: ${s.cupo_diario} automáticos por día${
+                      s.cupo_maximo && s.cupo_maximo > s.cupo_diario
+                        ? `, hasta ${s.cupo_maximo} con revisión`
+                        : ""
+                    }`
                   : "Sin límite de cupo"}
                 {s.acepta_personalizados ? " · hace personalizados" : ""}
               </p>
@@ -836,6 +841,8 @@ function Sedes({
                     ...s,
                     direccion: s.direccion ?? "",
                     telefono: s.telefono ?? "",
+                    cupo_maximo:
+                      s.cupo_maximo === null ? "" : String(s.cupo_maximo),
                   })
                 }
               >
@@ -884,7 +891,11 @@ function Sedes({
                     }
                   />
                 </Campo>
-                <Campo id="se-cupo" label="Cupo diario" ayuda="0 = sin límite">
+                <Campo
+                  id="se-cupo"
+                  label="Cupo automático por día"
+                  ayuda="Personalizados que el agente agenda solo. 0 = sin límite"
+                >
                   <Input
                     id="se-cupo"
                     type="number"
@@ -899,6 +910,21 @@ function Sedes({
                   />
                 </Campo>
               </div>
+              <Campo
+                id="se-cupo-max"
+                label="Tope del día (con revisión)"
+                ayuda="Entre el cupo automático y este número, el agente pasa el pedido a una persona para que decida. Vacío = sin revisión."
+              >
+                <Input
+                  id="se-cupo-max"
+                  type="number"
+                  min={0}
+                  value={editando.cupo_maximo}
+                  onChange={(e) =>
+                    setEditando({ ...editando, cupo_maximo: e.target.value })
+                  }
+                />
+              </Campo>
               <Interruptor
                 id="se-pers"
                 label="Hace pedidos personalizados"
