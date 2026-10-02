@@ -40,6 +40,12 @@ export interface WhatsAppSender {
   /** False for a missing/"placeholder" key: dev mode, nothing is sent. */
   live: boolean;
   sendText(to: string, body: string, target?: SendTarget): Promise<SendResult>;
+  /** Una imagen por URL pública (el proveedor la descarga); caption opcional. */
+  sendImage(
+    to: string,
+    image: { url: string; caption?: string },
+    target?: SendTarget,
+  ): Promise<SendResult>;
   sendTemplate(params: {
     to: string;
     templateName: string;
@@ -102,6 +108,16 @@ export function whatsappSender(
         });
         return { wamid: sent.wamid || undefined };
       },
+      async sendImage(to, image) {
+        const sent = await kapso.sendImage({
+          apiKey,
+          phoneNumberId: phoneNumberId(),
+          to,
+          link: image.url,
+          caption: image.caption,
+        });
+        return { wamid: sent.wamid || undefined };
+      },
       async sendTemplate({ to, templateName, language, components }) {
         const sent = await kapso.sendTemplate({
           apiKey,
@@ -124,6 +140,19 @@ export function whatsappSender(
     live,
     async sendText(to, body) {
       const sent = await ycloud.sendText({ apiKey, from: from(), to, body });
+      return {
+        wamid: sent.wamid || undefined,
+        providerMessageId: sent.id || undefined,
+      };
+    },
+    async sendImage(to, image) {
+      const sent = await ycloud.sendImage({
+        apiKey,
+        from: from(),
+        to,
+        link: image.url,
+        caption: image.caption,
+      });
       return {
         wamid: sent.wamid || undefined,
         providerMessageId: sent.id || undefined,
@@ -211,6 +240,23 @@ function zernioSender(
         wamid: sent.messageId ?? undefined,
         externalConversationId: sent.conversationId ?? undefined,
       };
+    },
+    async sendImage(_to, image, target) {
+      const accountId = accountFor(target);
+      // Zernio adjunta archivos solo en una conversación que ya existe; dentro
+      // de la ventana de 24 h el cliente escribió, así que normalmente la hay.
+      if (!target?.externalConversationId) {
+        throw new WhatsAppConfigError(
+          "Esta conversación aún no tiene id en Zernio: envía primero un mensaje de texto",
+        );
+      }
+      const sent = await zernio.sendMessage({
+        conversationId: target.externalConversationId,
+        accountId,
+        imageUrl: image.url,
+        ...(image.caption ? { text: image.caption } : {}),
+      });
+      return { wamid: sent.messageId ?? undefined };
     },
     async sendTemplate({ to, templateName, language, components, target }) {
       if (target && target.channel !== "whatsapp") {

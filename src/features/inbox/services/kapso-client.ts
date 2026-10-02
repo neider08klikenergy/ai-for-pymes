@@ -144,6 +144,40 @@ export async function sendText(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// sendImage
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sends an image by public URL (Meta downloads it). The caption is optional.
+ * Throws KapsoError on non-2xx responses.
+ */
+export async function sendImage(params: {
+  apiKey: string;
+  phoneNumberId: string;
+  to: string;
+  link: string;
+  caption?: string;
+}): Promise<SendTextResult> {
+  const { apiKey, phoneNumberId, to, link, caption } = params;
+  const data = await kapsoFetch(
+    `${KAPSO_WA_BASE}/${encodeURIComponent(phoneNumberId)}/messages`,
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "image",
+        image: { link, ...(caption ? { caption } : {}) },
+      }),
+    },
+    "sendImage",
+  );
+  const wamid = wamidFromSendResponse(data);
+  return { id: wamid, wamid, status: "accepted" };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // sendTemplate
 // ──────────────────────────────────────────────────────────────────────────────
 

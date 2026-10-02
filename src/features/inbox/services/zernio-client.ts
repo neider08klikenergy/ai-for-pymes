@@ -214,10 +214,16 @@ export async function sendMessage(params: {
   accountId: string;
   text?: string;
   template?: { name: string; language: string; components?: unknown[] };
+  /** URL pública de una imagen; `text` va como pie de foto. */
+  imageUrl?: string;
   idempotencyKey?: string;
 }) {
   const body: Record<string, unknown> = { accountId: params.accountId };
   if (params.text !== undefined) body.message = params.text;
+  if (params.imageUrl) {
+    body.attachmentUrl = params.imageUrl;
+    body.attachmentType = "image";
+  }
   if (params.template) body.template = { elements: [params.template] };
   const res = await zernioRequest<SendResponse>(
     "POST",

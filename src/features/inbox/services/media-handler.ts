@@ -219,16 +219,43 @@ export async function downloadAndStoreMedia(
 }
 
 /**
+ * Guarda en whatsapp-media una imagen que el equipo envía desde el inbox.
+ * Devuelve la ruta, o null si la subida falla.
+ */
+export async function storeOutboundImage(opts: {
+  storagePath: string;
+  bytes: Uint8Array;
+  mimeType: string;
+}): Promise<string | null> {
+  const { error } = await svc()
+    .storage.from(BUCKET)
+    .upload(opts.storagePath, opts.bytes, { contentType: opts.mimeType, upsert: false });
+  if (error) {
+    console.error("[media-handler] outbound upload failed:", error.message);
+    return null;
+  }
+  return opts.storagePath;
+}
+
+/** Borra una imagen saliente que no se llegó a registrar como mensaje. */
+export async function removeStoredMedia(storagePath: string): Promise<void> {
+  const { error } = await svc().storage.from(BUCKET).remove([storagePath]);
+  if (error) console.error("[media-handler] remove failed:", error.message);
+}
+
+/**
  * Creates a 1-hour signed URL for a media file stored in whatsapp-media.
  * Returns null on error.
  */
 export async function getSignedUrl(
   storagePath: string,
+  /** Segundos de validez. 1 h para el panel; más largo si un proveedor la descarga. */
+  expiresInSeconds = 3600,
 ): Promise<string | null> {
   const supabase = svc();
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(storagePath, 3600);
+    .createSignedUrl(storagePath, expiresInSeconds);
 
   if (error) {
     console.error(

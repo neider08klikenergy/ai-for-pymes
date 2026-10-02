@@ -1,7 +1,8 @@
 /**
  * dispatch.ts — SEC-04 single exit point for ALL outbound messages.
  *
- * ONLY dispatchText and dispatchTemplate should call sendText / sendTemplate.
+ * ONLY dispatchText, dispatchImage and dispatchTemplate should call the
+ * sender's sendText / sendImage / sendTemplate.
  * No other module should invoke those functions directly for user-facing sends.
  *
  * Every send follows the same order: the outbound row is inserted as 'queued'
@@ -32,6 +33,7 @@ import {
 import { YCloudError } from "./ycloud-client";
 import { KapsoError } from "./kapso-client";
 import { ZernioError, ZernioConfigError } from "./zernio-client";
+import { getSignedUrl } from "./media-handler";
 import {
   parseWhatsAppError,
   formatErrorForLog,
@@ -83,6 +85,17 @@ export interface DispatchTextParams {
   noteWhenBlocked?: boolean;
   /** Extra keys for the outbound row's meta (e.g. the buffer's batch_id). */
   meta?: Record<string, unknown>;
+}
+
+export interface DispatchImageParams {
+  workspaceId: string;
+  conversationId: string;
+  /** Ruta en whatsapp-media (ya subida). */
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  caption?: string;
+  senderUserId?: string;
 }
 
 export interface DispatchTemplateParams {
@@ -593,6 +606,83 @@ export async function dispatchText(
       ),
     what: "sendText",
     recordRetryableFailure,
+  });
+
+  if (result.ok) await touchConversation(supabase, conversationId);
+  return result;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// dispatchImage — an image a person sends from the inbox
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Validez de la URL firmada que descarga el proveedor (algunos la bajan tarde). */
+const PROVIDER_MEDIA_URL_TTL_S = 24 * 3600;
+
+export async function dispatchImage(
+  params: DispatchImageParams,
+): Promise<DispatchResult> {
+  const { workspaceId, conversationId, storagePath, mimeType, sizeBytes, senderUserId } = params;
+  const caption = params.caption?.trim()
+    ? formatWhatsAppMarkdown(params.caption.trim())
+    : undefined;
+
+  const supabase = svc();
+
+  const loaded = await loadConversationAndPhone(conversationId, workspaceId, supabase);
+  if (!loaded) return NOT_FOUND;
+  const { window_expires_at, toPhone, target } = loaded;
+  if (!loaded.optIn) return OPT_OUT;
+
+  // Fuera de la ventana de 24 h solo salen plantillas.
+  if (window_expires_at !== null && new Date() > new Date(window_expires_at)) {
+    return WINDOW_EXPIRED;
+  }
+
+  const sender = await loadSender(workspaceId, supabase);
+  const rowMeta: Record<string, unknown> = {
+    storage_path: storagePath,
+    mime_type: mimeType,
+    size_bytes: sizeBytes,
+    ...(caption ? { caption } : {}),
+    dev_mode: sender.live ? undefined : true,
+  };
+
+  const queued = await insertQueuedRow(supabase, {
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    direction: "out",
+    type: "image",
+    body: caption ?? null,
+    sender_user_id: senderUserId ?? null,
+    meta: rowMeta,
+  });
+  if ("error" in queued) {
+    console.error("[dispatch] image insert error:", queued.error);
+    if (queued.error.includes("WINDOW_EXPIRED")) return WINDOW_EXPIRED;
+    return { ok: false, error: GENERIC_SEND_ERROR, errorCode: "DB_ERROR", retryable: true };
+  }
+
+  if (!sender.live) {
+    await touchConversation(supabase, conversationId);
+    return { ok: true };
+  }
+
+  const result = await sendQueuedRow({
+    supabase,
+    sender,
+    workspaceId,
+    rowId: queued.id,
+    rowMeta,
+    send: async () => {
+      const url = await getSignedUrl(storagePath, PROVIDER_MEDIA_URL_TTL_S);
+      if (!url) {
+        throw new WhatsAppConfigError("No se pudo preparar la imagen para enviarla. Intenta de nuevo.");
+      }
+      return sender.sendImage(toPhone, { url, caption }, target);
+    },
+    what: "sendImage",
+    recordRetryableFailure: true,
   });
 
   if (result.ok) await touchConversation(supabase, conversationId);

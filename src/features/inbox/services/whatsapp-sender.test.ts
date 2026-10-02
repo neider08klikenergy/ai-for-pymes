@@ -36,3 +36,37 @@ test("a configured Kapso sender still sends", async () => {
   assert.equal(sent.wamid, "wamid.1");
   assert.equal(fetchCalls, 1);
 });
+
+test("Kapso sends an image by link with its caption", async () => {
+  let body: Record<string, unknown> = {};
+  globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    body = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ messages: [{ id: "wamid.img" }] }), { status: 200 });
+  }) as typeof fetch;
+  const sender = whatsappSender("kapso", { kapso_api_key: "kp" }, { phone_number_id: "pn_1" });
+  const sent = await sender.sendImage("+15550001111", { url: "https://cdn.test/a.jpg", caption: "Menú" });
+  assert.equal(sent.wamid, "wamid.img");
+  assert.deepEqual(body, {
+    messaging_product: "whatsapp",
+    to: "+15550001111",
+    type: "image",
+    image: { link: "https://cdn.test/a.jpg", caption: "Menú" },
+  });
+});
+
+test("YCloud sends an image without caption when there is none", async () => {
+  let body: Record<string, unknown> = {};
+  globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    body = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ id: "yc_1", wamid: "wamid.y" }), { status: 200 });
+  }) as typeof fetch;
+  const sender = whatsappSender("ycloud", { ycloud_api_key: "yk" }, { phone_number: "+15550002222" });
+  const sent = await sender.sendImage("+15550001111", { url: "https://cdn.test/a.png" });
+  assert.equal(sent.wamid, "wamid.y");
+  assert.deepEqual(body, {
+    type: "image",
+    from: "+15550002222",
+    to: "+15550001111",
+    image: { link: "https://cdn.test/a.png" },
+  });
+});

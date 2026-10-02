@@ -132,3 +132,35 @@ test("un error de Zernio llega con el error de Meta adentro", async () => {
     (err: unknown) => err instanceof ZernioError && err.status === 400 && err.code === "platform_api_error",
   );
 });
+
+test("imagen en la conversación existente: adjunto + pie de foto", async () => {
+  reset();
+  const sender = whatsappSender("zernio", {}, config);
+  const sent = await sender.sendImage(
+    "fb:99",
+    { url: "https://cdn.test/a.jpg", caption: "Así queda la torta" },
+    { channel: "facebook", externalConversationId: "conv_fb", externalAccountId: "acc_fb" },
+  );
+  assert.equal(sent.wamid, "wamid.OK");
+  assert.match(calls[0].url, /\/api\/v1\/inbox\/conversations\/conv_fb\/messages$/);
+  assert.deepEqual(calls[0].body, {
+    accountId: "acc_fb",
+    message: "Así queda la torta",
+    attachmentUrl: "https://cdn.test/a.jpg",
+    attachmentType: "image",
+  });
+});
+
+test("imagen sin conversación en Zernio: pide enviar primero un texto, sin llamar a Zernio", async () => {
+  reset();
+  const sender = whatsappSender("zernio", {}, config);
+  await assert.rejects(
+    sender.sendImage("+573103208950", { url: "https://cdn.test/a.jpg" }, {
+      channel: "whatsapp",
+      externalConversationId: null,
+      externalAccountId: null,
+    }),
+    /envía primero un mensaje de texto/,
+  );
+  assert.equal(calls.length, 0);
+});

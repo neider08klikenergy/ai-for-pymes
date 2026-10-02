@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { RequisitosConexion } from "./requisitos-conexion";
 import { Link2, Loader2, RefreshCw, Unlink } from "lucide-react";
 
 export interface ZernioAccountView {
@@ -47,6 +48,8 @@ export function ZernioChannels({
     apiKey: boolean;
     webhookSecret: boolean;
   } | null>(null);
+  // Canal cuyo diálogo de requisitos está abierto (antes de ir a Meta).
+  const [revisando, setRevisando] = useState<Channel | null>(null);
 
   function update(next: ZernioAccountView[]) {
     setAccounts(next);
@@ -199,7 +202,7 @@ export function ZernioChannels({
                   size="sm"
                   variant="outline"
                   disabled={!canEdit || busy !== null}
-                  onClick={() => void connect(channel)}
+                  onClick={() => setRevisando(channel)}
                 >
                   {busy === channel ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -213,6 +216,14 @@ export function ZernioChannels({
           );
         })}
       </ul>
+      <RequisitosConexion
+        channel={revisando}
+        onClose={() => setRevisando(null)}
+        onContinue={(c) => {
+          setRevisando(null);
+          void connect(c);
+        }}
+      />
       <div className="flex items-center gap-2">
         <Button
           type="button"

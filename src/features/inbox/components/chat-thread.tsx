@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  X,
   Bot,
-  User,
   Send,
+  User,
+  ImagePlus,
   UserCheck,
   BarChart2,
   StickyNote,
@@ -25,17 +27,19 @@ import { CrmPanel } from "./crm-panel";
 import { RoleGate } from "./role-gate";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "./chat-message";
-import { Button } from "@/components/ui/button";
 import { WindowBanner } from "./window-banner";
+import { Button } from "@/components/ui/button";
 import { TemplatePicker } from "./template-picker";
 import { AiToggleButton } from "./ai-toggle-button";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ObservabilityPanel } from "./observability-panel";
+import { prepareImage } from "@/features/inbox/lib/prepare-image";
 import type { WorkspaceRole } from "@/features/inbox/hooks/use-role";
-import { useRealtimeMessages } from "@/features/inbox/hooks/use-realtime-messages";
+import { OUTBOUND_CAPTION_MAX } from "@/features/inbox/lib/outbound-image";
 import { ChannelBadge, contactSubtitle, isSocialKey } from "./channel-badge";
+import { useRealtimeMessages } from "@/features/inbox/hooks/use-realtime-messages";
 
 interface ChatThreadProps {
   conversation: ConversationWithContact;
@@ -57,6 +61,12 @@ export function ChatThread({
   const [handoffLoading, setHandoffLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // Imagen adjunta lista para enviar; el texto del composer va como pie de foto.
+  const [image, setImage] = useState<{ file: File; preview: string } | null>(
+    null,
+  );
+  const [preparing, setPreparing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [noteMode, setNoteMode] = useState(false);
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
@@ -78,7 +88,64 @@ export function ChatThread({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // La vista previa es un object URL: se libera al cambiarla o al salir.
+  useEffect(() => {
+    if (!image) return;
+    return () => URL.revokeObjectURL(image.preview);
+  }, [image]);
+
+  const attachImage = async (file: File | undefined | null) => {
+    if (!file) return;
+    setPreparing(true);
+    try {
+      const ready = await prepareImage(file);
+      if ("error" in ready) {
+        toast.error(ready.error);
+        return;
+      }
+      setImage({ file: ready, preview: URL.createObjectURL(ready) });
+    } finally {
+      setPreparing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSendImage = async () => {
+    if (!image || sending) return;
+    const caption = draft.trim();
+    if (caption.length > OUTBOUND_CAPTION_MAX) {
+      toast.error(
+        `El texto de la imagen pasa de ${OUTBOUND_CAPTION_MAX} caracteres`,
+      );
+      return;
+    }
+    setSending(true);
+    try {
+      const form = new FormData();
+      form.append("file", image.file);
+      if (caption) form.append("caption", caption);
+      const res = await fetch(`/api/conversations/${conversation.id}/media`, {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(
+          (data as { error?: string }).error ?? "No se pudo enviar la imagen",
+        );
+        return;
+      }
+      setImage(null);
+      setDraft("");
+    } catch {
+      toast.error("No se pudo enviar la imagen");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSend = async () => {
+    if (image) return handleSendImage();
     const trimmed = draft.trim();
     if (!trimmed || sending) return;
     setSending(true);
@@ -415,45 +482,113 @@ export function ChatThread({
             </div>
           ) : (
             /* ── Normal message composer ──────────────────────── */
-            <div className="flex items-end gap-2">
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={() => setNoteMode(true)}
-                aria-label="Agregar nota interna"
-                aria-pressed={noteMode}
-                className="shrink-0 h-10 w-10 text-muted-foreground hover:text-warning hover:bg-warning/10"
-              >
-                <StickyNote className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              <Textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Escribe un mensaje..."
-                className="min-h-[40px] max-h-32 resize-none flex-1 text-sm"
-                rows={2}
-                aria-label="Mensaje"
-                disabled={sending}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSend();
+            <div className="space-y-2">
+              {image && (
+                <div className="flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.preview}
+                    alt="Imagen a enviar"
+                    className="h-14 w-14 shrink-0 rounded object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
+                      {image.file.name}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {(image.file.size / 1024 / 1024).toFixed(1)} MB · el texto
+                      que escribas va como pie de foto
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setImage(null)}
+                    disabled={sending}
+                    aria-label="Quitar imagen"
+                    className="h-8 w-8 shrink-0"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setNoteMode(true)}
+                  aria-label="Agregar nota interna"
+                  aria-pressed={noteMode}
+                  className="shrink-0 h-10 w-10 text-muted-foreground hover:text-warning hover:bg-warning/10"
+                >
+                  <StickyNote className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => void attachImage(e.target.files?.[0])}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || preparing}
+                  aria-label="Adjuntar imagen"
+                  aria-busy={preparing}
+                  className="shrink-0 h-10 w-10 text-muted-foreground"
+                >
+                  <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onPaste={(e) => {
+                    const pasted = Array.from(e.clipboardData.files).find((f) =>
+                      f.type.startsWith("image/"),
+                    );
+                    if (pasted) {
+                      e.preventDefault();
+                      void attachImage(pasted);
+                    }
+                  }}
+                  placeholder={
+                    image
+                      ? "Pie de foto (opcional)..."
+                      : "Escribe un mensaje..."
                   }
-                }}
-              />
-              <Button
-                type="button"
-                size="icon"
-                variant="default"
-                onClick={() => void handleSend()}
-                disabled={sending || draft.trim().length === 0}
-                aria-label="Enviar mensaje"
-                aria-busy={sending}
-                className="shrink-0 h-10 w-10"
-              >
-                <Send className="h-4 w-4" aria-hidden="true" />
-              </Button>
+                  className="min-h-[40px] max-h-32 resize-none flex-1 text-sm"
+                  rows={2}
+                  aria-label="Mensaje"
+                  disabled={sending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="default"
+                  onClick={() => void handleSend()}
+                  disabled={
+                    sending ||
+                    preparing ||
+                    (!image && draft.trim().length === 0)
+                  }
+                  aria-label={image ? "Enviar imagen" : "Enviar mensaje"}
+                  aria-busy={sending}
+                  className="shrink-0 h-10 w-10"
+                >
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
             </div>
           )}
         </footer>
