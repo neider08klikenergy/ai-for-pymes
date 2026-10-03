@@ -33,6 +33,17 @@ mock.module("@/features/notificaciones/services/seguimiento.ts", {
   },
 });
 
+let correosFallan = false;
+mock.module("@/features/email/services/notificaciones.ts", {
+  exports: {
+    procesarCorreosPendientes: async () => {
+      orden.push("correos");
+      if (correosFallan) throw new Error("smtp caído");
+      return { notificaciones: 1, enviados: 1, fallidos: 0 };
+    },
+  },
+});
+
 const { GET, maxDuration } = await import("./route.ts");
 
 function req(auth?: string) {
@@ -67,6 +78,7 @@ test("runs the drain with the right bearer", async () => {
     processed: 0,
     recovered: 2,
     seguimiento: { revisadas: 1, retomadas: 0, recordadas: 0 },
+    correos: { notificaciones: 1, enviados: 1, fallidos: 0 },
   });
   assert.equal(processCalls.length, 1);
 });
@@ -113,7 +125,23 @@ test("el seguimiento corre antes del rescate de huérfanos y si falla no frena e
   queue = [];
   const res = await GET(req("Bearer s3cret"));
   assert.equal(res.status, 200);
-  assert.deepEqual(orden, ["seguimiento", "reconcile"]);
+  assert.deepEqual(orden, ["seguimiento", "reconcile", "correos"]);
   assert.equal((await res.json()).seguimiento, null);
   seguimientoFalla = false;
+});
+
+test("los correos van después del buffer y un fallo no rompe el cron", async () => {
+  process.env.CRON_SECRET = "s3cret";
+  orden.length = 0;
+  queue = [];
+  timeLeft = true;
+  correosFallan = true;
+  const res = await GET(req("Bearer s3cret"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { correos: unknown };
+  assert.equal(body.correos, null);
+  assert.equal(orden.at(-1), "correos");
+  correosFallan = false;
+  const ok = (await (await GET(req("Bearer s3cret"))).json()) as { correos: { enviados: number } };
+  assert.equal(ok.correos.enviados, 1);
 });

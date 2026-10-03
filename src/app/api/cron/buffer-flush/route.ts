@@ -1,11 +1,12 @@
+import { timingSafeEqual } from "node:crypto";
+import { NextResponse } from "next/server";
 import {
   hasTimeToClaim,
   processNextBatch,
   reconcileOrphanedMessages,
 } from "@/features/inbox/services/buffer";
-import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { revisarSeguimiento } from "@/features/notificaciones/services/seguimiento";
+import { procesarCorreosPendientes } from "@/features/email/services/notificaciones";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Buffer drain — called every minute by pg_cron (job `buffer-flush`, see
@@ -74,10 +75,16 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const processedCount = results.filter((r) => r.processed).length;
 
-  return NextResponse.json({
-    ok: true,
-    processed: processedCount,
-    recovered,
-    seguimiento,
-  });
+  // Avisos por correo al equipo (después del buffer: responder al cliente va
+  // primero). Nunca rompe el cron.
+  let correos: Awaited<ReturnType<typeof procesarCorreosPendientes>> | null = null;
+  if (hasTimeToClaim(startedAt, maxDuration)) {
+    try {
+      correos = await procesarCorreosPendientes();
+    } catch (err) {
+      console.error("[buffer-flush] correos fallaron:", err);
+    }
+  }
+
+  return NextResponse.json({ ok: true, processed: processedCount, recovered, seguimiento, correos });
 }

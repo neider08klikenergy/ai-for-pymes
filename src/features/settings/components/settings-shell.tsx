@@ -16,6 +16,7 @@ import type { AjustesPedidos } from "@/features/pedidos/lib/ajustes";
 import type { JevSettings } from "@/features/jev-judge/components/jev-panel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AjustesPedidosPanel } from "@/features/pedidos/components/ajustes-pedidos";
+import { PreferenciasCorreo } from "@/features/email/components/preferencias-correo";
 
 interface ToolItem {
   id: string;
@@ -176,6 +177,7 @@ export function SettingsShell({
 
         <TabsContent value="equipo">
           <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+            <PreferenciasCorreo workspaceId={workspaceId} />
             <TeamTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
