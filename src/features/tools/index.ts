@@ -7,6 +7,7 @@ import { customWebhookTool } from "./tools/custom-webhook";
 // Módulo de pedidos (AI for PYMES)
 import { cotizarProductoTool } from "./tools/pedidos/cotizar-producto";
 import { consultarCupoTool } from "./tools/pedidos/consultar-cupo";
+import { consultarDisponibilidadTool } from "./tools/pedidos/consultar-disponibilidad";
 import { registrarPedidoTool } from "./tools/pedidos/registrar-pedido";
 import { registrarComprobanteTool } from "./tools/pedidos/registrar-comprobante";
 import { cotizarDomicilioTool } from "./tools/pedidos/cotizar-domicilio";
@@ -19,6 +20,7 @@ registry.register(checkAvailabilityTool);
 registry.register(customWebhookTool);
 registry.register(cotizarProductoTool);
 registry.register(consultarCupoTool);
+registry.register(consultarDisponibilidadTool);
 registry.register(registrarPedidoTool);
 registry.register(registrarComprobanteTool);
 registry.register(cotizarDomicilioTool);

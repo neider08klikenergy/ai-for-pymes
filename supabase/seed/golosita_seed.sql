@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed Golosita (workspace del fork) · AI for PYMES
 -- Ejecutar en Supabase → SQL Editor DESPUÉS de:
---   1) aplicar las migraciones del módulo (20261001… a 20261005000000_pagos_domicilios.sql)
+--   1) aplicar las migraciones del módulo (20261001… a 20261009000000_catalogo_productos.sql)
 --   2) crear el workspace "Golosita" en el panel de agencia
 -- Idempotente: se puede correr varias veces (actualiza precios y reglas).
 -- ⚠️ Precios con validado = false hasta que Mónica apruebe el tarifario.
@@ -58,7 +58,9 @@ BEGIN
   -- tarifas configuradas, el agente pide el valor a una persona del equipo.
 
   -- Tarifario (transcrito de ANEXO A MENU, por validar)
-  INSERT INTO precios (workspace_id, linea, sabor, tamano, porciones, precio, incluye, validado) VALUES
+  -- Se carga en el catálogo (productos + variantes) con cat_upsert_tarifa.
+  PERFORM cat_upsert_tarifa(t.ws, t.linea, t.sabor, t.tamano, t.porciones, t.precio, t.incluye, t.validado)
+  FROM (VALUES
     (v_ws, 'golotarta', 'Cualquiera', 'mini', '1', 8500, NULL, false),
     (v_ws, 'golotarta', 'Cualquiera', 'octavo', '2', 21000, NULL, false),
     (v_ws, 'golotarta', 'Cualquiera', 'cuarto', '8', 43700, NULL, false),
@@ -208,14 +210,25 @@ BEGIN
     (v_ws, 'porcion', 'Vainilla arequipe', 'porcion', '1', 15500, NULL, false),
     (v_ws, 'porcion', 'Velvet frutos rojos', 'porcion', '1', 15500, NULL, false),
     (v_ws, 'porcion', 'Zanahoria', 'porcion', '1', 14000, NULL, false)
-  ON CONFLICT (workspace_id, linea, sabor, tamano) DO UPDATE SET
-    porciones = EXCLUDED.porciones, precio = EXCLUDED.precio, incluye = EXCLUDED.incluye,
-    vigente = TRUE, updated_at = now();
+  ) AS t(ws, linea, sabor, tamano, porciones, precio, incluye, validado);
+
+  -- Nombres y categorías para el panel (no pisa lo que el equipo edite)
+  UPDATE productos p SET nombre = x.nombre, categoria = x.categoria, orden = x.orden
+    FROM (VALUES
+      ('ponque_personalizado', 'Ponqué personalizado', 'Ponqués',  1),
+      ('largo',                'Ponqué largo',         'Ponqués',  2),
+      ('porcion',              'Porción de ponqué',    'Ponqués',  3),
+      ('golovesa',             'Golovesa',             'Tortas frías', 4),
+      ('golotarta',            'Golotarta',            'Postres',  5),
+      ('helado',               'Helado',               'Postres',  6)
+    ) AS x(slug, nombre, categoria, orden)
+   WHERE p.workspace_id = v_ws AND p.slug = x.slug AND NOT p.editado_localmente;
 
   RAISE NOTICE 'Golosita cargada en workspace %', v_ws;
 END $$;
 
 -- Verificación rápida:
--- select linea, count(*) from precios group by linea order by linea;   -- 149 en total
+-- select p.slug, count(*) from producto_variantes v join productos p on p.id = v.producto_id
+--  group by p.slug order by p.slug;   -- 149 en total
 -- select pd_cotizar((select id from workspaces where slug ilike 'golosita%' limit 1),
 --                   'ponque_personalizado', 'ChocoBerry', '1/2 lb');  -- total 150000 · anticipo 90000
