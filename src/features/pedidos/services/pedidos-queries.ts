@@ -17,7 +17,7 @@ import type {
 const ZONA_POR_DEFECTO = "America/Bogota";
 const LIMITE_PEDIDOS = 300;
 
-function zonaValida(z: unknown): string {
+export function zonaValida(z: unknown): string {
   if (typeof z !== "string" || !z) return ZONA_POR_DEFECTO;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: z });

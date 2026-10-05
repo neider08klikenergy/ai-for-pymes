@@ -5,6 +5,7 @@ import {
 import {
   LogOut,
   Receipt,
+  Package,
   Settings,
   Building2,
   MessageCircle,
@@ -145,6 +146,17 @@ export default async function MainLayout({
             </Button>
           </Link>
 
+          <Link href="/productos">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Package className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only sm:ml-2">Productos</span>
+            </Button>
+          </Link>
+
           <Link href="/dashboard">
             <Button
               variant="ghost"
@@ -208,6 +220,14 @@ export default async function MainLayout({
         >
           <Receipt className="h-5 w-5" aria-hidden="true" />
           <span>Pedidos</span>
+        </Link>
+
+        <Link
+          href="/productos"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Package className="h-5 w-5" aria-hidden="true" />
+          <span>Productos</span>
         </Link>
 
         <Link

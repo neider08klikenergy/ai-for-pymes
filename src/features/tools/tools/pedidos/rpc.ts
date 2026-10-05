@@ -18,12 +18,12 @@ function svc() {
 /** Mensajes para el agente según el código de error de las funciones SQL. */
 const GUIA_ERRORES: Record<string, string> = {
   PRECIO_NO_ENCONTRADO:
-    "Ese producto no está en el tarifario. Ofrece al cliente las opciones de sabores_disponibles / tamanos_disponibles.",
+    "Ese producto no está en el catálogo. Ofrece al cliente las opciones de sabores_disponibles / tamanos_disponibles.",
   SEDE_NO_EXISTE: "Esa sede no existe. Usa uno de los códigos de la lista 'sedes'.",
   FECHA_INVALIDA:
     "Fecha no válida. Envía la fecha como YYYY-MM-DDTHH:MM (hora local) tomada de la tabla de fechas.",
   NO_DISPONIBLE:
-    "No se puede agendar. Si el motivo es CUPO_EN_REVISION, no ofrezcas otra fecha todavía: dile al cliente que confirmas la disponibilidad con el equipo y llama pasar_a_persona. Con cualquier otro motivo, explícalo y ofrece otra fecha u hora.",
+    "No se puede agendar. Si el motivo es CUPO_EN_REVISION, no ofrezcas otra fecha todavía: dile al cliente que confirmas la disponibilidad con el equipo y llama pasar_a_persona. Si es AGOTADO, dile cuántas unidades quedan (cantidad_disponible) u ofrece otro producto del menú del día. Si es MENU_SIN_CARGAR, el equipo aún no cargó el menú de ese día: ofrece confirmarlo con el equipo. Con cualquier otro motivo, explícalo y ofrece otra fecha u hora.",
   FALTA_NOMBRE_CLIENTE: "Pide el nombre de la persona que recibe el pedido.",
   FALTA_DIRECCION_DOMICILIO: "Pide la dirección de entrega para el domicilio (con el barrio).",
   FALTA_VALOR_DOMICILIO:
