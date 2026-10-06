@@ -39,6 +39,9 @@ import {
 } from "../services/productos-actions";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ImagenesEditor } from "./imagenes-editor";
+import { createClient } from "@/lib/supabase/client";
+import { BUCKET_IMAGENES, rutaImagenPropia } from "../lib/imagenes";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -64,7 +67,9 @@ type ProductoForm = {
   slug: string;
   categoria: string;
   descripcion: string;
-  imagenes: string;
+  imagenes: string[];
+  /** Fotos subidas al bucket en esta edición: si no se guardan, se borran. */
+  subidas: string[];
   modo_disponibilidad: ModoDisponibilidad;
   activo: boolean;
   orden: number;
@@ -92,7 +97,8 @@ const PRODUCTO_NUEVO: ProductoForm = {
   slug: "",
   categoria: "",
   descripcion: "",
-  imagenes: "",
+  imagenes: [],
+  subidas: [],
   modo_disponibilidad: "siempre",
   activo: true,
   orden: 0,
@@ -106,7 +112,8 @@ function aFormProducto(p: Producto): ProductoForm {
     slug: p.slug,
     categoria: p.categoria ?? "",
     descripcion: p.descripcion ?? "",
-    imagenes: p.imagenes.join("\n"),
+    imagenes: p.imagenes,
+    subidas: [],
     modo_disponibilidad: p.modo_disponibilidad,
     activo: p.activo,
     orden: p.orden,
@@ -177,6 +184,20 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
     });
   }
 
+  /** Borra del bucket fotos subidas que al final no se guardaron (en segundo plano). */
+  function borrarSubidas(urls: string[]) {
+    const rutas = urls
+      .map((u) => rutaImagenPropia(u, process.env.NEXT_PUBLIC_SUPABASE_URL))
+      .filter((r): r is string => r !== null);
+    if (rutas.length === 0) return;
+    void createClient()
+      .storage.from(BUCKET_IMAGENES)
+      .remove(rutas)
+      .then(({ error }) => {
+        if (error) console.warn("[productos] fotos sin guardar no borradas:", error.message);
+      });
+  }
+
   function importar() {
     startImportacion(async () => {
       const r = await importarDesdeShopify(workspaceId);
@@ -194,15 +215,21 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
       () =>
         guardarProducto(workspaceId, {
           ...f,
-          imagenes: f.imagenes
-            .split(/\s+/)
-            .map((s) => s.trim())
-            .filter(Boolean),
           precio_inicial: f.id ? null : f.precio_inicial,
         }),
       "Producto guardado",
-      () => setProducto(null),
+      () => {
+        // Subidas en esta edición que se quitaron antes de guardar
+        borrarSubidas(f.subidas.filter((u) => !f.imagenes.includes(u)));
+        setProducto(null);
+      },
     );
+  }
+
+  /** Cierra el editor sin guardar: las fotos subidas en esta edición sobran. */
+  function cerrarProducto() {
+    if (producto) borrarSubidas(producto.subidas);
+    setProducto(null);
   }
 
   function guardarFormVariante(f: VarianteForm) {
@@ -325,8 +352,11 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
         <DialogoProducto
           form={producto}
           pendiente={pendiente}
+          workspaceId={workspaceId}
           onCambiar={setProducto}
-          onCerrar={() => setProducto(null)}
+          onImagenes={(imagenes) => setProducto((f) => (f ? { ...f, imagenes } : f))}
+          onSubida={(url) => setProducto((f) => (f ? { ...f, subidas: [...f.subidas, url] } : f))}
+          onCerrar={cerrarProducto}
           onGuardar={() => guardarFormProducto(producto)}
           onBorrar={
             producto.id
@@ -561,14 +591,21 @@ function PieDialogo({
 function DialogoProducto({
   form,
   pendiente,
+  workspaceId,
   onCambiar,
+  onImagenes,
+  onSubida,
   onCerrar,
   onGuardar,
   onBorrar,
 }: {
   form: ProductoForm;
   pendiente: boolean;
+  workspaceId: string;
   onCambiar: (f: ProductoForm) => void;
+  /** Con actualización funcional: la subida es asíncrona y no debe pisar otros campos. */
+  onImagenes: (imagenes: string[]) => void;
+  onSubida: (url: string) => void;
   onCerrar: () => void;
   onGuardar: () => void;
   onBorrar?: () => void;
@@ -656,16 +693,15 @@ function DialogoProducto({
               onChange={(e) => set({ descripcion: e.target.value })}
             />
           </Campo>
-          <Campo id="pr-img" label="Imágenes" ayuda="Un enlace por línea.">
-            <Textarea
-              id="pr-img"
-              rows={2}
-              className="font-mono text-xs"
-              value={form.imagenes}
-              onChange={(e) => set({ imagenes: e.target.value })}
-              placeholder="https://…"
+          <div className="grid gap-1.5">
+            <Label>Fotos</Label>
+            <ImagenesEditor
+              workspaceId={workspaceId}
+              imagenes={form.imagenes}
+              onCambiar={onImagenes}
+              onSubida={onSubida}
             />
-          </Campo>
+          </div>
           <div className="grid gap-3 sm:grid-cols-[1fr_90px] sm:items-end">
             <Interruptor
               id="pr-activo"
