@@ -87,16 +87,33 @@ export interface DispatchTextParams {
   meta?: Record<string, unknown>;
 }
 
-export interface DispatchImageParams {
+/** La imagen va como archivo en whatsapp-media o como URL pública https. */
+export type DispatchImageParams = {
   workspaceId: string;
   conversationId: string;
-  /** Ruta en whatsapp-media (ya subida). */
-  storagePath: string;
-  mimeType: string;
-  sizeBytes: number;
   caption?: string;
+  /** null = la envía la IA (p. ej. la foto de un producto), set = una persona */
   senderUserId?: string;
-}
+} & (
+  | {
+      /** Ruta en whatsapp-media (ya subida desde el inbox). */
+      storagePath: string;
+      mimeType: string;
+      sizeBytes: number;
+      imageUrl?: undefined;
+    }
+  | {
+      /**
+       * URL pública https (fotos del catálogo: bucket productos-imagenes o un
+       * enlace externo). Se le pasa tal cual al proveedor, que la descarga:
+       * nuestro servidor nunca la pide.
+       */
+      imageUrl: string;
+      storagePath?: undefined;
+      mimeType?: undefined;
+      sizeBytes?: undefined;
+    }
+);
 
 export interface DispatchTemplateParams {
   workspaceId: string;
@@ -119,7 +136,8 @@ export interface DispatchResult {
     | "OPT_OUT"
     | "SEND_FAILED"
     | "DB_ERROR"
-    | "NOT_FOUND";
+    | "NOT_FOUND"
+    | "INVALID_MEDIA";
   /**
    * True only when nothing was sent — WhatsApp refused it for a reason that
    * clears with time (rate limits), or the database failed before the send —
@@ -613,7 +631,8 @@ export async function dispatchText(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// dispatchImage — an image a person sends from the inbox
+// dispatchImage — an image a person sends from the inbox, or a catalog photo
+// the AI sends (by public URL)
 // ──────────────────────────────────────────────────────────────────────────────
 
 /** Validez de la URL firmada que descarga el proveedor (algunos la bajan tarde). */
@@ -622,7 +641,10 @@ const PROVIDER_MEDIA_URL_TTL_S = 24 * 3600;
 export async function dispatchImage(
   params: DispatchImageParams,
 ): Promise<DispatchResult> {
-  const { workspaceId, conversationId, storagePath, mimeType, sizeBytes, senderUserId } = params;
+  const { workspaceId, conversationId, storagePath, imageUrl, mimeType, sizeBytes, senderUserId } = params;
+  if (imageUrl !== undefined && !/^https:\/\/\S+$/.test(imageUrl)) {
+    return { ok: false, error: "La imagen debe ser un enlace https", errorCode: "INVALID_MEDIA", retryable: false };
+  }
   const caption = params.caption?.trim()
     ? formatWhatsAppMarkdown(params.caption.trim())
     : undefined;
@@ -641,9 +663,9 @@ export async function dispatchImage(
 
   const sender = await loadSender(workspaceId, supabase);
   const rowMeta: Record<string, unknown> = {
-    storage_path: storagePath,
-    mime_type: mimeType,
-    size_bytes: sizeBytes,
+    ...(storagePath !== undefined
+      ? { storage_path: storagePath, mime_type: mimeType, size_bytes: sizeBytes }
+      : { image_url: imageUrl }),
     ...(caption ? { caption } : {}),
     dev_mode: sender.live ? undefined : true,
   };
@@ -675,7 +697,9 @@ export async function dispatchImage(
     rowId: queued.id,
     rowMeta,
     send: async () => {
-      const url = await getSignedUrl(storagePath, PROVIDER_MEDIA_URL_TTL_S);
+      const url = storagePath !== undefined
+        ? await getSignedUrl(storagePath, PROVIDER_MEDIA_URL_TTL_S)
+        : imageUrl;
       if (!url) {
         throw new WhatsAppConfigError("No se pudo preparar la imagen para enviarla. Intenta de nuevo.");
       }
