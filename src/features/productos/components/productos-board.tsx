@@ -76,6 +76,7 @@ export function ProductosBoard({ workspaceId, pantalla, puedeEditarCatalogo, pue
           workspaceId={workspaceId}
           productos={pantalla.productos}
           puedeEditar={puedeEditarCatalogo}
+          shopify={pantalla.shopify}
         />
       ) : (
         <MenuDelDia
