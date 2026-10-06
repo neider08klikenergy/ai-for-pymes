@@ -156,6 +156,12 @@ function DocumentAttachment({
 export function MessageAttachment({ media, type }: MessageAttachmentProps) {
   const parsed = parseMediaMeta(media);
   const kind = categorize(type, parsed.mime_type);
+  // Foto del catálogo que envió la IA: URL pública https, sin archivo en
+  // whatsapp-media que firmar.
+  const publicUrl =
+    typeof media.image_url === "string" && media.image_url.startsWith("https://")
+      ? media.image_url
+      : null;
 
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!parsed.storage_path);
@@ -191,6 +197,10 @@ export function MessageAttachment({ media, type }: MessageAttachmentProps) {
       cancelled = true;
     };
   }, [parsed.storage_path]);
+
+  if (publicUrl && !parsed.storage_path) {
+    return <ImageAttachment url={publicUrl} caption={parsed.caption} />;
+  }
 
   // Media not yet downloaded from the provider (storage_path missing)
   if (!parsed.storage_path) {

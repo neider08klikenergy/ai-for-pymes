@@ -33,6 +33,13 @@ const GUIA_ERRORES: Record<string, string> = {
   COMPROBANTE_DUPLICADO:
     "Ese comprobante ya fue registrado. No lo registres otra vez; si el cliente insiste, pasa a una persona.",
   PEDIDO_CANCELADO: "Ese pedido está cancelado; pasa la conversación a una persona.",
+  PRODUCTO_POR_ENCARGO:
+    "Es un producto por encargo (personalizado): sus fotos y diseños los comparte una persona del equipo. Dile al cliente que en un momento se los envían y llama pasar_a_persona con el motivo \"Enviar fotos de diseños\".",
+  SIN_FOTO:
+    "Ese producto no tiene foto cargada. Descríbelo y, si el cliente la quiere ver, pasa a una persona.",
+  VARIOS_PRODUCTOS: "Hay varios productos con ese nombre: pregúntale al cliente cuál de las opciones quiere ver.",
+  PRODUCTO_NO_ENCONTRADO:
+    "Ese producto no está en el catálogo. Ofrece ver alguno de productos_con_foto.",
 };
 
 /**
