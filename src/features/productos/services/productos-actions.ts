@@ -14,6 +14,7 @@ import { sumarDias } from "@/features/pedidos/lib/fechas";
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { checkWorkspaceMember, type WorkspaceRole } from "@/lib/auth/workspace-access";
 import { resumenImportacion } from "../lib/shopify";
+import { BUCKET_IMAGENES, rutasParaBorrar } from "../lib/imagenes";
 import { ShopifyError, cargarConfigShopify, leerProductosShopify } from "./shopify-client";
 import {
   DisponibilidadSchema,
@@ -58,6 +59,37 @@ function errorDeBase(message: string | undefined): string {
   return "No se pudo guardar. Intenta de nuevo.";
 }
 
+/**
+ * Borra del bucket las fotos propias que ya no usa el producto. Los enlaces
+ * externos (Shopify, URLs pegadas) no se tocan. Si falla, solo queda un
+ * archivo huérfano: no se interrumpe el guardado.
+ */
+async function borrarImagenesQuitadas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  antes: string[],
+  despues: string[],
+): Promise<void> {
+  const rutas = rutasParaBorrar(antes, despues, workspaceId, process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (rutas.length === 0) return;
+  const { error } = await supabase.storage.from(BUCKET_IMAGENES).remove(rutas);
+  if (error) console.warn("[productos] no se borraron fotos:", error.message);
+}
+
+async function imagenesActuales(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  productoId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("productos")
+    .select("imagenes")
+    .eq("id", productoId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  return Array.isArray(data?.imagenes) ? (data.imagenes as string[]) : [];
+}
+
 // ── Productos ────────────────────────────────────────────────────────────────
 
 export async function guardarProducto(workspaceId: string, input: unknown): Promise<ResultadoProducto> {
@@ -71,6 +103,7 @@ export async function guardarProducto(workspaceId: string, input: unknown): Prom
   if (!codigo) return { ok: false, error: "El código del producto no es válido" };
 
   const supabase = await createClient();
+  const imagenesAntes = id ? await imagenesActuales(supabase, workspaceId, id) : [];
   // editado_localmente: si el producto vino de Shopify, la reimportación no pisa este cambio
   const fila = { ...datos, slug: codigo, editado_localmente: true };
   const { data, error } = id
@@ -92,6 +125,8 @@ export async function guardarProducto(workspaceId: string, input: unknown): Prom
     return { ok: false, error: error ? errorDeBase(error.message) : "Producto no encontrado" };
   }
 
+  if (id) await borrarImagenesQuitadas(supabase, workspaceId, imagenesAntes, datos.imagenes);
+
   // Un producto nuevo con precio queda vendible con una variante única
   if (!id && precio_inicial !== null) {
     const { error: eVar } = await supabase.from("producto_variantes").insert({
@@ -112,6 +147,7 @@ export async function borrarProducto(workspaceId: string, productoId: string): P
   if (!Uuid.safeParse(productoId).success) return { ok: false, error: "Producto no válido" };
 
   const supabase = await createClient();
+  const imagenes = await imagenesActuales(supabase, workspaceId, productoId);
   // Los pedidos guardan linea/sabor/tamaño como texto: borrar no los afecta.
   const { error } = await supabase
     .from("productos")
@@ -122,6 +158,7 @@ export async function borrarProducto(workspaceId: string, productoId: string): P
     console.error("[productos] borrarProducto:", error.message);
     return { ok: false, error: "No se pudo borrar. Intenta de nuevo." };
   }
+  await borrarImagenesQuitadas(supabase, workspaceId, imagenes, []);
   return listo();
 }
 

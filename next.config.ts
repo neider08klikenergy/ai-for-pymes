@@ -33,7 +33,11 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: *.supabase.co",
+      // Fotos de productos: además del bucket propio, enlaces https externos
+      // (los importados de Shopify y los que el negocio pega a mano). Una
+      // imagen no ejecuta código; abrir https completo evita mantener una
+      // lista de dominios por cliente.
+      "img-src 'self' data: blob: *.supabase.co https:",
       "media-src 'self' blob: *.supabase.co",
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,

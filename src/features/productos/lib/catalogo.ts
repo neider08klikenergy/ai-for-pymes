@@ -2,6 +2,7 @@
 // La tabla interna es la fuente de verdad (Shopify, cuando llegue, solo importa).
 
 import { z } from "zod";
+import { MAX_IMAGENES } from "./imagenes";
 
 export const MODOS = ["siempre", "por_dia", "bajo_pedido"] as const;
 export type ModoDisponibilidad = (typeof MODOS)[number];
@@ -136,8 +137,16 @@ export const ProductoSchema = z.object({
   categoria: textoOpcional(60),
   descripcion: textoOpcional(1000),
   imagenes: z
-    .array(z.string().trim().url("Una de las imágenes no es un enlace válido").max(1000))
-    .max(10, "Máximo 10 imágenes")
+    .array(
+      z
+        .string()
+        .trim()
+        .url("Una de las imágenes no es un enlace válido")
+        .max(1000)
+        // WhatsApp solo descarga imágenes por https
+        .refine((u) => u.startsWith("https://"), "Los enlaces de imágenes deben empezar por https://"),
+    )
+    .max(MAX_IMAGENES, `Máximo ${MAX_IMAGENES} imágenes`)
     .default([]),
   modo_disponibilidad: z.enum(MODOS),
   activo: z.boolean(),
