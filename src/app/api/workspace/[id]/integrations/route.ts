@@ -23,9 +23,10 @@ import { phoneString } from "@/features/inbox/services/phone";
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { workspaceCountryCode } from "@/features/inbox/services/country-code";
 import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
+import { normalizarTienda } from "@/features/productos/lib/shopify";
 
 const IntegrationSchema = z.object({
-  provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel"]),
+  provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel", "shopify"]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -231,6 +232,31 @@ export async function PUT(
     phoneWarning = normalized.warning;
   }
 
+  // Shopify: only *.myshopify.com (the Admin API host, and no requests to
+  // arbitrary hosts), and to enable it either the app's client id + secret or
+  // a legacy Admin API token.
+  if (provider === "shopify") {
+    const storedConfig = (existing?.config as Record<string, unknown> | null) ?? {};
+    const shop = normalizarTienda(
+      String(config?.shop_domain ?? storedConfig.shop_domain ?? ""),
+    );
+    if (!shop) {
+      return NextResponse.json(
+        { error: "Escribe el dominio de la tienda en Shopify, por ejemplo golosita.myshopify.com" },
+        { status: 422 },
+      );
+    }
+    config = { ...(config ?? {}), shop_domain: shop };
+    const hasApp =
+      Boolean(mergedCreds.shopify_client_id) && Boolean(mergedCreds.shopify_client_secret);
+    if (enabled && !hasApp && !mergedCreds.shopify_access_token) {
+      return NextResponse.json(
+        { error: "Para activar Shopify falta el Client ID y el Client Secret de la app." },
+        { status: 422 },
+      );
+    }
+  }
+
   // A WhatsApp provider only becomes the active one when it can actually talk:
   // activating it disables the other, and without a key, secret or sender id
   // replies would be dropped silently. Checked against what is stored plus what
@@ -316,7 +342,7 @@ export async function PUT(
 
   const mergedConfig = {
     ...((existing?.config as object) ?? {}),
-    ...(parsed.data.config ?? {}),
+    ...(config ?? {}),
   };
 
   const { error } = await svc.from("integrations").upsert(

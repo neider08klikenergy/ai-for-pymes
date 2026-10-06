@@ -28,6 +28,8 @@ export interface PantallaProductos {
   hoy: string;
   /** Menú de esa sede y fecha, por variante. */
   menu: Record<string, FilaDisponibilidad>;
+  /** Tienda Shopify conectada (solo la ven admin y manager, por RLS). */
+  shopify: string | null;
   error: string | null;
 }
 
@@ -40,7 +42,7 @@ export async function cargarPantallaProductos(
   workspaceId: string,
   params: ParamsProductos,
 ): Promise<PantallaProductos> {
-  const [productosRes, sedesRes, zonaRes] = await Promise.all([
+  const [productosRes, sedesRes, zonaRes, shopifyRes] = await Promise.all([
     supabase
       .from("productos")
       .select(SELECT_PRODUCTO)
@@ -58,6 +60,12 @@ export async function cargarPantallaProductos(
       .select("valor")
       .eq("workspace_id", workspaceId)
       .eq("clave", "zona_horaria")
+      .maybeSingle(),
+    supabase
+      .from("integrations")
+      .select("enabled, config")
+      .eq("workspace_id", workspaceId)
+      .eq("provider", "shopify")
       .maybeSingle(),
   ]);
 
@@ -96,6 +104,9 @@ export async function cargarPantallaProductos(
     fecha,
     hoy,
     menu,
+    shopify: shopifyRes.data?.enabled
+      ? String((shopifyRes.data.config as { shop_domain?: unknown } | null)?.shop_domain ?? "") || null
+      : null,
     error: productosRes.error ? "No se pudo cargar el catálogo." : null,
   };
 }

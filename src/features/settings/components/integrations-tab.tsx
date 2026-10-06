@@ -30,7 +30,13 @@ import { ZernioChannels, type ZernioAccountView } from "./zernio-channels";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Provider = "ycloud" | "kapso" | "zernio" | "openrouter" | "highlevel";
+type Provider =
+  | "ycloud"
+  | "kapso"
+  | "zernio"
+  | "openrouter"
+  | "highlevel"
+  | "shopify";
 
 type IntegrationData = {
   provider: Provider;
@@ -1159,6 +1165,221 @@ function HighLevelSection({
   );
 }
 
+// ─── Shopify section ──────────────────────────────────────────────────────────
+
+// Desde 2026 Shopify ya no crea apps "custom" en el admin: el negocio crea la
+// app en su Dev Dashboard (misma organización que la tienda) y nos pasa el
+// Client ID y el Client Secret. Solo se usa para importar el catálogo.
+function ShopifySection({
+  workspaceId,
+  initial,
+  canEdit,
+  onSaved,
+}: {
+  workspaceId: string;
+  initial: IntegrationData | undefined;
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const [shop, setShop] = useState(
+    (initial?.config?.shop_domain as string | undefined) ?? "",
+  );
+  const [clientId, setClientId] = useState(
+    initial?.credentials?.shopify_client_id ?? "",
+  );
+  const [clientSecret, setClientSecret] = useState(
+    initial?.credentials?.shopify_client_secret ?? "",
+  );
+  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "shopify",
+          enabled,
+          credentials: {
+            shopify_client_id: clientId,
+            shopify_client_secret: clientSecret,
+          },
+          config: { shop_domain: shop },
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Shopify guardado");
+        onSaved();
+      } else {
+        toast.error(json.error ?? "Error al guardar");
+      }
+    } catch {
+      toast.error("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/${workspaceId}/integrations/shopify/test`,
+        { method: "POST" },
+      );
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        shopName?: string;
+      };
+      if (json.ok) {
+        toast.success(`Shopify conectado — ${json.shopName ?? shop}`);
+      } else {
+        toast.error(json.error ?? "Error al probar la conexión");
+      }
+    } catch {
+      toast.error("Error de red al probar la conexión");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Shopify"
+      description="Importa los productos y precios de la tienda al catálogo (Productos → Importar desde Shopify)."
+    >
+      <div className="grid gap-4">
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-medium text-foreground">
+            Lo hace el dueño de la tienda (una sola vez, unos 10 minutos)
+          </p>
+          <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+            <li>
+              Entra a{" "}
+              <a
+                href="https://dev.shopify.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                dev.shopify.com
+              </a>{" "}
+              con la <strong>misma cuenta dueña de la tienda</strong> y crea una
+              app (por ejemplo, &quot;Catálogo para el asistente&quot;).
+            </li>
+            <li>
+              En <strong>Versions</strong>, crea una versión con el permiso{" "}
+              <code className="font-mono">read_products</code> y publícala
+              (Release).
+            </li>
+            <li>
+              En <strong>Home</strong>, instala la app en la tienda.
+            </li>
+            <li>
+              En <strong>Settings</strong> de la app, copia el{" "}
+              <strong>Client ID</strong> y el <strong>Client Secret</strong> y
+              pégalos aquí abajo.
+            </li>
+            <li>
+              Guarda, usa &quot;Probar conexión&quot; y luego ve a Productos →
+              Importar desde Shopify.
+            </li>
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            El permiso es solo de lectura de productos: no podemos ver pedidos,
+            clientes ni pagos, ni cambiar nada en la tienda. La app debe ser de
+            la misma organización que la tienda; si la crea otra persona en su
+            propia cuenta, Shopify no da acceso.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sh-shop">Tienda</Label>
+          <Input
+            id="sh-shop"
+            placeholder="golosita.myshopify.com"
+            value={shop}
+            onChange={(e) => setShop(e.target.value)}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            El dominio .myshopify.com (no el dominio propio de la web).
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="sh-client-id">Client ID</Label>
+            <Input
+              id="sh-client-id"
+              type="password"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sh-client-secret">Client Secret</Label>
+            <Input
+              id="sh-client-secret"
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            id="sh-enabled"
+            checked={enabled}
+            onCheckedChange={setEnabled}
+          />
+          <Label htmlFor="sh-enabled" className="cursor-pointer">
+            Activa
+          </Label>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing}
+            aria-busy={testing}
+          >
+            {testing && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Probar conexión
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={!canEdit || saving}
+            aria-busy={saving}
+            aria-describedby={!canEdit ? "shopify-admin-only" : undefined}
+          >
+            {saving && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Guardar
+          </Button>
+        </div>
+        {!canEdit && <AdminOnlyNote id="shopify-admin-only" />}
+      </div>
+    </Section>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -1195,6 +1416,7 @@ export function IntegrationsTab({
   const zernio = findIntegration(integrations, "zernio");
   const openrouter = findIntegration(integrations, "openrouter");
   const highlevel = findIntegration(integrations, "highlevel");
+  const shopify = findIntegration(integrations, "shopify");
 
   if (!canRead) {
     return (
@@ -1228,6 +1450,13 @@ export function IntegrationsTab({
       <HighLevelSection
         workspaceId={workspaceId}
         initial={highlevel}
+        canEdit={canEdit}
+        onSaved={refresh}
+      />
+      <Separator />
+      <ShopifySection
+        workspaceId={workspaceId}
+        initial={shopify}
         canEdit={canEdit}
         onSaved={refresh}
       />

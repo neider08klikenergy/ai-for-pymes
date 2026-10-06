@@ -11,7 +11,10 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sumarDias } from "@/features/pedidos/lib/fechas";
+import { createClient as svcClient } from "@supabase/supabase-js";
 import { checkWorkspaceMember, type WorkspaceRole } from "@/lib/auth/workspace-access";
+import { resumenImportacion } from "../lib/shopify";
+import { ShopifyError, cargarConfigShopify, leerProductosShopify } from "./shopify-client";
 import {
   DisponibilidadSchema,
   ProductoSchema,
@@ -20,7 +23,9 @@ import {
   slugProducto,
 } from "../lib/catalogo";
 
-export type ResultadoProducto = { ok: true; id?: string; copiados?: number } | { ok: false; error: string };
+export type ResultadoProducto =
+  | { ok: true; id?: string; copiados?: number; resumen?: string }
+  | { ok: false; error: string };
 
 const Uuid = z.string().uuid();
 const Fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -251,4 +256,43 @@ export async function copiarMenuDiaAnterior(
     return { ok: false, error: "No se pudo copiar el menú. Intenta de nuevo." };
   }
   return listo({ copiados: nuevas.length });
+}
+
+// ── Shopify ──────────────────────────────────────────────────────────────────
+
+/**
+ * Trae todos los productos de la tienda Shopify del workspace al catálogo.
+ * No pisa lo editado en el panel (ver cat_importar_shopify).
+ */
+export async function importarDesdeShopify(workspaceId: string): Promise<ResultadoProducto> {
+  const p = await permiso(workspaceId, "manager");
+  if (!p.ok) return p;
+
+  const cfg = await cargarConfigShopify(workspaceId).catch(() => null);
+  if (!cfg) {
+    return { ok: false, error: "Conecta la tienda en Settings → Integraciones → Shopify." };
+  }
+
+  try {
+    const productos = await leerProductosShopify(cfg);
+    if (productos.length === 0) {
+      return { ok: false, error: "Shopify no devolvió productos. No se cambió nada en el catálogo." };
+    }
+    // La función solo la ejecuta el service role; el rol ya se revisó arriba.
+    const svc = svcClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const { data, error } = await svc.rpc("cat_importar_shopify", {
+      p_ws: workspaceId,
+      p_productos: productos,
+      p_completo: true,
+    });
+    if (error || !data?.ok) {
+      console.error("[productos] importarDesdeShopify:", error?.message ?? data?.error);
+      return { ok: false, error: "No se pudo guardar la importación. Intenta de nuevo." };
+    }
+    return listo({ resumen: resumenImportacion(data) });
+  } catch (err) {
+    if (err instanceof ShopifyError) return { ok: false, error: err.message };
+    console.error("[productos] importarDesdeShopify:", err instanceof Error ? err.message : err);
+    return { ok: false, error: "No se pudo importar desde Shopify. Intenta de nuevo." };
+  }
 }

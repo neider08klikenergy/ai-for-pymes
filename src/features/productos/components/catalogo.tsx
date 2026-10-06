@@ -34,8 +34,10 @@ import {
   borrarVariante,
   guardarProducto,
   guardarVariante,
+  importarDesdeShopify,
   type ResultadoProducto,
 } from "../services/productos-actions";
+import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -46,12 +48,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { pesos } from "@/features/pedidos/lib/fechas";
-import { ChevronDown, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Download, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 interface Props {
   workspaceId: string;
   productos: Producto[];
   puedeEditar: boolean;
+  /** Dominio de la tienda Shopify conectada, si hay. */
+  shopify: string | null;
 }
 
 type ProductoForm = {
@@ -135,13 +139,14 @@ function rangoPrecios(p: Producto): string {
   return min === max ? pesos(min) : `${pesos(min)} – ${pesos(max)}`;
 }
 
-export function CatalogoProductos({ workspaceId, productos, puedeEditar }: Props) {
+export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
   const [producto, setProducto] = useState<ProductoForm | null>(null);
   const [variante, setVariante] = useState<VarianteForm | null>(null);
   const [pendiente, startTransition] = useTransition();
+  const [importando, startImportacion] = useTransition();
 
   const visibles = productos.filter((p) => coincideBusqueda(p, busqueda));
   const grupos = agruparPorCategoria(visibles);
@@ -168,6 +173,18 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar }: Props
       }
       toast.success(exito);
       despues?.();
+      router.refresh();
+    });
+  }
+
+  function importar() {
+    startImportacion(async () => {
+      const r = await importarDesdeShopify(workspaceId);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success("Catálogo importado desde Shopify", { description: r.resumen, duration: 10000 });
       router.refresh();
     });
   }
@@ -226,6 +243,12 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar }: Props
             aria-label="Buscar en el catálogo"
           />
         </div>
+        {puedeEditar && shopify && (
+          <Button variant="outline" disabled={importando} onClick={importar} title={`Tienda: ${shopify}`}>
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {importando ? "Importando…" : "Importar desde Shopify"}
+          </Button>
+        )}
         {puedeEditar && (
           <Button onClick={() => setProducto(PRODUCTO_NUEVO)}>
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -233,6 +256,19 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar }: Props
           </Button>
         )}
       </div>
+
+      {puedeEditar && !shopify && (
+        <p className="text-xs text-muted-foreground">
+          ¿El negocio vende en Shopify? Puedes traer sus productos y precios:{" "}
+          <Link
+            href="/settings?tab=integraciones"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            conecta la tienda en Settings → Integraciones → Shopify
+          </Link>
+          .
+        </p>
+      )}
 
       {sinValidar > 0 && (
         <p className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">

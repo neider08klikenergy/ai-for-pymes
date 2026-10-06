@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CalendarPlus,
   CalendarSearch,
+  PackageSearch,
   Webhook,
   FlaskConical,
   Wrench,
@@ -40,6 +41,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   schedule_link: CalendarClock,
   schedule_highlevel: CalendarPlus,
   check_availability: CalendarSearch,
+  consultar_disponibilidad: PackageSearch,
   custom_webhook: Webhook,
   echo: FlaskConical,
 };
