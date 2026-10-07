@@ -7,10 +7,12 @@
 
 import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import { Loader2, MapPin, Search, X } from "lucide-react";
+import { leerCoordenadas, separarPar } from "../lib/ubicacion";
 
 export interface Coordenadas {
   latitud: number;
@@ -55,9 +57,20 @@ export function MapaUbicacion({
   const [resultados, setResultados] = useState<ResultadoBusqueda[] | null>(
     null,
   );
+  const [borrador, setBorrador] = useState<{
+    latitud: string;
+    longitud: string;
+  } | null>(null);
+  const [errorCampos, setErrorCampos] = useState<string | null>(null);
 
+  // Lo que se marca en el mapa (tocar o arrastrar) gana sobre lo que se
+  // estuviera escribiendo en los campos.
   useEffect(() => {
-    cambiar.current = onCambiar;
+    cambiar.current = (c) => {
+      setBorrador(null);
+      setErrorCampos(null);
+      onCambiar(c);
+    };
   }, [onCambiar]);
 
   // Crear el mapa una vez (Leaflet usa window: se importa en el cliente)
@@ -153,7 +166,42 @@ export function MapaUbicacion({
     }
   }
 
+  // Campos de latitud/longitud: mientras se escribe se guarda un borrador; al
+  // salir del campo (o Enter) se valida y se mueve el pin. Sin borrador, los
+  // campos muestran el valor actual (lo que se marcó en el mapa).
+  const campos = borrador ?? {
+    latitud: valor ? String(valor.latitud) : "",
+    longitud: valor ? String(valor.longitud) : "",
+  };
+
+  function escribir(campo: "latitud" | "longitud", texto: string) {
+    setErrorCampos(null);
+    // Pegar "4.142, -73.626" en un campo llena los dos
+    const par = separarPar(texto);
+    setBorrador(par ?? { ...campos, [campo]: texto });
+  }
+
+  function confirmar() {
+    if (!borrador) return;
+    const r = leerCoordenadas(borrador.latitud, borrador.longitud);
+    if (r.tipo === "error") {
+      // Con un solo campo lleno todavía se está escribiendo: no se marca error
+      if (borrador.latitud.trim() && borrador.longitud.trim())
+        setErrorCampos(r.mensaje);
+      return;
+    }
+    setBorrador(null);
+    if (r.tipo === "vacia") {
+      onCambiar(null);
+      return;
+    }
+    onCambiar({ latitud: r.latitud, longitud: r.longitud });
+    mapa.current?.setView([r.latitud, r.longitud], ZOOM_CALLE);
+  }
+
   function elegir(r: ResultadoBusqueda) {
+    setBorrador(null);
+    setErrorCampos(null);
     const c = {
       latitud: redondear(Number(r.lat)),
       longitud: redondear(Number(r.lon)),
@@ -227,20 +275,69 @@ export function MapaUbicacion({
         aria-label="Mapa: toca para marcar la ubicación de la sede"
       />
 
-      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <MapPin className="h-3 w-3" aria-hidden="true" />
-          {valor
-            ? `${valor.latitud}, ${valor.longitud}`
-            : "Sin ubicación: el agente enviará solo la dirección en texto"}
-        </span>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-1">
+          <Label htmlFor="mapa-lat" className="text-xs">
+            Latitud
+          </Label>
+          <Input
+            id="mapa-lat"
+            inputMode="decimal"
+            value={campos.latitud}
+            disabled={disabled}
+            onChange={(e) => escribir("latitud", e.target.value)}
+            onBlur={confirmar}
+            onKeyDown={(e) =>
+              e.key === "Enter" && (e.preventDefault(), confirmar())
+            }
+            placeholder="4.142000"
+            className="h-8 font-mono text-xs"
+          />
+        </div>
+        <div className="grid gap-1">
+          <Label htmlFor="mapa-lng" className="text-xs">
+            Longitud
+          </Label>
+          <Input
+            id="mapa-lng"
+            inputMode="decimal"
+            value={campos.longitud}
+            disabled={disabled}
+            onChange={(e) => escribir("longitud", e.target.value)}
+            onBlur={confirmar}
+            onKeyDown={(e) =>
+              e.key === "Enter" && (e.preventDefault(), confirmar())
+            }
+            placeholder="-73.626000"
+            className="h-8 font-mono text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-xs">
+        {errorCampos ? (
+          <span className="text-destructive" role="alert">
+            {errorCampos}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <MapPin className="h-3 w-3" aria-hidden="true" />
+            {valor
+              ? "Puedes pegar en Latitud el par que copias de Google Maps."
+              : "Sin ubicación: el agente enviará solo la dirección en texto"}
+          </span>
+        )}
         {valor && !disabled && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="h-7"
-            onClick={() => onCambiar(null)}
+            onClick={() => {
+              setBorrador(null);
+              setErrorCampos(null);
+              onCambiar(null);
+            }}
           >
             <X className="h-3 w-3" aria-hidden="true" />
             Quitar
