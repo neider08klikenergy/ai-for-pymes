@@ -836,6 +836,7 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       summary,
       kbContext,
       responseStyle: activeAgent?.config.responseStyle ?? null,
+      replyInCustomerLanguage: activeAgent?.config.replyInCustomerLanguage === true,
       guardrails: resolvedPrompt?.guardrails ?? null,
       vars: {
         agentName: activeAgent?.name ?? null,

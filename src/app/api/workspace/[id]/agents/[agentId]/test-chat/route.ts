@@ -196,6 +196,7 @@ export async function POST(
     promptBase: promptBody,
     kbContext,
     responseStyle: agentConfig.responseStyle ?? null,
+    replyInCustomerLanguage: agentConfig.replyInCustomerLanguage === true,
     guardrails,
     vars: {
       agentName: agent.name as string,

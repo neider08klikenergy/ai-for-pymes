@@ -45,3 +45,19 @@ test("TOOL_HONESTY_NOTE comes after the guardrails block when guardrails are con
     "expected the tool-honesty note to come after the guardrails block, so a workspace rule can't override it",
   );
 });
+
+const base = {
+  nowContext: "AHORA",
+  bizContext: "NEGOCIO",
+  promptBase: "Responde siempre en español.",
+};
+
+test("sin la opción, el prompt no trae la regla de idioma", () => {
+  assert.doesNotMatch(buildSystemPrompt(base), /## Idioma/);
+});
+
+test("con la opción, la regla de idioma va después del prompt base", () => {
+  const p = buildSystemPrompt({ ...base, replyInCustomerLanguage: true });
+  assert.match(p, /## Idioma/);
+  assert.ok(p.indexOf("## Idioma") > p.indexOf("Responde siempre en español."));
+});
