@@ -38,6 +38,11 @@ const GUIA_ERRORES: Record<string, string> = {
   SIN_FOTO:
     "Ese producto no tiene foto cargada. Descríbelo y, si el cliente la quiere ver, pasa a una persona.",
   VARIOS_PRODUCTOS: "Hay varios productos con ese nombre: pregúntale al cliente cuál de las opciones quiere ver.",
+  SIN_SEDES:
+    "El negocio no tiene sedes cargadas. Si la base de conocimiento trae la dirección, escríbela; si no, pasa a una persona.",
+  ELIGE_SEDE: "El negocio tiene varias sedes: pregúntale al cliente cuál le queda mejor (usa la lista 'sedes').",
+  SIN_DIRECCION:
+    "Esa sede no tiene dirección cargada. Si la base de conocimiento la trae, escríbela; si no, pasa a una persona.",
   PRODUCTO_NO_ENCONTRADO:
     "Ese producto no está en el catálogo. Ofrece ver alguno de productos_con_foto.",
 };

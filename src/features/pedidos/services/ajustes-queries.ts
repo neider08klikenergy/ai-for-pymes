@@ -16,7 +16,7 @@ export async function cargarAjustesPedidos(
   const [sedesRes, cuentasRes, tarifasRes, notaRes, herramientaRes] = await Promise.all([
     supabase
       .from("sedes")
-      .select("id, codigo, nombre, direccion, telefono, cupo_diario, cupo_maximo, acepta_personalizados, activa")
+      .select("id, codigo, nombre, direccion, telefono, cupo_diario, cupo_maximo, acepta_personalizados, activa, latitud, longitud")
       .eq("workspace_id", workspaceId)
       .order("created_at"),
     supabase
@@ -48,7 +48,12 @@ export async function cargarAjustesPedidos(
   // Antes de aplicar la migración las tablas no existen: no mostrar nada.
   if (sedesRes.error) return null;
 
-  const sedes = (sedesRes.data ?? []) as SedeAjuste[];
+  // NUMERIC puede llegar como texto: las coordenadas se pasan a número
+  const sedes = ((sedesRes.data ?? []) as SedeAjuste[]).map((s) => ({
+    ...s,
+    latitud: s.latitud === null ? null : Number(s.latitud),
+    longitud: s.longitud === null ? null : Number(s.longitud),
+  }));
   const usaPedidos = sedes.length > 0 || (herramientaRes.data ?? []).length > 0;
   if (!usaPedidos) return null;
 

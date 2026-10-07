@@ -714,6 +714,87 @@ export async function dispatchImage(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// dispatchLocation — the AI sends a sede's location
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface DispatchLocationParams {
+  workspaceId: string;
+  conversationId: string;
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+  /**
+   * Lo mismo en texto (dirección + enlace de Maps). Es lo que ve el equipo en
+   * el hilo y lo que se envía cuando el canal no tiene pin nativo (Zernio:
+   * Instagram, Facebook).
+   */
+  text: string;
+  /** Claves extra para meta (p. ej. qué sede se envió). */
+  meta?: Record<string, unknown>;
+}
+
+export async function dispatchLocation(
+  params: DispatchLocationParams,
+): Promise<DispatchResult> {
+  const { workspaceId, conversationId, latitude, longitude, name, address, text } = params;
+  const supabase = svc();
+
+  const sender = await loadSender(workspaceId, supabase);
+  const sendLocation = sender.sendLocation?.bind(sender);
+  if (!sendLocation) {
+    return dispatchText({ workspaceId, conversationId, body: text, meta: params.meta });
+  }
+
+  const loaded = await loadConversationAndPhone(conversationId, workspaceId, supabase);
+  if (!loaded) return NOT_FOUND;
+  const { window_expires_at, toPhone, target } = loaded;
+  if (!loaded.optIn) return OPT_OUT;
+  if (window_expires_at !== null && new Date() > new Date(window_expires_at)) {
+    return WINDOW_EXPIRED;
+  }
+
+  const rowMeta: Record<string, unknown> = {
+    ...(params.meta ?? {}),
+    location: { latitude, longitude, ...(name ? { name } : {}), ...(address ? { address } : {}) },
+    dev_mode: sender.live ? undefined : true,
+  };
+  const queued = await insertQueuedRow(supabase, {
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    direction: "out",
+    type: "location",
+    body: text,
+    sender_user_id: null,
+    meta: rowMeta,
+  });
+  if ("error" in queued) {
+    console.error("[dispatch] location insert error:", queued.error);
+    if (queued.error.includes("WINDOW_EXPIRED")) return WINDOW_EXPIRED;
+    return { ok: false, error: GENERIC_SEND_ERROR, errorCode: "DB_ERROR", retryable: true };
+  }
+
+  if (!sender.live) {
+    await touchConversation(supabase, conversationId);
+    return { ok: true };
+  }
+
+  const result = await sendQueuedRow({
+    supabase,
+    sender,
+    workspaceId,
+    rowId: queued.id,
+    rowMeta,
+    send: () => sendLocation(toPhone, { latitude, longitude, name, address }, target),
+    what: "sendLocation",
+    recordRetryableFailure: true,
+  });
+
+  if (result.ok) await touchConversation(supabase, conversationId);
+  return result;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // dispatchTemplate — sends an approved template (bypasses 24h window)
 // ──────────────────────────────────────────────────────────────────────────────
 export async function dispatchTemplate(

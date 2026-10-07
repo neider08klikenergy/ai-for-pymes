@@ -25,6 +25,9 @@ export interface SedeAjuste {
   cupo_maximo: number | null;
   acepta_personalizados: boolean;
   activa: boolean;
+  /** Pin en el mapa (opcional): con él, el agente envía la ubicación nativa. */
+  latitud: number | null;
+  longitud: number | null;
 }
 
 export interface CuentaPago {
@@ -68,6 +71,13 @@ const textoOpcional = (max: number) =>
     .optional()
     .transform((v) => v ?? null);
 
+/** Coordenada opcional: vacía = sin pin. Se guarda con 6 decimales (~10 cm). */
+const coordenadaOpcional = (limite: number) =>
+  z
+    .union([z.literal(""), z.null(), z.coerce.number().min(-limite).max(limite)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : Math.round(v * 1e6) / 1e6));
+
 export const SedeSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string().trim().min(2, "Escribe el nombre de la sede").max(120),
@@ -80,6 +90,11 @@ export const SedeSchema = z.object({
     .transform((v) => (v === "" || v === undefined ? null : v)),
   acepta_personalizados: z.boolean(),
   activa: z.boolean(),
+  latitud: coordenadaOpcional(90),
+  longitud: coordenadaOpcional(180),
+}).refine((s) => (s.latitud === null) === (s.longitud === null), {
+  message: "La ubicación en el mapa está incompleta: márcala de nuevo",
+  path: ["latitud"],
 }).refine((s) => s.cupo_maximo === null || s.cupo_diario === 0 || s.cupo_maximo >= s.cupo_diario, {
   message: "El tope del día no puede ser menor que el cupo automático",
   path: ["cupo_maximo"],
