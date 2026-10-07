@@ -56,8 +56,8 @@ import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { MapaUbicacion } from "./mapa-ubicacion";
+import { Textarea } from "@/components/ui/textarea";
 
 const TODAS = "__todas";
 
@@ -813,7 +813,7 @@ function Sedes({
     <Seccion
       icono={Store}
       titulo="Sedes"
-      descripcion="Datos que usa el agente para cupos y entregas. Los horarios y las sedes nuevas los carga el equipo de AI for PYMES."
+      descripcion="Datos que usa el agente para cupos y entregas. Los horarios y las sedes nuevas los carga el equipo de Felrick."
     >
       <ul className="divide-y divide-border/50 rounded-md border border-border/50">
         {sedes.map((s) => (
@@ -892,13 +892,20 @@ function Sedes({
                 <MapaUbicacion
                   valor={
                     editando.latitud !== null && editando.longitud !== null
-                      ? { latitud: editando.latitud, longitud: editando.longitud }
+                      ? {
+                          latitud: editando.latitud,
+                          longitud: editando.longitud,
+                        }
                       : null
                   }
                   onCambiar={(c) =>
                     setEditando((f) =>
                       f
-                        ? { ...f, latitud: c?.latitud ?? null, longitud: c?.longitud ?? null }
+                        ? {
+                            ...f,
+                            latitud: c?.latitud ?? null,
+                            longitud: c?.longitud ?? null,
+                          }
                         : f,
                     )
                   }

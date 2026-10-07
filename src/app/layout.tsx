@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import { Agentation } from "agentation";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Space_Grotesk } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { Agentation } from "agentation";
-import { brandStyleOverride } from "@/lib/branding";
+import { ThemeProvider } from "@/components/theme-provider";
+import { APP_DESCRIPTION, APP_NAME, brandStyleOverride } from "@/lib/branding";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -15,8 +15,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Agente WhatsApp",
-  description: "Plataforma de inbox conversacional para WhatsApp con IA",
+  // Cada página pone su título y queda "Iniciar sesión — Felrick"
+  title: { default: APP_NAME, template: `%s — ${APP_NAME}` },
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({

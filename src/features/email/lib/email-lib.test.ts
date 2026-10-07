@@ -6,7 +6,7 @@ import { tokenBaja, urlBaja, verificarBaja } from "./baja.ts";
 import { emailBrand, emailSender } from "./config.ts";
 
 const brand = {
-  name: "AI for PYMES",
+  name: "Felrick",
   logoUrl: null,
   color: "#a3e635",
   colorText: "#1a2e05",
@@ -90,7 +90,7 @@ test("config: sin EMAIL_FROM no hay remitente; colores inválidos usan los de la
   delete process.env.EMAIL_FROM;
   assert.equal(emailSender(), null);
   process.env.EMAIL_FROM = "avisos@aiforpymes.co";
-  assert.deepEqual(emailSender(), { from: "avisos@aiforpymes.co", fromName: "AI for PYMES", replyTo: null });
+  assert.deepEqual(emailSender(), { from: "avisos@aiforpymes.co", fromName: "Felrick", replyTo: null });
   process.env.EMAIL_BRAND_COLOR = "red";
   process.env.EMAIL_LOGO_URL = "http://inseguro/logo.png";
   const b = emailBrand();

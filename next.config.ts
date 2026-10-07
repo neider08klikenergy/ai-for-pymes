@@ -14,6 +14,8 @@ const connectSrc = [
   "services.leadconnectorhq.com",
   // Búsqueda de direcciones en el mapa de sedes (OpenStreetMap)
   "nominatim.openstreetmap.org",
+  // Calendario de demos (página /demo)
+  "app.cal.com",
   ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
 ].join(" ");
 
@@ -33,7 +35,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://app.cal.com",
       "style-src 'self' 'unsafe-inline'",
       // Fotos de productos: además del bucket propio, enlaces https externos
       // (los importados de Shopify y los que el negocio pega a mano). Una
@@ -43,6 +45,8 @@ const securityHeaders = [
       "media-src 'self' blob: *.supabase.co",
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
+      // El calendario de Cal.com se incrusta en /demo
+      "frame-src 'self' https://app.cal.com https://cal.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },

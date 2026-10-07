@@ -6,15 +6,14 @@ import { isSignupOpen } from "@/features/auth/services/signup-gate";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Crear cuenta — Agente WhatsApp",
+  title: "Crear cuenta",
 };
 
 export default async function SignupPage() {
   // Invite-only after bootstrap: once the admin account exists, no public signup.
   if (!(await isSignupOpen())) {
-    redirect(
-      "/login?message=El%20registro%20es%20solo%20por%20invitaci%C3%B3n",
-    );
+    // Las cuentas las crea el equipo de Felrick después de la demo
+    redirect("/demo");
   }
 
   return <SignupForm />;

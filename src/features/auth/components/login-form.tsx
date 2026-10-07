@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useActionState } from "react";
+import { Loader2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { login } from "@/features/auth/services/actions";
-import { cn } from "@/lib/utils";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -32,7 +32,13 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ message }: { message?: string }) {
+export function LoginForm({
+  message,
+  signupOpen,
+}: {
+  message?: string;
+  signupOpen: boolean;
+}) {
   const [state, formAction] = useActionState(login, null);
 
   return (
@@ -91,15 +97,29 @@ export function LoginForm({ message }: { message?: string }) {
         <SubmitButton />
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
-        ¿No tienes cuenta?{" "}
-        <Link
-          href="/signup"
-          className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
-        >
-          Crear cuenta
-        </Link>
-      </p>
+      {/* El registro público solo está abierto para la primera cuenta (super
+          admin). Después las cuentas las crea el equipo de Felrick. */}
+      {signupOpen ? (
+        <p className="text-center text-sm text-muted-foreground">
+          ¿No tienes cuenta?{" "}
+          <Link
+            href="/signup"
+            className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
+          >
+            Crear cuenta
+          </Link>
+        </p>
+      ) : (
+        <p className="text-center text-sm text-muted-foreground">
+          ¿Aún no tienes cuenta?{" "}
+          <Link
+            href="/demo"
+            className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
+          >
+            Agenda una demo
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

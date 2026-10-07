@@ -1,11 +1,12 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
-import { Building2, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { logout } from "@/features/auth/services/actions";
+import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/branding";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
+import { logout } from "@/features/auth/services/actions";
+import { Building2, CalendarCheck, LogOut, Settings } from "lucide-react";
 
 export default async function AgencyLayout({
   children,
@@ -39,7 +40,7 @@ export default async function AgencyLayout({
       >
         <div className="flex items-center gap-2.5">
           <span className="font-display text-base font-semibold text-primary tracking-tight">
-            Agente WA
+            {APP_NAME}
           </span>
           <Badge
             variant="outline"
@@ -92,6 +93,18 @@ export default async function AgencyLayout({
           >
             <Building2 className="h-4 w-4" aria-hidden="true" />
             Workspaces
+          </Link>
+          <Link
+            href="/solicitudes"
+            className={cn(
+              "flex items-center gap-1.5 px-3 h-full",
+              "text-sm text-muted-foreground hover:text-foreground",
+              "border-b-2 border-transparent hover:border-border",
+              "transition-colors duration-150",
+            )}
+          >
+            <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+            Solicitudes
           </Link>
         </div>
       </nav>
