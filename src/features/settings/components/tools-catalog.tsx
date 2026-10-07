@@ -1,23 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import {
+  Lock,
+  MapPin,
+  Wrench,
+  Webhook,
   Settings2,
   ChevronDown,
-  Lock,
-  CalendarClock,
   CalendarPlus,
-  CalendarSearch,
-  PackageSearch,
-  Image as ImageIcon,
-  Webhook,
   FlaskConical,
-  Wrench,
+  PackageSearch,
+  CalendarClock,
+  CalendarSearch,
+  Image as ImageIcon,
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { ToolConfigPanel, CONFIGURABLE_TOOLS } from "./tool-config-panel";
 
 interface ToolItem {
@@ -44,6 +45,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   check_availability: CalendarSearch,
   consultar_disponibilidad: PackageSearch,
   enviar_foto_producto: ImageIcon,
+  enviar_ubicacion_sede: MapPin,
   custom_webhook: Webhook,
   echo: FlaskConical,
 };

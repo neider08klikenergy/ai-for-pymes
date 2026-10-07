@@ -46,6 +46,15 @@ export interface WhatsAppSender {
     image: { url: string; caption?: string },
     target?: SendTarget,
   ): Promise<SendResult>;
+  /**
+   * Pin de ubicación nativo. Opcional: Zernio no lo tiene (y en Instagram y
+   * Facebook no existe), así que quien lo use debe tener un plan B en texto.
+   */
+  sendLocation?(
+    to: string,
+    location: { latitude: number; longitude: number; name?: string; address?: string },
+    target?: SendTarget,
+  ): Promise<SendResult>;
   sendTemplate(params: {
     to: string;
     templateName: string;
@@ -118,6 +127,15 @@ export function whatsappSender(
         });
         return { wamid: sent.wamid || undefined };
       },
+      async sendLocation(to, location) {
+        const sent = await kapso.sendLocation({
+          apiKey,
+          phoneNumberId: phoneNumberId(),
+          to,
+          ...location,
+        });
+        return { wamid: sent.wamid || undefined };
+      },
       async sendTemplate({ to, templateName, language, components }) {
         const sent = await kapso.sendTemplate({
           apiKey,
@@ -153,6 +171,13 @@ export function whatsappSender(
         link: image.url,
         caption: image.caption,
       });
+      return {
+        wamid: sent.wamid || undefined,
+        providerMessageId: sent.id || undefined,
+      };
+    },
+    async sendLocation(to, location) {
+      const sent = await ycloud.sendLocation({ apiKey, from: from(), to, ...location });
       return {
         wamid: sent.wamid || undefined,
         providerMessageId: sent.id || undefined,

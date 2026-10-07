@@ -94,7 +94,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
             : "bg-muted/50 rounded-tl-sm",
         )}
       >
-        {message.type !== "text" && message.type !== "system" ? (
+        {/* Una ubicación no trae archivo: su texto (dirección, enlace) va en body */}
+        {message.type !== "text" && message.type !== "system" && message.type !== "location" ? (
           <MessageAttachment media={message.meta} type={message.type} />
         ) : (
           message.body && (

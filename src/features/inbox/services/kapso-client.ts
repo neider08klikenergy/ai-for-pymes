@@ -177,6 +177,35 @@ export async function sendImage(params: {
   return { id: wamid, wamid, status: "accepted" };
 }
 
+/** Un pin de ubicación (mensaje nativo de WhatsApp, formato de Meta). */
+export async function sendLocation(params: {
+  apiKey: string;
+  phoneNumberId: string;
+  to: string;
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}): Promise<SendTextResult> {
+  const { apiKey, phoneNumberId, to, latitude, longitude, name, address } = params;
+  const data = await kapsoFetch(
+    `${KAPSO_WA_BASE}/${encodeURIComponent(phoneNumberId)}/messages`,
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "location",
+        location: { latitude, longitude, ...(name ? { name } : {}), ...(address ? { address } : {}) },
+      }),
+    },
+    "sendLocation",
+  );
+  const wamid = wamidFromSendResponse(data);
+  return { id: wamid, wamid, status: "accepted" };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // sendTemplate
 // ──────────────────────────────────────────────────────────────────────────────

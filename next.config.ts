@@ -12,6 +12,8 @@ const connectSrc = [
   "api.ycloud.com",
   "openrouter.ai",
   "services.leadconnectorhq.com",
+  // Búsqueda de direcciones en el mapa de sedes (OpenStreetMap)
+  "nominatim.openstreetmap.org",
   ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
 ].join(" ");
 

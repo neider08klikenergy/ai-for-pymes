@@ -57,6 +57,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { MapaUbicacion } from "./mapa-ubicacion";
 
 const TODAS = "__todas";
 
@@ -855,7 +856,7 @@ function Sedes({
 
       {editando && (
         <Dialog open onOpenChange={(o) => !o && setEditando(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar sede</DialogTitle>
               <DialogDescription>
@@ -872,15 +873,42 @@ function Sedes({
                   }
                 />
               </Campo>
-              <Campo id="se-dir" label="Dirección">
+              <Campo
+                id="se-dir"
+                label="Dirección"
+                ayuda="Escríbela como se la dirías a un cliente: es lo que envía el agente."
+              >
                 <Input
                   id="se-dir"
                   value={editando.direccion}
                   onChange={(e) =>
                     setEditando({ ...editando, direccion: e.target.value })
                   }
+                  placeholder="Calle 45 # 31-08, casa esquinera rosada"
                 />
               </Campo>
+              <div className="grid gap-1.5">
+                <Label>Ubicación en el mapa (opcional)</Label>
+                <MapaUbicacion
+                  valor={
+                    editando.latitud !== null && editando.longitud !== null
+                      ? { latitud: editando.latitud, longitud: editando.longitud }
+                      : null
+                  }
+                  onCambiar={(c) =>
+                    setEditando((f) =>
+                      f
+                        ? { ...f, latitud: c?.latitud ?? null, longitud: c?.longitud ?? null }
+                        : f,
+                    )
+                  }
+                  direccion={editando.direccion}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Con el pin, por WhatsApp le llega al cliente la ubicación para
+                  abrirla en Google Maps o Waze.
+                </p>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Campo id="se-tel" label="Teléfono">
                   <Input

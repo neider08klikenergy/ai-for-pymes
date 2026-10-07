@@ -132,6 +132,46 @@ export async function sendImage(params: {
   };
 }
 
+/** Un pin de ubicación. `address` solo se muestra si hay `name`. */
+export async function sendLocation(params: {
+  apiKey: string;
+  from: string;
+  to: string;
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}): Promise<SendTextResult> {
+  const { apiKey, from, to, latitude, longitude, name, address } = params;
+  const response = await fetch(YCLOUD_MESSAGES_URL, {
+    method: "POST",
+    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+    headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+    body: JSON.stringify({
+      type: "location",
+      from,
+      to,
+      location: { latitude, longitude, ...(name ? { name } : {}), ...(address ? { address } : {}) },
+    }),
+  });
+
+  let responseBody: unknown;
+  try {
+    responseBody = await response.json();
+  } catch {
+    responseBody = null;
+  }
+  if (!response.ok) {
+    throw new YCloudError(response.status, responseBody, `YCloud API error ${response.status}`);
+  }
+  const data = responseBody as Record<string, unknown>;
+  return {
+    id: typeof data.id === "string" ? data.id : "",
+    wamid: typeof data.wamid === "string" ? data.wamid : "",
+    status: typeof data.status === "string" ? data.status : "accepted",
+  };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // sendTemplate
 // ──────────────────────────────────────────────────────────────────────────────
