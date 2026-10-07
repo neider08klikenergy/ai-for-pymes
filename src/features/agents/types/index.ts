@@ -14,6 +14,8 @@ export interface AgentConfig {
   summarize?: boolean;
   /** Verbosity of replies; "balanced" when unset. */
   responseStyle?: ResponseStyle;
+  /** Responder en el idioma en que escribe el cliente (por defecto no: idioma del negocio). */
+  replyInCustomerLanguage?: boolean;
   /** Pause the AI when a human sends a manual message (default true). */
   sleepOnManualMessage?: boolean;
   /** config is open JSON; allow arbitrary extra keys. */

@@ -47,6 +47,7 @@ yarn-error.log*
 *~
 .sublime-project
 .sublime-workspace
+graphify-out
 
 # OS
 Thumbs.db

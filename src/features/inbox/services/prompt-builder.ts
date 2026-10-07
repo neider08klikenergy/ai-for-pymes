@@ -34,6 +34,8 @@ export interface BuildSystemPromptParts {
   summary?: string | null;
   kbContext?: string | null;
   responseStyle?: ResponseStyle | null;
+  /** Contestar en el idioma del cliente en vez del idioma del negocio. */
+  replyInCustomerLanguage?: boolean;
   guardrails?: PromptGuardrails | null;
   vars?: SystemPromptVars;
 }
@@ -62,6 +64,16 @@ const MEDIA_CAPABILITY_NOTE =
   "imágenes se describen automáticamente: lo que lees ya incluye su contenido. " +
   "Respóndelo con normalidad. NUNCA digas que no puedes escuchar audios/notas " +
   "de voz ni ver imágenes — sí puedes, ya te llegan convertidos a texto.";
+
+// Va después del prompt base: el prompt del negocio suele decir "responde en
+// español", y esta opción del agente debe ganarle a esa línea.
+const CUSTOMER_LANGUAGE_NOTE =
+  "## Idioma\n" +
+  "Responde en el idioma en que te escribe el cliente (si escribe en inglés, " +
+  "responde en inglés; si cambia de idioma, cámbiate con él). Esto prevalece " +
+  "sobre cualquier indicación de idioma anterior. Los nombres de productos, " +
+  "sedes y precios van tal cual los devuelven las herramientas; si un dato " +
+  "solo existe en español, puedes explicarlo en el idioma del cliente.";
 
 // This must be the LAST thing appended in buildSystemPrompt, after
 // guardrailsBlock — a misconfigured workspace guardrail (e.g. "siempre
@@ -132,6 +144,7 @@ export function buildSystemPrompt(parts: BuildSystemPromptParts): string {
     parts.kbContext ?? "",
     styleBlock,
     base,
+    parts.replyInCustomerLanguage ? CUSTOMER_LANGUAGE_NOTE : "",
     WHATSAPP_FORMAT_NOTE,
     MEDIA_CAPABILITY_NOTE,
     guardrailsBlock,

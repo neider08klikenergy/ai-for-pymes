@@ -57,6 +57,9 @@ export function AgentConfigSheet({
   const [responseStyle, setResponseStyle] = useState<ResponseStyle>(
     agent.config.responseStyle ?? "balanced",
   );
+  const [idiomaCliente, setIdiomaCliente] = useState(
+    agent.config.replyInCustomerLanguage === true,
+  );
   const [sleepOnManual, setSleepOnManual] = useState(
     agent.config.sleepOnManualMessage !== false,
   );
@@ -83,6 +86,7 @@ export function AgentConfigSheet({
             autoTag,
             summarize,
             responseStyle,
+            replyInCustomerLanguage: idiomaCliente,
             sleepOnManualMessage: sleepOnManual,
           },
         }),
@@ -182,6 +186,22 @@ export function AgentConfigSheet({
                   checked={summarize}
                   onCheckedChange={setSummarize}
                   aria-label="Resúmenes automáticos"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Responder en el idioma del cliente
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Si el cliente escribe en inglés u otro idioma, el agente le
+                    contesta en ese idioma.
+                  </p>
+                </div>
+                <Switch
+                  checked={idiomaCliente}
+                  onCheckedChange={setIdiomaCliente}
+                  aria-label="Responder en el idioma del cliente"
                 />
               </div>
               <div className="flex items-center justify-between gap-3">
