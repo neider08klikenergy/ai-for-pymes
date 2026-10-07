@@ -46,6 +46,7 @@ export async function middleware(request: NextRequest) {
     "/signup",
     "/forgot-password",
     "/reset-password",
+    "/demo", // solicitud de demo (pública; también con sesión)
   ];
   const isPublicRoute = publicRoutes.includes(pathname);
 

@@ -5,100 +5,95 @@
  * Every agent building UI MUST reference this page. See COMPONENT_RULES.md.
  * No new component variants without updating this file first.
  */
-
-import * as React from "react";
-import { useTheme } from "next-themes";
 import {
   Sun,
-  Moon,
-  Search,
-  Plus,
-  MoreHorizontal,
-  Check,
-  AlertTriangle,
-  Info,
-  CheckCircle2,
-  XCircle,
-  Bell,
-  Settings,
-  Inbox,
-  MessageSquare,
-  Users,
-  LayoutDashboard,
   Bot,
-  Phone,
-  ArrowUpRight,
-  ArrowDownRight,
-  TrendingUp,
-  FileText,
-  Loader2,
-  Mail,
   Eye,
-  EyeOff,
-  ChevronRight,
-  SearchX,
+  Plus,
+  Bell,
+  Moon,
+  Info,
+  Mail,
   Menu,
+  Inbox,
+  Users,
+  Search,
+  XCircle,
+  EyeOff,
+  Loader2,
+  SearchX,
+  FileText,
+  Settings,
+  TrendingUp,
+  ChevronRight,
+  ArrowUpRight,
+  CheckCircle2,
+  AlertTriangle,
+  MoreHorizontal,
+  MessageSquare,
+  ArrowDownRight,
+  LayoutDashboard,
 } from "lucide-react";
-
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
-  CardContent,
-  CardDescription,
+  CardTitle,
   CardFooter,
   CardHeader,
-  CardTitle,
+  CardContent,
+  CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
 import {
   Table,
+  TableRow,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
 } from "@/components/ui/table";
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-
-import { ViewportToggle } from "./viewport-toggle";
 import {
+  HowToPanel,
   FeedbackButton,
   GlobalFeedbackButton,
-  HowToPanel,
 } from "./feedback-panel";
+import { toast } from "sonner";
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { ViewportToggle } from "./viewport-toggle";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ============================================================
 // BRAND TOKENS — Generated from Design Discovery.
 // Primary source: globals.css CSS variables.
 // ============================================================
 const BRAND = {
-  name: "Agente WhatsApp",
+  name: "Felrick",
   primaryHex: "#B5F23D", // oklch(0.90 0.21 126) — Electric Lime
   accentHex: "#B5F23D",
   font: "Space Grotesk (display) · Geist Sans (body) · Geist Mono",
@@ -1113,9 +1108,7 @@ function PatternSidebar() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="font-display text-sm font-semibold">
-              Agente WhatsApp
-            </span>
+            <span className="font-display text-sm font-semibold">Felrick</span>
           </div>
           <nav className="flex-1 space-y-1">
             {NAV.map(({ icon: Icon, label, active }) => (
@@ -1233,9 +1226,7 @@ function PatternNavbar() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="font-display text-sm font-semibold">
-              Agente WhatsApp
-            </span>
+            <span className="font-display text-sm font-semibold">Felrick</span>
           </div>
           <nav className="hidden items-center gap-1 sm:flex">
             {["Inbox", "Contactos", "Agente", "Ajustes"].map((l, i) => (

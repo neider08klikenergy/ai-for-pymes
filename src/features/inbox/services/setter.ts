@@ -1,5 +1,6 @@
 // F7: Setter mode — knockout qualification + scoring via structured LLM evaluation.
 
+import { APP_NAME } from "@/lib/branding";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
@@ -19,7 +20,7 @@ function getModel() {
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      "X-Title": "Agente WhatsApp",
+      "X-Title": APP_NAME,
     },
   });
   // Use haiku-class model for structured outputs — cost-efficient.

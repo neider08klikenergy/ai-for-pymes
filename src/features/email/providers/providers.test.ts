@@ -21,7 +21,7 @@ const email = {
   to: "ana@golosita.co",
   toName: "Ana",
   from: "avisos@aiforpymes.co",
-  fromName: "AI for PYMES",
+  fromName: "Felrick",
   replyTo: null,
   subject: "Pedido nuevo",
   html: "<p>Hola</p>",
@@ -39,7 +39,7 @@ test("SendGrid: forma del envío, cabeceras de baja y sin reescribir enlaces", a
   assert.equal(calls[0].auth, "Bearer SG.key");
   const b = calls[0].body as Record<string, any>;
   assert.deepEqual(b.personalizations, [{ to: [{ email: "ana@golosita.co", name: "Ana" }] }]);
-  assert.deepEqual(b.from, { email: "avisos@aiforpymes.co", name: "AI for PYMES" });
+  assert.deepEqual(b.from, { email: "avisos@aiforpymes.co", name: "Felrick" });
   assert.equal(b.content[0].type, "text/plain");
   assert.equal(b.content[1].type, "text/html");
   assert.equal(b.headers["List-Unsubscribe"], "<https://app.test/api/email/baja?u=1>");
@@ -64,7 +64,7 @@ test("Resend: remitente con nombre y etiquetas válidas", async () => {
   const r = await resendProvider("re_key").send(email);
   assert.equal(r.id, "re_1");
   const b = calls[0].body as Record<string, any>;
-  assert.equal(b.from, "AI for PYMES <avisos@aiforpymes.co>");
+  assert.equal(b.from, "Felrick <avisos@aiforpymes.co>");
   assert.deepEqual(b.to, ["ana@golosita.co"]);
   assert.deepEqual(b.tags, [
     { name: "category", value: "notificacion" },

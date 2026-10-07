@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/branding";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { createClient as svcClient } from "@supabase/supabase-js";
@@ -44,7 +45,7 @@ function openrouter(apiKey: string) {
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      "X-Title": "Agente WhatsApp",
+      "X-Title": APP_NAME,
     },
   });
 }
@@ -87,7 +88,7 @@ export async function transcribeAudio(opts: {
         "Content-Type": "application/json",
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        "X-Title": "Agente WhatsApp",
+        "X-Title": APP_NAME,
       },
       body: JSON.stringify({
         model: UNDERSTANDING_MODEL,

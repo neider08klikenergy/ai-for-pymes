@@ -5,6 +5,7 @@
 //   config.accounts     [{ id, platform, username, display_name }]
 //   config.account_ids  ids de las cuentas (índice GIN para enrutar webhooks)
 
+import { APP_NAME } from "@/lib/branding";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createProfile, listAccounts, type ZernioAccount } from "./zernio-client";
 
@@ -81,7 +82,7 @@ export async function ensureZernioProfile(
     .eq("id", workspaceId)
     .maybeSingle();
   const name = `${(ws?.name as string | undefined) ?? "Workspace"} · ${workspaceId.slice(0, 8)}`;
-  const profileId = await createProfile(name, `AI for PYMES · workspace ${workspaceId}`);
+  const profileId = await createProfile(name, `${APP_NAME} · workspace ${workspaceId}`);
 
   await writeConfig(
     supabase,

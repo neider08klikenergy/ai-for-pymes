@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/branding";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, tool, zodSchema, stepCountIs, APICallError } from "ai";
 import type { ToolSet } from "ai";
@@ -177,7 +178,7 @@ export async function generateReply(
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      "X-Title": "Agente WhatsApp",
+      "X-Title": APP_NAME,
     },
   });
 
@@ -234,7 +235,7 @@ export async function generateChatReply(params: {
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      "X-Title": "Agente WhatsApp",
+      "X-Title": APP_NAME,
     },
   });
 
@@ -333,7 +334,7 @@ export async function generateWithTools(
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      "X-Title": "Agente WhatsApp",
+      "X-Title": APP_NAME,
     },
   });
 

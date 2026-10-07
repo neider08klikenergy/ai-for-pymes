@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { EMAIL_TEMPLATES } from "./index.ts";
 
 const ctx = {
-  brand: { name: "AI for PYMES", logoUrl: null, color: "#a3e635", colorText: "#1a2e05", appUrl: "https://app.test" },
+  brand: { name: "Felrick", logoUrl: null, color: "#a3e635", colorText: "#1a2e05", appUrl: "https://app.test" },
   unsubscribeUrl: "https://app.test/api/email/baja?u=1&w=2&t=3",
 };
 

@@ -1,6 +1,8 @@
-// Marca y remitente de los correos. Los envía la plataforma (AI for PYMES) a
+// Marca y remitente de los correos. Los envía la plataforma (Felrick) a
 // los usuarios de cada workspace, así que la marca es la nuestra; el nombre
 // del negocio va dentro del correo. Todo se ajusta con variables de entorno.
+
+import { APP_NAME } from "@/lib/branding";
 
 export interface EmailBrand {
   /** Nombre que aparece como remitente y en el encabezado. */
@@ -33,7 +35,7 @@ export function emailBrand(): EmailBrand {
   const colorText = env("EMAIL_BRAND_COLOR_TEXT");
   const logo = env("EMAIL_LOGO_URL");
   return {
-    name: env("EMAIL_FROM_NAME") ?? "AI for PYMES",
+    name: env("EMAIL_FROM_NAME") ?? APP_NAME,
     logoUrl: logo && logo.startsWith("https://") ? logo : null,
     color: color && HEX.test(color) ? color : "#a3e635",
     colorText: colorText && HEX.test(colorText) ? colorText : "#1a2e05",
@@ -47,7 +49,7 @@ export function emailSender(): EmailSender | null {
   if (!from || !from.includes("@")) return null;
   return {
     from,
-    fromName: env("EMAIL_FROM_NAME") ?? "AI for PYMES",
+    fromName: env("EMAIL_FROM_NAME") ?? APP_NAME,
     replyTo: env("EMAIL_REPLY_TO"),
   };
 }

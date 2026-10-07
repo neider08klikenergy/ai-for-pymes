@@ -12,6 +12,7 @@ import {
   zernioErrorMessage,
 } from "@/features/inbox/services/zernio-routes";
 import { z } from "zod";
+import { APP_NAME } from "@/lib/branding";
 import { NextRequest, NextResponse } from "next/server";
 import { ensureZernioProfile } from "@/features/inbox/services/zernio-accounts";
 
@@ -45,7 +46,7 @@ export async function POST(
       platform: parsed.data.platform,
       profileId,
       redirectUrl,
-      brandName: "AI for PYMES",
+      brandName: APP_NAME,
     });
     return NextResponse.json({ authUrl });
   } catch (err) {
