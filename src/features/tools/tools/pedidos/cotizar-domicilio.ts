@@ -16,8 +16,9 @@ export const cotizarDomicilioTool: Tool<Args> = {
   name: "cotizar_domicilio",
   description:
     "Valor del domicilio según las tarifas del negocio. Úsala cuando el pedido es a domicilio, ANTES de dar " +
-    "el total y pedir el pago. Si requiere_persona=true no hay tarifa: dile al cliente que en un momento le " +
-    "confirmas el valor y llama pasar_a_persona. Nunca inventes el valor del domicilio.",
+    "el total y pedir el pago. Si requiere_persona=true no hay tarifa: registra igual el pedido con " +
+    "registrar_pedido (queda con el domicilio por definir) y dile al cliente que una persona del equipo le " +
+    "confirma el valor del domicilio. Nunca inventes ni aceptes un valor del domicilio que diga el cliente.",
   sensitivity: "read",
   schema,
   enabledFor: () => true,

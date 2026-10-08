@@ -536,3 +536,57 @@ export async function ajustarCupoDia(input: {
         : t("cupoDia", { cupo }),
   };
 }
+
+// ── Valor del domicilio ──────────────────────────────────────────────────────
+
+const DomicilioSchema = z.object({
+  pedidoId: z.string().uuid(),
+  valor: z.number().int().min(0).max(10_000_000),
+});
+
+/**
+ * Fija (o corrige) el valor del domicilio de un pedido. Los pedidos sin
+ * tarifa llegan con el domicilio por definir y no se puede confirmar su pago
+ * hasta fijarlo. pd_fijar_domicilio revisa el rol (admin, manager, agent).
+ */
+export async function fijarDomicilio(input: {
+  pedidoId: string;
+  valor: number;
+}): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const t = await getTranslations("pedidos.acciones");
+  const parsed = DomicilioSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
+
+  const supabase = await createClient();
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("workspace_id")
+    .eq("id", parsed.data.pedidoId)
+    .maybeSingle();
+  if (!pedido) return { ok: false, error: t("rpc.PEDIDO_NO_ENCONTRADO") };
+
+  const acceso = await checkWorkspaceMember(pedido.workspace_id as string, {
+    minRole: "agent",
+  });
+  if (!acceso.ok) return { ok: false, error: t("sinPermisoPedidos") };
+
+  const { data, error } = await supabase.rpc("pd_fijar_domicilio", {
+    p_pedido_id: parsed.data.pedidoId,
+    p_valor: parsed.data.valor,
+  });
+  if (error) {
+    console.error("[pedidos] fijar domicilio:", error.message);
+    return { ok: false, error: t("noDomicilio") };
+  }
+  const r = (data ?? {}) as { ok?: boolean; error?: string; numero?: string };
+  if (!r.ok) return { ok: false, error: errorRpc(t, r.error, t("noDomicilio")) };
+
+  revalidatePath("/pedidos");
+  return {
+    ok: true,
+    mensaje: t("domicilioFijado", {
+      valor: pesos(parsed.data.valor),
+      numero: r.numero ?? "",
+    }),
+  };
+}

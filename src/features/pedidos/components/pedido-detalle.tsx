@@ -8,8 +8,13 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import Link from "next/link";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { fijarDomicilio } from "../services/pedidos-actions";
 import { siguienteEstado } from "../lib/estados";
 import { useLocale, useTranslations } from "next-intl";
 import { fechaCorta, horaLocal, pesos } from "../lib/fechas";
@@ -44,6 +49,101 @@ function Fila({
     <>
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
+    </>
+  );
+}
+
+/**
+ * Valor del domicilio. Sin tarifa llega "por definir" y el equipo lo fija
+ * aquí (hasta entonces no se puede confirmar el pago); también se corrige.
+ */
+function ValorDomicilio({
+  pedido,
+  puedeEditar,
+}: {
+  pedido: PedidoFila;
+  puedeEditar: boolean;
+}) {
+  const t = useTranslations("pedidos.detalle");
+  const ta = useTranslations("pedidos.acciones");
+  const router = useRouter();
+  const porDefinir = pedido.domicilio_origen === "pendiente";
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState("");
+  const [guardando, startTransition] = useTransition();
+
+  function guardar() {
+    const n = Number(valor);
+    if (valor.trim() === "" || !Number.isInteger(n) || n < 0) {
+      toast.error(ta("rpc.VALOR_NO_VALIDO"));
+      return;
+    }
+    startTransition(async () => {
+      const r = await fijarDomicilio({ pedidoId: pedido.id, valor: n });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(r.mensaje);
+      setEditando(false);
+      setValor("");
+      router.refresh();
+    });
+  }
+
+  if (puedeEditar && (porDefinir || editando)) {
+    return (
+      <div className="grid gap-1.5">
+        {porDefinir && (
+          <p className="flex items-start gap-1.5 text-xs text-warning">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            {t("porDefinirAviso")}
+          </p>
+        )}
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            placeholder={t("valorDomicilio")}
+            aria-label={t("valorDomicilio")}
+            className="h-8 w-32"
+            disabled={guardando}
+          />
+          <Button size="sm" onClick={guardar} disabled={guardando}>
+            {t("guardarDomicilio")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (porDefinir) {
+    return <span className="font-medium text-warning">{t("porDefinir")}</span>;
+  }
+
+  return (
+    <>
+      {pesos(pedido.valor_domicilio)}
+      <span className="text-xs text-muted-foreground">
+        {pedido.domicilio_origen === "persona"
+          ? ` · ${t("valorEquipo")}`
+          : pedido.domicilio_origen === "tarifa"
+            ? ` · ${t("segunTarifa")}`
+            : ""}
+      </span>
+      {puedeEditar && (
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          className="ml-2 text-xs text-primary underline-offset-2 hover:underline"
+        >
+          {t("corregirDomicilio")}
+        </button>
+      )}
     </>
   );
 }
@@ -109,14 +209,10 @@ export function PedidoDetalle({
                 </Fila>
                 {pedido.modalidad === "domicilio" && (
                   <Fila label={t("domicilio")}>
-                    {pesos(pedido.valor_domicilio)}
-                    <span className="text-xs text-muted-foreground">
-                      {pedido.domicilio_origen === "persona"
-                        ? ` · ${t("valorEquipo")}`
-                        : pedido.domicilio_origen === "tarifa"
-                          ? ` · ${t("segunTarifa")}`
-                          : ""}
-                    </span>
+                    <ValorDomicilio
+                      pedido={pedido}
+                      puedeEditar={puedeActuar && !!activo}
+                    />
                   </Fila>
                 )}
                 {d.decoracion && (

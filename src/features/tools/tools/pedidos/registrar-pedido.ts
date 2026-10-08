@@ -21,14 +21,6 @@ const schema = z.object({
     .optional()
     .describe("recogida en sede (por defecto) o domicilio"),
   direccion_entrega: z.string().optional().describe("Obligatoria si es domicilio (con barrio)"),
-  valor_domicilio: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe(
-      "Solo si es domicilio y cotizar_domicilio dijo requiere_persona: el valor que escribió la persona del equipo en el chat. Nunca lo inventes",
-    ),
   decoracion: z
     .string()
     .optional()
@@ -45,9 +37,11 @@ export const registrarPedidoTool: Tool<Args> = {
   description:
     "Crea el pedido con el precio oficial (queda 'pendiente de anticipo'). Es la ÚNICA forma de crear un " +
     "pedido: si no la llamas, el pedido no existe. Llámala en el mismo turno en que el cliente confirma el " +
-    "resumen (sede, producto, sabor, tamaño, fecha/hora, nombre, decoración y, si es domicilio, dirección y " +
-    "valor del domicilio). Devuelve el número de pedido (ej: GOL-00012), el total y las formas_de_pago (todo, " +
-    "solo_producto, anticipo_minimo); nunca digas que el pedido quedó registrado sin ese número.",
+    "resumen (sede, producto, sabor, tamaño, fecha/hora, nombre, decoración y, si es domicilio, dirección). " +
+    "El valor del domicilio lo pone la tarifa del negocio; si no hay tarifa, devuelve domicilio_por_definir: " +
+    "true y el total aún no lo incluye: dile al cliente que una persona del equipo le confirma el valor del " +
+    "domicilio y pídele solo el anticipo_minimo. Devuelve el número de pedido (ej: GOL-00012), el total y las " +
+    "formas_de_pago (todo, solo_producto, anticipo_minimo); nunca digas que el pedido quedó registrado sin ese número.",
   sensitivity: "write",
   schema,
   enabledFor: () => true,
@@ -73,7 +67,6 @@ export const registrarPedidoTool: Tool<Args> = {
       p_modalidad: args.modalidad ?? "recogida",
       p_direccion: args.direccion_entrega ?? null,
       p_detalle: detalle,
-      p_valor_domicilio: args.valor_domicilio ?? null,
     });
   },
 };

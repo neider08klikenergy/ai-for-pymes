@@ -22,7 +22,7 @@ const schema = z.object({
     .string()
     .optional()
     .describe(
-      "Teléfono del contacto en E.164 (ej: +5215512345678). Úsalo cuando el contacto no venga del chat (p. ej. en el playground de prueba).",
+      "Teléfono del contacto en E.164 (ej: +5215512345678). Solo en el playground de prueba; en un chat real la cita es siempre para quien escribe y este valor se ignora.",
     ),
 });
 
@@ -66,14 +66,17 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // Resolve the contact: prefer an explicit phone arg (playground / when the
-  // contact isn't synced), otherwise read the chat's contact from the DB.
-  let phone = args.contact_phone ?? null;
+  // Resolve the contact. In a real chat it is always the person writing
+  // (ctx.contactId, set by the server): contact_phone comes from the model,
+  // which the customer steers, so it would let them book or rename someone
+  // else's contact in the business's CRM. Only the playground (no chat
+  // contact) uses the phone and name from the arguments.
+  let phone = ctx.contactId ? null : (args.contact_phone ?? null);
   let name = args.contact_name ?? null;
   let hlContactId: string | null = null;
   let dbContactId: string | null = null;
 
-  if (!phone && ctx.contactId) {
+  if (ctx.contactId) {
     const { data: contact } = await supabase
       .from("contacts")
       .select("hl_contact_id, phone, name")
@@ -83,7 +86,7 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
     const contactRow = contact as ContactRow | null;
     if (contactRow?.phone) {
       phone = contactRow.phone;
-      name = name ?? contactRow.name;
+      name = contactRow.name ?? name;
       hlContactId = contactRow.hl_contact_id;
       dbContactId = ctx.contactId;
     }
@@ -129,7 +132,7 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
         locationId: cfg.locationId,
         contactId: hlContactId,
         startTime: args.datetime_iso,
-        title: `Cita${args.contact_name ? ` — ${args.contact_name}` : ""}`,
+        title: `Cita${name ? ` — ${name}` : ""}`,
       }),
     },
   );
