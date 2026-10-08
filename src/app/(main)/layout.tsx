@@ -24,6 +24,10 @@ import { logout } from "@/features/auth/services/actions";
 import { SelectorIdioma } from "@/components/selector-idioma";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import {
+  InvitacionesPendientes,
+  type InvitacionPendiente,
+} from "@/features/workspace/components/invitaciones-pendientes";
 import { CampanaNotificaciones } from "@/features/notificaciones/components/campana-notificaciones";
 
 export default async function MainLayout({
@@ -41,15 +45,18 @@ export default async function MainLayout({
   if (!user) redirect("/login");
 
   // Super admin flag + active workspace context + membership list (for switcher)
-  const [{ data: userRow }, active, memberships] = await Promise.all([
-    supabase
-      .from("users")
-      .select("is_super_admin")
-      .eq("id", user.id)
-      .maybeSingle(),
-    getActiveWorkspace(supabase, user.id),
-    listMemberships(supabase, user.id),
-  ]);
+  const [{ data: userRow }, active, memberships, { data: invitaciones }] =
+    await Promise.all([
+      supabase
+        .from("users")
+        .select("is_super_admin")
+        .eq("id", user.id)
+        .maybeSingle(),
+      getActiveWorkspace(supabase, user.id),
+      listMemberships(supabase, user.id),
+      // Invitaciones al equipo que esta persona todavía no respondió.
+      supabase.rpc("mis_invitaciones"),
+    ]);
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
 
@@ -211,6 +218,10 @@ export default async function MainLayout({
           </form>
         </div>
       </header>
+
+      <InvitacionesPendientes
+        invitaciones={(invitaciones ?? []) as InvitacionPendiente[]}
+      />
 
       <div className="flex-1 pb-14 md:pb-0">
         <ZonaHorariaProvider zona={zonaHoraria}>{children}</ZonaHorariaProvider>

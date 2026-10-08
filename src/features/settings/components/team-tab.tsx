@@ -49,6 +49,15 @@ interface TeamMember {
   created_at: string;
 }
 
+/** Invitación a una cuenta que ya existía: entra solo si la persona acepta. */
+interface TeamInvitation {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: WorkspaceRole;
+  vence_at: string;
+}
+
 interface Props {
   workspaceId: string;
 }
@@ -166,6 +175,8 @@ function TeamEmpty({ onInvite }: { onInvite: () => void }) {
 export function TeamTab({ workspaceId }: Props) {
   const t = useTranslations("ui.teamTab");
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitaciones, setInvitaciones] = useState<TeamInvitation[]>([]);
+  const [cancelando, setCancelando] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,8 +201,12 @@ export function TeamTab({ workspaceId }: Props) {
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/team`);
       if (!res.ok) throw new Error("Error al cargar el equipo");
-      const json = (await res.json()) as { members: TeamMember[] };
+      const json = (await res.json()) as {
+        members: TeamMember[];
+        invitaciones?: TeamInvitation[];
+      };
       setMembers(json.members ?? []);
+      setInvitaciones(json.invitaciones ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -238,6 +253,7 @@ export function TeamTab({ workspaceId }: Props) {
       });
       const json = (await res.json()) as {
         error?: string;
+        invitacion?: boolean;
         credentials?: { email: string; password: string } | null;
       };
       if (!res.ok) throw new Error(json.error ?? "Error al crear el usuario");
@@ -246,6 +262,12 @@ export function TeamTab({ workspaceId }: Props) {
         // New account — show credentials for the agency to share.
         setCreatedCreds(json.credentials);
         toast.success(t("cuentaCreada"));
+      } else if (json.invitacion) {
+        // The account already existed: it joins only once that person accepts.
+        toast.success(t("invitacionEnviada", { email: inviteEmail }), {
+          description: t("invitacionEnviadaDetalle"),
+        });
+        closeInvite();
       } else {
         // Existing user added to the workspace.
         toast.success(`${inviteEmail} agregado al workspace`);
@@ -259,6 +281,25 @@ export function TeamTab({ workspaceId }: Props) {
   }
 
   // ── Change role ────────────────────────────────────────────────────────────
+  async function handleCancelInvitation(inv: TeamInvitation) {
+    setCancelando(inv.id);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/team`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invitacionId: inv.id }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(json.error ?? t("errorDesconocido"));
+      setInvitaciones((prev) => prev.filter((i) => i.id !== inv.id));
+      toast.success(t("invitacionCancelada"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("errorDesconocido"));
+    } finally {
+      setCancelando(null);
+    }
+  }
+
   async function handleRoleChange(userId: string, role: WorkspaceRole) {
     setUpdatingRole(userId);
     try {
@@ -294,8 +335,17 @@ export function TeamTab({ workspaceId }: Props) {
             : { userId: member.user_id },
         ),
       });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as { error?: string; invitacion?: boolean };
       if (!res.ok) throw new Error(json.error ?? "Error al actualizar");
+      if (json.invitacion) {
+        // A former member comes back only if they accept: they stay inactive
+        // and the invitation shows up under "Invitaciones pendientes".
+        await fetchTeam();
+        toast.success(t("invitacionEnviada", { email: member.email }), {
+          description: t("invitacionReactivarDetalle"),
+        });
+        return;
+      }
       setMembers((prev) =>
         prev.map((m) =>
           m.user_id === member.user_id ? { ...m, is_active: next } : m,
@@ -473,7 +523,7 @@ export function TeamTab({ workspaceId }: Props) {
                     aria-label={
                       member.is_active
                         ? `Desactivar a ${member.full_name ?? member.email}`
-                        : `Reactivar a ${member.full_name ?? member.email}`
+                        : `Invitar de nuevo a ${member.full_name ?? member.email}`
                     }
                     className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                       member.is_active
@@ -497,6 +547,53 @@ export function TeamTab({ workspaceId }: Props) {
             ))}
           </div>
         </>
+      )}
+
+      {/* Pending invitations (accounts that already existed) */}
+      {invitaciones.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">
+            {t("invitacionesPendientes")}
+          </p>
+          <div className="rounded-lg border border-dashed border-border overflow-hidden">
+            {invitaciones.map((inv, i) => (
+              <div
+                key={inv.id}
+                className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                  i < invitaciones.length - 1 ? "border-b border-border" : ""
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground truncate">
+                    {inv.full_name ?? inv.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono truncate">
+                    {inv.email} · {t("venceEl", { fecha: formatDate(inv.vence_at) })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${ROLE_BADGE[inv.role]}`}
+                  >
+                    {ROLE_LABELS[inv.role]}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={cancelando === inv.id}
+                    onClick={() => handleCancelInvitation(inv)}
+                  >
+                    {cancelando === inv.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      t("cancelarInvitacion")
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Invite dialog */}

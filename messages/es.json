@@ -16,7 +16,27 @@
       "navegacionMovil": "Navegación móvil",
       "navegacionAgencia": "Navegación de agencia"
     },
-    "sinWorkspace": "No tienes un workspace activo."
+    "sinWorkspace": "No tienes un workspace activo.",
+    "invitaciones": {
+      "texto": "Te invitaron a <b>{workspace}</b> como <b>{rol}</b>.",
+      "aceptar": "Aceptar",
+      "rechazar": "Rechazar",
+      "aceptada": "Ya eres parte del equipo.",
+      "rechazada": "Invitación rechazada.",
+      "roles": {
+        "admin": "admin",
+        "manager": "manager",
+        "agent": "agente",
+        "viewer": "solo lectura"
+      },
+      "errores": {
+        "generico": "No se pudo responder la invitación. Intenta de nuevo.",
+        "INVITACION_NO_EXISTE": "Esa invitación ya no existe.",
+        "INVITACION_YA_RESPONDIDA": "Esa invitación ya fue respondida o cancelada.",
+        "INVITACION_VENCIDA": "La invitación venció. Pide que te inviten de nuevo.",
+        "NO_AUTORIZADO": "Inicia sesión para responder la invitación."
+      }
+    }
   },
   "metadata": {
     "login": "Iniciar sesión",
@@ -864,13 +884,20 @@
       "operaElInbox": "Opera el inbox",
       "viewer": "Viewer",
       "soloLectura": "Solo lectura",
-      "seCreaSuCuentaAlInstante": "Se crea su cuenta al instante. Sin correos: comparte las credenciales y entra directo.",
+      "seCreaSuCuentaAlInstante": "Si el correo es nuevo, se crea su cuenta al instante: comparte las credenciales y entra directo. Si ya tiene cuenta, recibe una invitación y entra solo si la acepta.",
       "contrasena2": "Contraseña",
       "opcional": "(opcional)",
       "seGeneraUnaSeguraSiLo": "Se genera una segura si lo dejas vacío",
       "cancelar": "Cancelar",
       "creando": "Creando...",
-      "crearUsuario": "Crear usuario"
+      "crearUsuario": "Crear usuario",
+      "invitacionEnviada": "Invitación enviada a {email}",
+      "invitacionEnviadaDetalle": "Ya tenía cuenta: la verá al iniciar sesión y entrará al equipo cuando la acepte.",
+      "invitacionesPendientes": "Invitaciones pendientes",
+      "venceEl": "vence el {fecha}",
+      "cancelarInvitacion": "Cancelar",
+      "invitacionCancelada": "Invitación cancelada",
+      "invitacionReactivarDetalle": "Volverá al equipo cuando acepte la invitación al iniciar sesión."
     },
     "templateFormSheet": {
       "plantillaActualizada": "Plantilla actualizada",

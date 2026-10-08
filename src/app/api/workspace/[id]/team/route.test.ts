@@ -65,10 +65,63 @@ function membershipsTable() {
   return q;
 }
 
+// ── Service-role invitaciones_equipo table ───────────────────────────────────
+type Invitation = {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  role: string;
+  estado: string;
+  invitado_por?: string;
+};
+let invitations: Invitation[] = [];
+
+function invitationsTable() {
+  const filters: Array<(i: Invitation) => boolean> = [];
+  const rows = () => invitations.filter((i) => filters.every((f) => f(i)));
+  const filtering: any = {
+    eq: (col: string, val: unknown) => {
+      filters.push((i) => (i as any)[col] === val);
+      return filtering;
+    },
+  };
+  return {
+    select: () => {
+      const q: any = {
+        eq: (col: string, val: unknown) => {
+          filtering.eq(col, val);
+          return q;
+        },
+        maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
+      };
+      return q;
+    },
+    insert: async (row: Omit<Invitation, "id" | "estado">) => {
+      writes.push({ kind: "invitation-insert", row });
+      invitations.push({ id: `inv_${invitations.length + 1}`, estado: "pendiente", ...row });
+      return { error: null };
+    },
+    update: (row: Partial<Invitation>) => {
+      writes.push({ kind: "invitation-update", row });
+      const q: any = {
+        eq: (col: string, val: unknown) => {
+          filtering.eq(col, val);
+          return q;
+        },
+        then: (resolve: (v: unknown) => void) => {
+          for (const i of rows()) Object.assign(i, row);
+          resolve({ error: null });
+        },
+      };
+      return q;
+    },
+  };
+}
+
 mock.module("@supabase/supabase-js", {
   exports: {
     createClient: () => ({
-      from: () => ({
+      from: (table: string) => table === "invitaciones_equipo" ? invitationsTable() : ({
         select: (cols: string, opts?: { count?: string }) =>
           membershipsTable().select(cols, opts),
         update: (row: unknown) => {
@@ -92,13 +145,21 @@ mock.module("@supabase/supabase-js", {
   },
 });
 
+// boss@x.com is ws_1's active admin, former@x.com an inactive ex-member,
+// other@x.com an account from another workspace, new@x.com a brand-new one.
+const ACCOUNTS: Record<string, { userId: string; created: boolean }> = {
+  "boss@x.com": { userId: "u_admin", created: false },
+  "former@x.com": { userId: "u_former", created: false },
+  "other@x.com": { userId: "u_other_admin", created: false },
+};
 mock.module("@/lib/auth/provision-user.ts", {
   exports: {
-    provisionWorkspaceUser: async (_db: unknown, email: string) => ({
-      userId: email === "boss@x.com" ? "u_admin" : "u_new",
-      password: null,
-      created: false,
-    }),
+    provisionWorkspaceUser: async (_db: unknown, email: string) => {
+      const known = ACCOUNTS[email];
+      return known
+        ? { userId: known.userId, password: null, created: false }
+        : { userId: "u_new", password: "generated", created: true };
+    },
   },
 });
 
@@ -119,7 +180,9 @@ const U_AGENT = "00000000-0000-4000-8000-00000000000c";
 function reset(role: typeof actorRole) {
   actorRole = role;
   writes = [];
+  invitations = [];
   memberships = [
+    { workspace_id: "ws_1", user_id: "u_former", role: "agent", is_active: false },
     { workspace_id: "ws_1", user_id: U_ADMIN, role: "admin", is_active: true },
     { workspace_id: "ws_1", user_id: U_MANAGER, role: "manager", is_active: true },
     { workspace_id: "ws_1", user_id: U_AGENT, role: "agent", is_active: true },
@@ -219,4 +282,87 @@ test("the ceiling uses the target's role in THIS workspace, not in another one",
   // U_AGENT is admin in ws_2 but an agent in ws_1: a ws_1 manager may manage them.
   const res = await PATCH(req("PATCH", { userId: U_AGENT, role: "viewer" }), params);
   assert.equal(res.status, 200);
+});
+
+// ── Invitations: an account that already existed joins only if it accepts ────
+
+test("an account from another workspace gets an invitation, not a membership", async () => {
+  reset("manager");
+  const res = await POST(req("POST", { email: "other@x.com", role: "agent" }), params);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true, invitacion: true, credentials: null });
+  assert.equal(writes.filter((w) => w.kind === "upsert").length, 0, "no membership is written");
+  assert.equal(invitations.length, 1);
+  assert.equal(invitations[0].user_id, "u_other_admin");
+  assert.equal(invitations[0].role, "agent");
+  assert.equal(invitations[0].invitado_por, "actor");
+});
+
+test("re-inviting renews the pending invitation instead of adding another", async () => {
+  reset("manager");
+  await POST(req("POST", { email: "other@x.com", role: "agent" }), params);
+  await POST(req("POST", { email: "other@x.com", role: "viewer" }), params);
+  assert.equal(invitations.length, 1);
+  assert.equal(invitations[0].role, "viewer");
+});
+
+test("a former (inactive) member is invited again, not silently reactivated", async () => {
+  reset("manager");
+  const res = await POST(req("POST", { email: "former@x.com", role: "agent" }), params);
+  assert.equal((await res.json()).invitacion, true);
+  assert.equal(writes.filter((w) => w.kind === "upsert").length, 0);
+  assert.equal(memberships.find((m) => m.user_id === "u_former")?.is_active, false);
+});
+
+test("an active member's role change and a brand-new account skip the invitation", async () => {
+  reset("admin");
+  const roleChange = await POST(req("POST", { email: "boss@x.com", role: "manager" }), params);
+  assert.equal((await roleChange.json()).invitacion, undefined);
+  const nueva = await POST(req("POST", { email: "new@x.com", role: "agent" }), params);
+  assert.deepEqual((await nueva.json()).credentials, { email: "new@x.com", password: "generated" });
+  assert.equal(writes.filter((w) => w.kind === "upsert").length, 2);
+  assert.equal(invitations.length, 0);
+});
+
+test("a manager cancels an agent's invitation but not an admin's", async () => {
+  reset("manager");
+  invitations = [
+    { id: "00000000-0000-4000-8000-0000000000e1", workspace_id: "ws_1", user_id: "u_x", role: "agent", estado: "pendiente" },
+    { id: "00000000-0000-4000-8000-0000000000e2", workspace_id: "ws_1", user_id: "u_y", role: "admin", estado: "pendiente" },
+    { id: "00000000-0000-4000-8000-0000000000e3", workspace_id: "ws_2", user_id: "u_z", role: "agent", estado: "pendiente" },
+  ];
+  const ok = await DELETE(req("DELETE", { invitacionId: "00000000-0000-4000-8000-0000000000e1" }), params);
+  assert.equal(ok.status, 200);
+  assert.equal(invitations[0].estado, "cancelada");
+  const admin = await DELETE(req("DELETE", { invitacionId: "00000000-0000-4000-8000-0000000000e2" }), params);
+  assert.equal(admin.status, 403);
+  assert.equal(invitations[1].estado, "pendiente");
+  // Another workspace's invitation is not found from ws_1.
+  const ajena = await DELETE(req("DELETE", { invitacionId: "00000000-0000-4000-8000-0000000000e3" }), params);
+  assert.equal(ajena.status, 404);
+  assert.equal(invitations[2].estado, "pendiente");
+});
+
+test("reactivating a former member sends an invitation instead of reactivating them", async () => {
+  reset("manager");
+  const res = await PATCH(req("PATCH", { userId: "00000000-0000-4000-8000-00000000f0f0", is_active: true }), params);
+  // Unknown id → 404 as before.
+  assert.equal(res.status, 404);
+
+  memberships.push({ workspace_id: "ws_1", user_id: "00000000-0000-4000-8000-00000000f0f0", role: "viewer", is_active: false });
+  const again = await PATCH(req("PATCH", { userId: "00000000-0000-4000-8000-00000000f0f0", is_active: true }), params);
+  assert.equal(again.status, 200);
+  assert.equal((await again.json()).invitacion, true);
+  assert.equal(writes.filter((w) => w.kind === "update").length, 0, "the membership is not reactivated");
+  assert.equal(memberships.at(-1)?.is_active, false);
+  assert.equal(invitations.length, 1);
+  assert.equal(invitations[0].role, "viewer", "keeps the previous role");
+});
+
+test("a manager cannot re-invite a former admin by reactivating them", async () => {
+  reset("manager");
+  memberships.push({ workspace_id: "ws_1", user_id: "00000000-0000-4000-8000-00000000f0f1", role: "admin", is_active: false });
+  const res = await PATCH(req("PATCH", { userId: "00000000-0000-4000-8000-00000000f0f1", is_active: true }), params);
+  assert.equal(res.status, 403);
+  assert.equal(invitations.length, 0);
 });

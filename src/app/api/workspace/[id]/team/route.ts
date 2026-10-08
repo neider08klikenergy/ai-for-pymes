@@ -29,6 +29,10 @@ const DeleteSchema = z.object({
   userId: z.string().uuid(),
 });
 
+const CancelInvitationSchema = z.object({
+  invitacionId: z.string().uuid(),
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Auth + workspace guard (shared across handlers)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -110,6 +114,94 @@ async function removesLastAdmin(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Invitations (accounts that already existed)
+// The person accepts or declines with responder_invitacion() after logging in;
+// it expires after 7 days. Re-inviting renews the pending one.
+// ──────────────────────────────────────────────────────────────────────────────
+
+const INVITACION_DIAS = 7;
+
+async function crearInvitacion(
+  db: ReturnType<typeof svc>,
+  workspaceId: string,
+  userId: string,
+  role: Role,
+  invitadoPor: string,
+): Promise<NextResponse> {
+  const venceAt = new Date(Date.now() + INVITACION_DIAS * 86_400_000).toISOString();
+  const { data: pendiente, error: findError } = await db
+    .from("invitaciones_equipo")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  const { error } = findError
+    ? { error: findError }
+    : pendiente
+      ? await db
+          .from("invitaciones_equipo")
+          .update({ role, invitado_por: invitadoPor, vence_at: venceAt })
+          .eq("id", pendiente.id)
+      : await db.from("invitaciones_equipo").insert({
+          workspace_id: workspaceId,
+          user_id: userId,
+          role,
+          invitado_por: invitadoPor,
+          vence_at: venceAt,
+        });
+  if (error) {
+    console.error("[POST /api/workspace/[id]/team] invitation error:", error.message);
+    return NextResponse.json(
+      { error: "No se pudo enviar la invitación. Intenta de nuevo." },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true, invitacion: true, credentials: null });
+}
+
+/** Withdraws a pending invitation; same role ceiling as the rest of the team. */
+async function cancelarInvitacion(
+  db: ReturnType<typeof svc>,
+  workspaceId: string,
+  actor: Role,
+  invitacionId: string,
+): Promise<NextResponse> {
+  const { data: inv, error: findError } = await db
+    .from("invitaciones_equipo")
+    .select("id, role")
+    .eq("id", invitacionId)
+    .eq("workspace_id", workspaceId)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  if (findError) {
+    console.error("[DELETE /api/workspace/[id]/team] invitation lookup:", findError.message);
+    return NextResponse.json(
+      { error: "No se pudo cancelar la invitación. Intenta de nuevo." },
+      { status: 500 },
+    );
+  }
+  if (!inv) {
+    return NextResponse.json({ error: "Invitación no encontrada" }, { status: 404 });
+  }
+  if (!withinCeiling(actor, inv.role as Role)) return FORBIDDEN_ROLE();
+
+  const { error } = await db
+    .from("invitaciones_equipo")
+    .update({ estado: "cancelada", respondida_at: new Date().toISOString() })
+    .eq("id", inv.id)
+    .eq("estado", "pendiente");
+  if (error) {
+    console.error("[DELETE /api/workspace/[id]/team] invitation cancel:", error.message);
+    return NextResponse.json(
+      { error: "No se pudo cancelar la invitación. Intenta de nuevo." },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/workspace/[id]/team
 // Returns all memberships with user email, role, is_active, created_at
 // ──────────────────────────────────────────────────────────────────────────────
@@ -168,7 +260,43 @@ export async function GET(
     created_at: row.created_at,
   }));
 
-  return NextResponse.json({ members });
+  // Pending invitations: only for whoever can manage the team.
+  let invitaciones: Array<{
+    id: string;
+    email: string;
+    full_name: string | null;
+    role: string;
+    vence_at: string;
+  }> = [];
+  if (auth.role === "admin" || auth.role === "manager") {
+    const { data: inv, error: invError } = await db
+      .from("invitaciones_equipo")
+      .select("id, role, vence_at, users!invitaciones_equipo_user_id_fkey ( full_name, email )")
+      .eq("workspace_id", workspaceId)
+      .eq("estado", "pendiente")
+      .gt("vence_at", new Date().toISOString())
+      .order("created_at", { ascending: true });
+    if (invError) {
+      console.error("[GET /api/workspace/[id]/team] invitations error:", invError.message);
+    } else {
+      invitaciones = (
+        (inv ?? []) as unknown as Array<{
+          id: string;
+          role: string;
+          vence_at: string;
+          users: { full_name: string | null; email: string } | null;
+        }>
+      ).map((row) => ({
+        id: row.id,
+        email: row.users?.email ?? "",
+        full_name: row.users?.full_name ?? null,
+        role: row.role,
+        vence_at: row.vence_at,
+      }));
+    }
+  }
+
+  return NextResponse.json({ members, invitaciones });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -224,8 +352,9 @@ export async function POST(
   }
 
   // Re-inviting an existing member rewrites their role: same ceiling as PATCH.
+  let existing: { role: Role; is_active: boolean } | null;
   try {
-    const existing = await loadMembership(db, workspaceId, provisioned.userId);
+    existing = await loadMembership(db, workspaceId, provisioned.userId);
     if (existing) {
       if (!withinCeiling(auth.role, existing.role)) return FORBIDDEN_ROLE();
       if (
@@ -243,6 +372,14 @@ export async function POST(
       { error: "No se pudo verificar el miembro. Intenta de nuevo." },
       { status: 500 },
     );
+  }
+
+  // An account that already existed (someone else's user, or a former member
+  // here) joins only if that person accepts: an invitation, not a membership.
+  // Only a brand-new account (created above for this team) or an active
+  // member whose role changes skips it.
+  if (!provisioned.created && !existing?.is_active) {
+    return crearInvitacion(db, workspaceId, provisioned.userId, role, auth.userId);
   }
 
   // Create membership (upsert — re-invite idempotent)
@@ -306,8 +443,9 @@ export async function PATCH(
   const { userId, role, is_active } = parsed.data;
   const db = svc();
 
+  let current: { role: Role; is_active: boolean } | null;
   try {
-    const current = await loadMembership(db, workspaceId, userId);
+    current = await loadMembership(db, workspaceId, userId);
     if (!current) {
       return NextResponse.json({ error: "Miembro no encontrado" }, { status: 404 });
     }
@@ -328,6 +466,13 @@ export async function PATCH(
       { error: "No se pudo verificar el miembro. Intenta de nuevo." },
       { status: 500 },
     );
+  }
+
+  // A former member comes back only if they accept: reactivating sends an
+  // invitation (with the requested or previous role) instead of writing
+  // is_active = true behind their back. Same rule as POST for existing accounts.
+  if (is_active === true && !current.is_active) {
+    return crearInvitacion(db, workspaceId, userId, role ?? current.role, auth.userId);
   }
 
   const updates: Record<string, unknown> = {
@@ -371,6 +516,11 @@ export async function DELETE(
 
   const parsedBody = await readJsonBody(req);
   if (!parsedBody.ok) return parsedBody.response;
+
+  const cancel = CancelInvitationSchema.safeParse(parsedBody.body);
+  if (cancel.success) {
+    return cancelarInvitacion(svc(), workspaceId, auth.role, cancel.data.invitacionId);
+  }
 
   const parsed = DeleteSchema.safeParse(parsedBody.body);
   if (!parsed.success) {

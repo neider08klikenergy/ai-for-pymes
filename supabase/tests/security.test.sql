@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(98);
+SELECT plan(101);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -507,6 +507,14 @@ SELECT has_index('public', 'integrations', 'uq_integrations_zernio_profile',
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint
                    WHERE conrelid = 'public.cupos_dia'::regclass AND conname = 'fk_cupos_dia_sede'),
   'cupos_dia.sede_id is a composite (workspace_id, sede_id) FK (no closing another workspace''s quota)');
+
+-- ── invitaciones al equipo (20261018000000) ─────────────────────────────────
+SELECT ok(NOT has_table_privilege('authenticated', 'public.invitaciones_equipo', 'INSERT'),
+  'authenticated cannot INSERT invitaciones_equipo (inviting oneself into a workspace)');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.invitaciones_equipo', 'UPDATE'),
+  'authenticated cannot UPDATE invitaciones_equipo (accepting is only via responder_invitacion)');
+SELECT ok(NOT has_function_privilege('anon', 'public.responder_invitacion(uuid, boolean)', 'EXECUTE'),
+  'anon cannot execute responder_invitacion()');
 
 SELECT * FROM finish();
 ROLLBACK;
