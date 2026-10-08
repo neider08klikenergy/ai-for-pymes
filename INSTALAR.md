@@ -138,7 +138,7 @@ manual en Supabase → **Authentication**:
 - **URL Configuration** → Site URL = tu URL, Redirect = `<url>/**`.
   (Sin esto, el login y el reset de contraseña redirigen mal.)
 - **Sign In / Providers** → desactiva **"Allow new users to sign up"** → Save.
-  El formulario `/signup` de la app ya es invite-only, pero la API de Supabase Auth
+  La app no tiene registro público (`/signup` redirige a `/demo`), pero la API de Supabase Auth
   (`/auth/v1/signup`) acepta registros con la anon key pública, que viaja en el
   frontend. El super admin (paso 8) y los usuarios que se crean desde el panel
   siguen funcionando, porque usan la Admin API con `service_role`.

@@ -40,7 +40,6 @@
   },
   "metadata": {
     "login": "Iniciar sesión",
-    "signup": "Crear cuenta",
     "forgotPassword": "Restablecer contraseña",
     "resetPassword": "Nueva contraseña",
     "demo": "Agenda una demo"
@@ -55,18 +54,8 @@
       "boton": "Iniciar sesión",
       "enviando": "Iniciando sesión...",
       "olvide": "¿Olvidaste tu contraseña?",
-      "sinCuenta": "¿No tienes cuenta?",
-      "crearCuenta": "Crear cuenta",
       "aunSinCuenta": "¿Aún no tienes cuenta?",
       "agendaDemo": "Agenda una demo"
-    },
-    "signup": {
-      "titulo": "Crear cuenta",
-      "subtitulo": "Empieza a gestionar tu inbox con IA",
-      "boton": "Crear cuenta",
-      "enviando": "Creando cuenta...",
-      "yaTienes": "¿Ya tienes cuenta?",
-      "iniciarSesion": "Iniciar sesión"
     },
     "forgot": {
       "titulo": "Restablecer contraseña",
@@ -91,10 +80,7 @@
       "emailInvalido": "Email inválido",
       "contrasenaCorta": "La contraseña debe tener al menos 6 caracteres",
       "credenciales": "Correo o contraseña incorrectos",
-      "emailNoConfirmado": "Email no confirmado",
-      "yaRegistrado": "Este correo ya está registrado",
-      "registroCerrado": "El registro está cerrado. Pide al administrador que te invite a tu cuenta.",
-      "registroInstalacion": "El registro público está cerrado. Si estás instalando la plataforma, crea tu super admin con scripts/seed-admin.mjs (INSTALAR.md, paso 8)."
+      "emailNoConfirmado": "Email no confirmado"
     }
   },
   "demo": {

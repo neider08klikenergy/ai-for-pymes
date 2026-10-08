@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { isSignupOpen, markAsSuperAdmin } from "./signup-gate";
 
 // Los mensajes de validación son claves de messages/<idioma>.json
 // (auth.errores.*); errorDe() los traduce al idioma del usuario.
@@ -13,20 +12,13 @@ type ClaveError =
   | "emailInvalido"
   | "contrasenaCorta"
   | "credenciales"
-  | "emailNoConfirmado"
-  | "yaRegistrado"
-  | "registroCerrado"
-  | "registroInstalacion";
+  | "emailNoConfirmado";
 
 // Errores de Supabase Auth (en inglés) → clave de traducción. Un error que no
 // está aquí se muestra tal cual.
 const ERRORES_SUPABASE: Record<string, ClaveError> = {
   "Invalid login credentials": "credenciales",
   "Email not confirmed": "emailNoConfirmado",
-  "User already registered": "yaRegistrado",
-  // /signup only renders while there is no user yet, i.e. on a fresh
-  // install — where the first account comes from scripts/seed-admin.mjs.
-  "Signups not allowed for this instance": "registroInstalacion",
 };
 
 async function errorDe(claveOMensaje: string): Promise<string> {
@@ -39,11 +31,6 @@ async function localizeAuthError(msg: string): Promise<string> {
 }
 
 const loginSchema = z.object({
-  email: z.string().email("emailInvalido"),
-  password: z.string().min(6, "contrasenaCorta"),
-});
-
-const signupSchema = z.object({
   email: z.string().email("emailInvalido"),
   password: z.string().min(6, "contrasenaCorta"),
 });
@@ -72,43 +59,6 @@ export async function login(
   }
 
   redirect("/inbox");
-}
-
-export async function signup(
-  _prevState: { error: string } | null,
-  formData: FormData,
-): Promise<{ error: string }> {
-  const parsed = signupSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-
-  if (!parsed.success) {
-    return { error: await errorDe(parsed.error.issues[0].message) };
-  }
-
-  // Invite-only: only the first user (agency super admin) may self-register.
-  if (!(await isSignupOpen())) {
-    return { error: await errorDe("registroCerrado") };
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
-
-  if (error) {
-    return { error: await localizeAuthError(error.message) };
-  }
-
-  // First registration becomes the agency super admin.
-  if (data.user) {
-    await markAsSuperAdmin(data.user.id);
-  }
-
-  // El login traduce el código del aviso
-  redirect("/login?message=revisaEmail");
 }
 
 export async function logout(): Promise<void> {
