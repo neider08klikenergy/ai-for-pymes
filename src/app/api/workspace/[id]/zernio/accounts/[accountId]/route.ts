@@ -8,7 +8,10 @@ import {
 } from "@/features/inbox/services/zernio-accounts";
 import { NextRequest, NextResponse } from "next/server";
 import { requireWorkspaceMember } from "@/lib/auth/workspace-access";
-import { disconnectAccount } from "@/features/inbox/services/zernio-client";
+import {
+  disconnectAccount,
+  listAccounts,
+} from "@/features/inbox/services/zernio-client";
 
 // Desconecta un canal del workspace en Zernio. Solo cuentas de ESTE workspace.
 export async function DELETE(
@@ -26,10 +29,10 @@ export async function DELETE(
     .eq("workspace_id", workspaceId)
     .eq("provider", "zernio")
     .maybeSingle();
-  const owned = accountsOf((row?.config ?? {}) as Record<string, unknown>).some(
-    (a) => a.id === accountId,
-  );
-  if (!owned) {
+  const config = (row?.config ?? {}) as Record<string, unknown>;
+  const owned = accountsOf(config).some((a) => a.id === accountId);
+  const profileId = typeof config.profile_id === "string" ? config.profile_id : "";
+  if (!owned || !profileId) {
     return NextResponse.json(
       { error: "Esa cuenta no es de este workspace" },
       { status: 404 },
@@ -37,6 +40,15 @@ export async function DELETE(
   }
 
   try {
+    // La key de Zernio es de toda la plataforma: antes de borrar, Zernio mismo
+    // confirma que la cuenta está en el perfil de este workspace.
+    const enPerfil = (await listAccounts(profileId)).some((a) => a.id === accountId);
+    if (!enPerfil) {
+      return NextResponse.json(
+        { error: "Esa cuenta no es de este workspace" },
+        { status: 404 },
+      );
+    }
     await disconnectAccount(accountId);
     const accounts = await syncZernioAccounts(supabase, workspaceId);
     return NextResponse.json({ ok: true, accounts });
