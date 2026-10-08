@@ -16,7 +16,27 @@
       "navegacionMovil": "Mobile navigation",
       "navegacionAgencia": "Agency navigation"
     },
-    "sinWorkspace": "You don't have an active workspace."
+    "sinWorkspace": "You don't have an active workspace.",
+    "invitaciones": {
+      "texto": "You were invited to <b>{workspace}</b> as <b>{rol}</b>.",
+      "aceptar": "Accept",
+      "rechazar": "Decline",
+      "aceptada": "You're now part of the team.",
+      "rechazada": "Invitation declined.",
+      "roles": {
+        "admin": "admin",
+        "manager": "manager",
+        "agent": "agent",
+        "viewer": "read-only"
+      },
+      "errores": {
+        "generico": "Could not respond to the invitation. Try again.",
+        "INVITACION_NO_EXISTE": "That invitation no longer exists.",
+        "INVITACION_YA_RESPONDIDA": "That invitation was already answered or cancelled.",
+        "INVITACION_VENCIDA": "The invitation expired. Ask to be invited again.",
+        "NO_AUTORIZADO": "Log in to respond to the invitation."
+      }
+    }
   },
   "metadata": {
     "login": "Log in",
@@ -864,13 +884,20 @@
       "operaElInbox": "Works the inbox",
       "viewer": "Viewer",
       "soloLectura": "Read only",
-      "seCreaSuCuentaAlInstante": "Their account is created instantly. No emails: share the credentials and they log in directly.",
+      "seCreaSuCuentaAlInstante": "If the email is new, their account is created instantly: share the credentials and they log in directly. If they already have an account, they get an invitation and join only if they accept it.",
       "contrasena2": "Password",
       "opcional": "(optional)",
       "seGeneraUnaSeguraSiLo": "A secure one is generated if you leave it empty",
       "cancelar": "Cancel",
       "creando": "Creating...",
-      "crearUsuario": "Create user"
+      "crearUsuario": "Create user",
+      "invitacionEnviada": "Invitation sent to {email}",
+      "invitacionEnviadaDetalle": "They already had an account: they'll see it when they log in and join once they accept.",
+      "invitacionesPendientes": "Pending invitations",
+      "venceEl": "expires {fecha}",
+      "cancelarInvitacion": "Cancel",
+      "invitacionCancelada": "Invitation cancelled",
+      "invitacionReactivarDetalle": "They will rejoin the team once they accept the invitation when they log in."
     },
     "templateFormSheet": {
       "plantillaActualizada": "Template updated",

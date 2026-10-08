@@ -61,7 +61,7 @@ function postReq(body: unknown) {
 let errorLogs: unknown[][] = [];
 const originalError = console.error;
 function reset() {
-  provisionImpl = async () => ({ userId: "user_new", password: "x" });
+  provisionImpl = async () => ({ userId: "user_new", password: "x", created: true });
   upsertError = null;
   errorLogs = [];
   console.error = (...args: unknown[]) => {
