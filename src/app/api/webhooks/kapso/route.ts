@@ -1,32 +1,32 @@
-import { type NextRequest, NextResponse, after } from "next/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
-  verifyKapsoSignature,
   parseInbound,
-  parseStatusUpdate,
-  parseOutboundEcho,
   isStatusEvent,
   resolveEventName,
+  parseStatusUpdate,
+  parseOutboundEcho,
+  verifyKapsoSignature,
 } from "@/features/inbox/services/kapso-webhook-handler";
 import {
   processInbound,
   processOutboundEcho,
 } from "@/features/inbox/services/normalizer";
-import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
 import {
-  hasTimeToClaim,
   upsertBatch,
+  hasTimeToClaim,
   processNextBatch,
 } from "@/features/inbox/services/buffer";
 import {
-  downloadAndStoreMedia,
   patchMessageMedia,
+  downloadAndStoreMedia,
 } from "@/features/inbox/services/media-handler";
 import {
-  transcribeAudio,
   describeImage,
+  transcribeAudio,
 } from "@/features/inbox/services/media-understanding";
+import { type NextRequest, NextResponse, after } from "next/server";
 import { decryptCredentials } from "@/shared/lib/integration-secrets";
+import { createClient as createSbClient } from "@supabase/supabase-js";
+import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
 import { applyMessageStatus } from "@/features/inbox/services/message-status";
 
 // Keep the function alive long enough for the best-effort fast path below
@@ -123,8 +123,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .select("workspace_id, credentials, config")
         .eq("provider", "kapso")
         .eq("enabled", true)
-        .eq("config->>phone_number_id", phoneNumberIdStr)
-        .limit(5);
+        // No limit: phone_number_id is admin-editable config, so other
+        // workspaces may copy it; a capped, unordered list could leave out the
+        // one that actually signed the event.
+        .eq("config->>phone_number_id", phoneNumberIdStr);
       candidates = (data ?? []) as IntegrationRow[];
     }
 

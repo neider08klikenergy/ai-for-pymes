@@ -1,11 +1,11 @@
 // G1: Templates sync — pulls templates from the workspace's WhatsApp provider
 // (YCloud or Kapso) and upserts them into the workspace.
 
-import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { syncTemplates } from "@/features/inbox/services/templates";
-import { WHATSAPP_NOT_CONNECTED } from "@/features/inbox/services/whatsapp-provider";
 import { WabaNotFoundError } from "@/features/inbox/services/ycloud-client";
+import { WHATSAPP_NOT_CONNECTED } from "@/features/inbox/services/whatsapp-provider";
 
 // ── Shared auth helper ────────────────────────────────────────────────────────
 
@@ -19,6 +19,7 @@ async function resolveMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

@@ -14,13 +14,14 @@ const fakeSession = {
     getUser: async () => ({ data: { user: authUser }, error: null }),
   },
   from: () => ({
-    select: () => ({
-      eq: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: memberRow, error: null }),
-        }),
-      }),
-    }),
+    select: () => {
+      // Any number of filters (workspace_id, user_id, is_active).
+      const chain: any = {
+        eq: () => chain,
+        maybeSingle: async () => ({ data: memberRow, error: null }),
+      };
+      return chain;
+    },
   }),
 };
 

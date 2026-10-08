@@ -1,14 +1,14 @@
 // G1: Templates CRUD API — list, create, update, delete workspace templates.
 
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { listTemplates } from "@/features/inbox/services/templates";
 import {
   templateButtonSchema,
   templateVariableSchema,
 } from "@/features/settings/lib/template-form";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { listTemplates } from "@/features/inbox/services/templates";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 // ── Service-role client ───────────────────────────────────────────────────────
 
@@ -31,6 +31,7 @@ async function resolveMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

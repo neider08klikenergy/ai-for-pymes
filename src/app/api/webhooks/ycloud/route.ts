@@ -1,35 +1,35 @@
-import { type NextRequest, NextResponse, after } from "next/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
-  verifyYCloudSignature,
-  parseInbound,
-} from "@/features/inbox/services/ycloud-webhook-handler";
-import { processInbound } from "@/features/inbox/services/normalizer";
-import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
-import {
-  hasTimeToClaim,
   upsertBatch,
+  hasTimeToClaim,
   processNextBatch,
 } from "@/features/inbox/services/buffer";
 import {
-  downloadAndStoreMedia,
   patchMessageMedia,
+  downloadAndStoreMedia,
 } from "@/features/inbox/services/media-handler";
 import {
-  transcribeAudio,
   describeImage,
+  transcribeAudio,
 } from "@/features/inbox/services/media-understanding";
-import { decryptCredentials } from "@/shared/lib/integration-secrets";
-import { applyMessageStatus } from "@/features/inbox/services/message-status";
-import { extractWebhookError } from "@/features/inbox/services/whatsapp-errors";
 import {
+  samePhone,
+  phoneString,
   checkDestination,
   internationalDigits,
-  phoneString,
-  samePhone,
 } from "@/features/inbox/services/phone";
-import { workspaceCountryCode } from "@/features/inbox/services/country-code";
+import {
+  parseInbound,
+  verifyYCloudSignature,
+} from "@/features/inbox/services/ycloud-webhook-handler";
+import { type NextRequest, NextResponse, after } from "next/server";
+import { processInbound } from "@/features/inbox/services/normalizer";
+import { decryptCredentials } from "@/shared/lib/integration-secrets";
+import { createClient as createSbClient } from "@supabase/supabase-js";
+import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
 import { emitEventOncePerDay } from "@/features/inbox/services/daily-events";
+import { applyMessageStatus } from "@/features/inbox/services/message-status";
+import { workspaceCountryCode } from "@/features/inbox/services/country-code";
+import { extractWebhookError } from "@/features/inbox/services/whatsapp-errors";
 
 // Keep the function alive long enough for the best-effort fast path below
 // (sleep through the buffer window + AI generation). The cron is the fallback.
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       config: Record<string, unknown>;
     };
 
-    let ws: IntegrationRow | null = null;
+    let candidates: IntegrationRow[] = [];
 
     if (wsidParam) {
       // E3: direct lookup by workspace_id — faster, no phone scan needed.
@@ -108,48 +108,64 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .eq("provider", "ycloud")
         .eq("enabled", true)
         .single();
-      ws = data ?? null;
+      candidates = data ? [data as IntegrationRow] : [];
     } else {
-      // Fallback: phone-based lookup across all enabled integrations (inbound)
+      // Fallback (legacy URLs without ?wsid): every enabled integration whose
+      // number matches. The number is an admin-editable config value, so two
+      // workspaces may claim the same one: each candidate is tried with its
+      // own secret below and only the one that signed the event wins (as in
+      // the Kapso webhook). Filtered before any limit, so a large install
+      // can't push the owner out of the list.
       const { data: integrations } = await supabase
         .from("integrations")
         .select("workspace_id, credentials, config")
         .eq("provider", "ycloud")
-        .eq("enabled", true)
-        .limit(10);
+        .eq("enabled", true);
 
       const destination = phoneString(toPhone);
-      ws =
-        (integrations ?? []).find((i: IntegrationRow) => {
-          const configured = phoneString(i.config?.phone_number);
-          return Boolean(configured && destination && samePhone(configured, destination));
-        }) ?? null;
+      candidates = (integrations ?? []).filter((i: IntegrationRow) => {
+        const configured = phoneString(i.config?.phone_number);
+        return Boolean(
+          configured && destination && samePhone(configured, destination),
+        );
+      });
     }
 
-    // No resolvable workspace → 401. A status update without a resolvable
-    // (and below, verified) workspace must NEVER fall through to 200.
+    // CRITICAL: verify the signature BEFORE acting on ANY event (status or
+    // inbound). The workspace was resolved via config.phone_number / wsid —
+    // both plaintext — so each candidate's secret is decrypted only to check
+    // it. No candidate that signed it → 401: a status update without a
+    // verified workspace must NEVER fall through to 200.
+    let ws: IntegrationRow | null = null;
+    let creds: { ycloud_api_key?: string; webhook_signing_secret?: string } =
+      {};
+    for (const candidate of candidates) {
+      let c: { ycloud_api_key?: string; webhook_signing_secret?: string };
+      try {
+        c = (await decryptCredentials(
+          candidate.credentials,
+          candidate.workspace_id,
+          "ycloud",
+        )) as { ycloud_api_key?: string; webhook_signing_secret?: string };
+      } catch (err) {
+        // One unreadable row must not block the workspace that did sign it.
+        console.error(
+          "[webhooks/ycloud] credentials unreadable for",
+          candidate.workspace_id,
+          err instanceof Error ? err.message : "unknown",
+        );
+        continue;
+      }
+      if (
+        c.webhook_signing_secret &&
+        verifyYCloudSignature(rawBody, sigHeader, c.webhook_signing_secret)
+      ) {
+        ws = candidate;
+        creds = c;
+        break;
+      }
+    }
     if (!ws) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // The workspace was resolved via config.phone_number / wsid — both
-    // plaintext — so decryption happens only after we know which row we need.
-    const creds = (await decryptCredentials(
-      ws.credentials,
-      ws.workspace_id,
-      "ycloud",
-    )) as {
-      ycloud_api_key?: string;
-      webhook_signing_secret?: string;
-    };
-
-    const webhookSecret = creds.webhook_signing_secret;
-    if (!webhookSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // CRITICAL: verify the signature BEFORE acting on ANY event (status or inbound).
-    if (!verifyYCloudSignature(rawBody, sigHeader, webhookSecret)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -204,19 +220,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           "[webhook] inbound for another number on this workspace's webhook URL — ignored",
         );
         after(() =>
-          emitEventOncePerDay(supabase, workspaceId, "inbound_destination_mismatch", "warn", {
-            configured_phone: phoneString(configuredPhone),
-            destination_phone: phoneString(normalized.workspacePhone),
-          }),
+          emitEventOncePerDay(
+            supabase,
+            workspaceId,
+            "inbound_destination_mismatch",
+            "warn",
+            {
+              configured_phone: phoneString(configuredPhone),
+              destination_phone: phoneString(normalized.workspacePhone),
+            },
+          ),
         );
-        return NextResponse.json({ received: true, ignored: "destination_mismatch" });
+        return NextResponse.json({
+          received: true,
+          ignored: "destination_mismatch",
+        });
       }
       if (destination === "unenforced") {
         after(() =>
-          emitEventOncePerDay(supabase, workspaceId, "inbound_destination_unchecked", "warn", {
-            reason: "phone_number_without_country_code",
-            configured_phone: phoneString(configuredPhone),
-          }),
+          emitEventOncePerDay(
+            supabase,
+            workspaceId,
+            "inbound_destination_unchecked",
+            "warn",
+            {
+              reason: "phone_number_without_country_code",
+              configured_phone: phoneString(configuredPhone),
+            },
+          ),
         );
       }
     }

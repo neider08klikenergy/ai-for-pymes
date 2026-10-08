@@ -1,14 +1,14 @@
 // F7: Knowledge base API — ingest documents and list KB for a workspace.
 
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSvcClient } from "@supabase/supabase-js";
 import {
   ingestDocument,
   listKbDocuments,
 } from "@/features/inbox/services/kb-service";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchUrlText } from "@/features/inbox/services/url-scraper";
+import { createClient as createSvcClient } from "@supabase/supabase-js";
 
 function svc() {
   return createSvcClient(
@@ -35,6 +35,7 @@ async function resolveWorkspaceMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

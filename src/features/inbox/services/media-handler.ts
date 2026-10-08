@@ -124,6 +124,22 @@ export function validateMediaUrl(
 }
 
 /**
+ * GET with the provider's key, but a redirect is followed WITHOUT it: fetch
+ * only drops Authorization across origins, not custom headers like
+ * X-API-Key, so a redirect to storage or a CDN would carry the key there.
+ */
+async function fetchSinFiltrarKey(
+  url: string,
+  headers: Record<string, string> | undefined,
+): Promise<Response> {
+  if (!headers) return fetch(url);
+  const first = await fetch(url, { headers, redirect: "manual" });
+  const location = first.headers.get("location");
+  if (first.status < 300 || first.status >= 400 || !location) return first;
+  return fetch(new URL(location, url));
+}
+
+/**
  * Downloads a media file from the WhatsApp provider and stores it in the
  * whatsapp-media Supabase Storage bucket.
  *
@@ -150,15 +166,14 @@ export async function downloadAndStoreMedia(
   // token (a 401/403 there usually means the URL sat around and expired).
   let response: Response;
   try {
-    response = await fetch(
-      opts.link,
+    const headers: Record<string, string> | undefined =
       opts.provider === "ycloud"
-        ? { headers: { "X-API-Key": opts.apiKey ?? "" } }
+        ? { "X-API-Key": opts.apiKey ?? "" }
         : opts.provider === "zernio" && isZernioApiHost(new URL(opts.link).hostname)
           ? // Solo al API de Zernio: nunca se manda la key al CDN de Meta.
-            { headers: { Authorization: `Bearer ${zernioApiKey()}` } }
-          : undefined,
-    );
+            { Authorization: `Bearer ${zernioApiKey()}` }
+          : undefined;
+    response = await fetchSinFiltrarKey(opts.link, headers);
   } catch (err) {
     console.error("[media-handler] fetch failed:", err);
     return null;

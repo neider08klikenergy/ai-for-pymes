@@ -71,3 +71,30 @@ test("Zernio: API de Zernio y CDN de Meta (https); nada más", () => {
   assert.equal(validateMediaUrl("zernio", "https://fbcdn.net.evil.com/x"), false);
   assert.equal(validateMediaUrl("kapso", "https://zernio.com/api/v1/whatsapp/media/1"), false);
 });
+
+test("a redirect from the provider is followed without the API key", async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    calls.push({ url: String(url), init });
+    if (calls.length === 1) {
+      return new Response(null, { status: 302, headers: { location: "https://storage.example/obj?sig=1" } });
+    }
+    return new Response("nope", { status: 404 }); // stop before storage
+  }) as typeof fetch;
+  try {
+    await downloadAndStoreMedia({
+      provider: "ycloud",
+      link: "https://api.ycloud.com/m",
+      apiKey: "yk",
+      workspaceId: "ws",
+      conversationId: "conv",
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].init?.redirect, "manual");
+    assert.equal(calls[1].url, "https://storage.example/obj?sig=1");
+    assert.equal(calls[1].init, undefined, "the key never goes to the redirect target");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

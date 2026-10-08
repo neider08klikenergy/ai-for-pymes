@@ -59,6 +59,7 @@ async function assertAdminOrManager(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!member) return { error: "Sin permisos" };

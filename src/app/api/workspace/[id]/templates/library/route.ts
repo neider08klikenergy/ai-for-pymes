@@ -1,8 +1,8 @@
 // Phase 4: read the curated, global template library (RLS: published only).
 // Used by the "Biblioteca" tab to pre-fill the builder.
 
-import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   _req: NextRequest,
@@ -27,6 +27,7 @@ export async function GET(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!member) {

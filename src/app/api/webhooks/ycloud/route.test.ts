@@ -25,10 +25,12 @@ const unused = async () => {
   throw new Error("not expected in this test");
 };
 let inboundCalls = 0;
+const inboundWorkspaces: string[] = [];
 mock.module("@/features/inbox/services/normalizer.ts", {
   exports: {
-    processInbound: async () => {
+    processInbound: async (workspaceId: string) => {
       inboundCalls++;
+      inboundWorkspaces.push(workspaceId);
       return {
         contact: { id: "ct_1" },
         conversation: { id: "conv_1", ai_enabled: true },
@@ -100,12 +102,15 @@ const ROW: { workspace_id: string; credentials: Record<string, unknown>; config:
   credentials: { webhook_signing_secret: "yc-secret" },
   config: { phone_number: "+15550000000" },
 };
+// Every enabled YCloud integration, for the lookup without ?wsid.
+let allRows: (typeof ROW)[] = [ROW];
 const fakeSvc = {
   from: () => ({
     select: () => {
       const q: any = {
         eq: () => q,
         single: async () => ({ data: ROW, error: null }),
+        then: (resolve: (v: unknown) => void) => resolve({ data: allRows, error: null }),
       };
       return q;
     },
@@ -252,4 +257,55 @@ test("bare digits with the workspace's code are enforced; a + number never needs
   await inbound("+15550000000", { type: "reaction", reaction: { emoji: "👍" } });
   assert.deepEqual(countryCodeCalls, [], "no business_info read on the common path");
   await settled();
+});
+
+function inboundSinWsid(to: string) {
+  const body = JSON.stringify({
+    type: "whatsapp.inbound_message.received",
+    whatsappInboundMessage: { wamid: "wamid.in.9", from: "+5215512345678", to, type: "reaction", reaction: { emoji: "👍" } },
+  });
+  const t = Math.floor(Date.now() / 1000);
+  const s = createHmac("sha256", "yc-secret").update(`${t}.${body}`).digest("hex");
+  return POST(
+    new NextRequest("http://localhost/api/webhooks/ycloud", {
+      method: "POST",
+      body,
+      headers: { "content-type": "application/json", "YCloud-Signature": `t=${t},s=${s}` },
+    }),
+  );
+}
+
+test("without wsid, a workspace that copied the number can't take or block the owner's events", async () => {
+  // The decoy comes first and claims the same number with its own secret.
+  const decoy = { workspace_id: "ws_decoy", credentials: { webhook_signing_secret: "decoy-secret" }, config: { phone_number: "+15550000000" } };
+  allRows = [decoy, ROW];
+  inboundCalls = 0;
+  inboundWorkspaces.length = 0;
+  const res = await inboundSinWsid("+15550000000");
+  assert.equal(res.status, 200);
+  assert.deepEqual(inboundWorkspaces, ["ws_1"]);
+
+  // Only the decoy matches: nobody verified the signature.
+  allRows = [decoy];
+  inboundWorkspaces.length = 0;
+  const denied = await inboundSinWsid("+15550000000");
+  assert.equal(denied.status, 401);
+  assert.deepEqual(inboundWorkspaces, []);
+  allRows = [ROW];
+});
+
+test("without wsid, the owner is found among many integrations (no cap before the number filter)", async () => {
+  allRows = [
+    ...Array.from({ length: 15 }, (_, i) => ({
+      workspace_id: `ws_other_${i}`,
+      credentials: { webhook_signing_secret: `s${i}` },
+      config: { phone_number: `+1555111${String(i).padStart(4, "0")}` },
+    })),
+    ROW,
+  ];
+  inboundWorkspaces.length = 0;
+  const res = await inboundSinWsid("+15550000000");
+  assert.equal(res.status, 200);
+  assert.deepEqual(inboundWorkspaces, ["ws_1"]);
+  allRows = [ROW];
 });

@@ -131,8 +131,14 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  const origin =
-    (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+  // The link in the email points at the configured app URL, not at whatever
+  // Origin the request carries (a caller controls that header). Origin is only
+  // a fallback for a local install without NEXT_PUBLIC_APP_URL.
+  const origin = (
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (await headers()).get("origin") ||
+    ""
+  ).replace(/\/$/, "");
 
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
