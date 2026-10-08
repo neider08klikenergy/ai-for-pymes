@@ -24,6 +24,7 @@ import { createClient as svcClient } from "@supabase/supabase-js";
 import { workspaceCountryCode } from "@/features/inbox/services/country-code";
 import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
 import { normalizarTienda } from "@/features/productos/lib/shopify";
+import { withoutZernioServerKeys } from "@/features/inbox/services/zernio-accounts";
 
 const IntegrationSchema = z.object({
   provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel", "shopify"]),
@@ -220,6 +221,10 @@ export async function PUT(
   // YCloud's number: saved in E.164 when that is certain, confirmed against
   // the account's own lines when the key allows it (a warning, never a block).
   let config = parsed.data.config;
+  // Zernio: el perfil y las cuentas los fija el servidor (ensureZernioProfile,
+  // syncZernioAccounts); lo que venga en el cuerpo se ignora y se conserva lo
+  // guardado.
+  if (provider === "zernio" && config) config = withoutZernioServerKeys(config);
   let phoneWarning: string | undefined;
   const typedPhone = phoneString(config?.phone_number);
   if (provider === "ycloud" && config && typedPhone) {

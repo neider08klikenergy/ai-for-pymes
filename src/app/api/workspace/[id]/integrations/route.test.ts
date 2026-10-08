@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://fake.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-service-key";
 process.env.ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+process.env.ZERNIO_API_KEY = "fake-zernio-key";
+process.env.ZERNIO_WEBHOOK_SECRET = "fake-zernio-secret";
 
 const memberCalls: unknown[] = [];
 let memberResult: unknown = { ok: true, userId: "user_1", role: "manager" };
@@ -21,7 +23,12 @@ mock.module("@/lib/auth/workspace-access.ts", {
 // The stored row the PUT merges into, and what it upserts.
 let existingRow: { credentials: object; config: object; oauth_tokens: object } | null = null;
 const upserts: unknown[] = [];
+const rpcs: { fn: string; args: Record<string, unknown> }[] = [];
 const fakeSvc = {
+  rpc: async (fn: string, args: Record<string, unknown>) => {
+    rpcs.push({ fn, args });
+    return { data: null, error: null };
+  },
   from: () => ({
     select: () => {
       const chain: any = {
@@ -117,4 +124,35 @@ test("PUT also checks the legacy `model` key the workspace default can come from
   const res = await putOpenRouter({ model: "some/unlisted-model" });
   assert.equal(res.status, 400);
   assert.equal(upserts.length, 0);
+});
+
+test("PUT ignores the Zernio profile and accounts in the body (only the server writes them)", async () => {
+  memberResult = { ok: true, userId: "user_1", role: "admin" };
+  existingRow = {
+    credentials: {},
+    config: { profile_id: "p_own", accounts: [{ id: "acc_own" }], account_ids: ["acc_own"] },
+    oauth_tokens: {},
+  };
+  rpcs.length = 0;
+  const res = await PUT(
+    new NextRequest("http://localhost/api/workspace/ws_1/integrations", {
+      method: "PUT",
+      body: JSON.stringify({
+        provider: "zernio",
+        enabled: true,
+        config: {
+          profile_id: "p_other",
+          accounts: [{ id: "acc_other", platform: "whatsapp" }],
+          account_ids: ["acc_other"],
+          ai_enabled: true,
+        },
+      }),
+    }),
+    params,
+  );
+  assert.equal(res.status, 200);
+  assert.equal(rpcs.length, 1);
+  assert.equal(rpcs[0].fn, "save_whatsapp_integration");
+  // save_whatsapp_integration keeps the stored binding (own config || p_config).
+  assert.deepEqual(rpcs[0].args.p_config, { ai_enabled: true });
 });

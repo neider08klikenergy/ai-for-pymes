@@ -22,6 +22,21 @@ export interface ZernioIntegration {
   config: Record<string, unknown>;
 }
 
+/**
+ * Claves que solo escribe el servidor (a partir de lo que dice Zernio). Son la
+ * prueba de qué perfil y qué cuentas son de este workspace: si un admin las
+ * pudiera escribir, podría reclamar las cuentas de otro workspace.
+ */
+export const ZERNIO_SERVER_KEYS = ["profile_id", "accounts", "account_ids"] as const;
+
+export function withoutZernioServerKeys(
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  const rest = { ...config };
+  for (const key of ZERNIO_SERVER_KEYS) delete rest[key];
+  return rest;
+}
+
 export function accountsOf(config: Record<string, unknown>): ZernioAccountConfig[] {
   return Array.isArray(config.accounts) ? (config.accounts as ZernioAccountConfig[]) : [];
 }

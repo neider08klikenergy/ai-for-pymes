@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(95);
+SELECT plan(98);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -498,6 +498,15 @@ SELECT lives_ok(
   $$UPDATE public.contacts SET hl_contact_id = 'hl-sec-1'
      WHERE id = 'a0000000-0000-4000-8000-0000000000c1'$$,
   'another workspace may link its own contact to the same HighLevel id');
+
+-- ── aislamiento entre workspaces (20261016000000) ───────────────────────────
+SELECT has_trigger('public', 'integrations', 'trg_integrations_guard_zernio_binding',
+  'sessions cannot write the Zernio profile/accounts binding (claiming another workspace''s channels)');
+SELECT has_index('public', 'integrations', 'uq_integrations_zernio_profile',
+  'a Zernio profile belongs to a single workspace (duplicates silenced webhook routing)');
+SELECT ok(EXISTS (SELECT 1 FROM pg_constraint
+                   WHERE conrelid = 'public.cupos_dia'::regclass AND conname = 'fk_cupos_dia_sede'),
+  'cupos_dia.sede_id is a composite (workspace_id, sede_id) FK (no closing another workspace''s quota)');
 
 SELECT * FROM finish();
 ROLLBACK;
