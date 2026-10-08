@@ -1,8 +1,8 @@
 // G5: Setter mode API — CRUD for setter_configs table.
 
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSvcClient } from "@supabase/supabase-js";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ async function resolveWorkspaceMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

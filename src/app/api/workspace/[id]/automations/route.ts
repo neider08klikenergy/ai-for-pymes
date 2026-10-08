@@ -1,8 +1,8 @@
 // G3: Automation Rules API — list, create, update, delete workspace automation rules.
 
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 
 // ── Service-role client ───────────────────────────────────────────────────────
@@ -26,6 +26,7 @@ async function resolveMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

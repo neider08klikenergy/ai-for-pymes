@@ -53,7 +53,8 @@ const fakeSvc = {
           else if (col === "workspace_id") filters.push((r) => r.workspace_id === v);
           return q;
         },
-        limit: async () => ({ data: rows.filter((r) => filters.every((f) => f(r))), error: null }),
+        then: (resolve: (v: unknown) => void) =>
+          resolve({ data: rows.filter((r) => filters.every((f) => f(r))), error: null }),
         maybeSingle: async () => ({ data: rows.find((r) => filters.every((f) => f(r))) ?? null, error: null }),
       };
       return q;

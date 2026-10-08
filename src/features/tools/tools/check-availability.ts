@@ -110,7 +110,9 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
   });
 
   const res = await fetch(
-    `https://services.leadconnectorhq.com/calendars/${calendarId}/free-slots?${params.toString()}`,
+    // calendar_id can come from the model: encoded so a value like
+    // "../contacts" can't point this GET at another HighLevel endpoint.
+    `https://services.leadconnectorhq.com/calendars/${encodeURIComponent(calendarId)}/free-slots?${params.toString()}`,
     {
       method: "GET",
       headers: {

@@ -1,14 +1,14 @@
 // F7: Prompts API — list prompts, create versions, publish versions.
 
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import {
   listPrompts,
+  upsertGlobalPrompt,
   createPromptVersion,
   publishPromptVersion,
-  upsertGlobalPrompt,
 } from "@/features/inbox/services/prompt-resolver";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const ALLOWED_SCOPES = [
   "global",
@@ -51,6 +51,7 @@ async function resolveWorkspaceMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }

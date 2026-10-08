@@ -1,12 +1,12 @@
 // F7: Business info API — GET/PUT for workspace business context.
 
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import {
   getBusinessInfo,
   upsertBusinessInfo,
 } from "@/features/inbox/services/business-info";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const UpdateSchema = z.object({
   structured: z.record(z.string(), z.unknown()).optional(),
@@ -37,6 +37,7 @@ export async function GET(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!member) {
@@ -74,6 +75,7 @@ export async function PUT(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!member) {
