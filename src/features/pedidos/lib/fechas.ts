@@ -57,9 +57,14 @@ export function rangoDelDia(
   };
 }
 
+/** Formato regional según el idioma del panel (es → Colombia, en → EE. UU.). */
+function regional(idioma?: string): string {
+  return idioma === "en" ? "en-US" : "es-CO";
+}
+
 /** "3:30 p. m." en la zona del negocio. */
-export function horaLocal(iso: string, zona: string): string {
-  return new Intl.DateTimeFormat("es-CO", {
+export function horaLocal(iso: string, zona: string, idioma?: string): string {
+  return new Intl.DateTimeFormat(regional(idioma), {
     timeZone: zona,
     hour: "numeric",
     minute: "2-digit",
@@ -67,8 +72,8 @@ export function horaLocal(iso: string, zona: string): string {
 }
 
 /** "lun 28 sep" en la zona del negocio. */
-export function fechaCorta(iso: string, zona: string): string {
-  return new Intl.DateTimeFormat("es-CO", {
+export function fechaCorta(iso: string, zona: string, idioma?: string): string {
+  return new Intl.DateTimeFormat(regional(idioma), {
     timeZone: zona,
     weekday: "short",
     day: "numeric",
@@ -103,8 +108,8 @@ export function sumarMeses(mes: string, n: number): string {
 }
 
 /** "Octubre de 2026" */
-export function nombreMes(mes: string): string {
-  const t = new Intl.DateTimeFormat("es-CO", {
+export function nombreMes(mes: string, idioma?: string): string {
+  const t = new Intl.DateTimeFormat(regional(idioma), {
     timeZone: "UTC",
     month: "long",
     year: "numeric",

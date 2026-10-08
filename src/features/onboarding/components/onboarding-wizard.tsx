@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -59,27 +60,27 @@ const USE_CASES: {
 }[] = [
   {
     id: "setter",
-    label: "Setter / Ventas",
-    description: "Califica leads, agenda citas y cierra ventas por WhatsApp.",
+    label: "setterVentas",
+    description: "calificaLeadsAgendaCitasYCierra",
     icon: <TrendingUp className="h-5 w-5" aria-hidden />,
   },
   {
     id: "soporte",
-    label: "Soporte al cliente",
+    label: "soporteAlCliente",
     description:
       "Resuelve dudas, gestiona tickets y escala a humanos cuando es necesario.",
     icon: <HeadphonesIcon className="h-5 w-5" aria-hidden />,
   },
   {
     id: "agendamiento",
-    label: "Agendamiento",
+    label: "agendamiento",
     description:
       "Reserva y confirma citas de forma automática con tus clientes.",
     icon: <CalendarDays className="h-5 w-5" aria-hidden />,
   },
   {
     id: "general",
-    label: "General",
+    label: "general",
     description:
       "Asistente virtual flexible para responder preguntas y dar información.",
     icon: <Sparkles className="h-5 w-5" aria-hidden />,
@@ -121,15 +122,16 @@ function Step1({
   selected: UseCase | null;
   onSelect: (id: UseCase) => void;
 }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.onboardingWizard");
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          ¿Para qué usarás el agente?
+          {t("paraQueUsarasElAgente")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Esto configurará el prompt inicial de tu asistente. Podrás modificarlo
-          después.
+          {t("estoConfiguraraElPromptInicialDe")}
         </p>
       </div>
 
@@ -160,10 +162,10 @@ function Step1({
               {uc.icon}
             </span>
             <span className="font-medium text-foreground text-sm">
-              {uc.label}
+              {tc(uc.label)}
             </span>
             <span className="text-xs text-muted-foreground leading-relaxed">
-              {uc.description}
+              {tc(uc.description)}
             </span>
           </button>
         ))}
@@ -181,25 +183,27 @@ function Step2({
   state: WizardState;
   onChange: (patch: Partial<WizardState>) => void;
 }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.onboardingWizard");
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          Información del negocio
+          {t("informacionDelNegocio")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          El agente usará estos datos para presentarse y responder con contexto.
+          {t("elAgenteUsaraEstosDatosPara")}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="business-name">
-            Nombre del negocio <span className="text-destructive">*</span>
+            {t("nombreDelNegocio")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="business-name"
-            placeholder="Clínica Sonrisa Perfecta"
+            placeholder={t("clinicaSonrisaPerfecta")}
             value={state.businessName}
             onChange={(e) => onChange({ businessName: e.target.value })}
             autoFocus
@@ -207,26 +211,26 @@ function Step2({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="industry">Industria / Giro</Label>
+          <Label htmlFor="industry">{t("industriaGiro")}</Label>
           <Input
             id="industry"
-            placeholder="Salud dental, E-commerce, Bienes raíces..."
+            placeholder={t("saludDentalECommerceBienesRaices")}
             value={state.industry}
             onChange={(e) => onChange({ industry: e.target.value })}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Descripción breve</Label>
+          <Label htmlFor="description">{t("descripcionBreve")}</Label>
           <Textarea
             id="description"
-            placeholder="Somos una clínica dental en Cancún especializada en ortodoncia y estética dental..."
-            value={state.description}
+            placeholder={t("somosUnaClinicaDentalEnCancun")}
+            value={tc(state.description)}
             onChange={(e) => onChange({ description: e.target.value })}
             rows={4}
           />
           <p className="text-xs text-muted-foreground">
-            Esta descripción enriquece el prompt base del agente.
+            {t("estaDescripcionEnriqueceElPromptBase")}
           </p>
         </div>
       </div>
@@ -251,6 +255,7 @@ function Step3({
   kapsoChoices: KapsoNumberOption[];
   onPickKapsoNumber: (n: KapsoNumberOption) => void;
 }) {
+  const t = useTranslations("ui.onboardingWizard");
   const [copied, setCopied] = useState(false);
   const provider = state.whatsappProvider;
   const label = WHATSAPP_LABEL[provider];
@@ -268,17 +273,16 @@ function Step3({
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          Conectar WhatsApp
+          {t("conectarWhatsapp")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Opcional. Podrás configurar esto más tarde desde Configuración →
-          Integraciones.
+          {t("opcionalPodrasConfigurarEstoMasTarde")}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label id="onboarding-provider-label">Proveedor</Label>
+          <Label id="onboarding-provider-label">{t("proveedor")}</Label>
           <WhatsAppProviderPicker
             value={provider}
             options={["ycloud", "kapso"]}
@@ -297,13 +301,14 @@ function Step3({
             labelledBy="onboarding-provider-label"
           />
           <p className="text-xs text-muted-foreground">
-            Si tu número o tus clientes están en Estados Unidos, usa Kapso
-            (YCloud no opera ahí).
+            {t("siTuNumeroOTusClientes")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-key">API Key {label}</Label>
+          <Label htmlFor="whatsapp-key">
+            {t("apiKey")} {label}
+          </Label>
           <Input
             id="whatsapp-key"
             type="password"
@@ -315,7 +320,7 @@ function Step3({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-phone">Número de WhatsApp (E.164)</Label>
+          <Label htmlFor="whatsapp-phone">{t("numeroDeWhatsappE164")}</Label>
           <Input
             id="whatsapp-phone"
             type="tel"
@@ -329,7 +334,7 @@ function Step3({
           <>
             <div className="space-y-2">
               <Label htmlFor="kapso-phone-number-id">
-                Phone Number ID (Meta)
+                {t("phoneNumberIdMeta")}
               </Label>
               <Input
                 id="kapso-phone-number-id"
@@ -341,7 +346,7 @@ function Step3({
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Se autocompleta al probar la conexión.
+                {t("seAutocompletaAlProbarLaConexion")}
               </p>
             </div>
             {kapsoChoices.length > 0 && (
@@ -353,7 +358,7 @@ function Step3({
               />
             )}
             <div className="space-y-2">
-              <Label htmlFor="kapso-waba-id">WABA ID</Label>
+              <Label htmlFor="kapso-waba-id">{t("wabaId")}</Label>
               <Input
                 id="kapso-waba-id"
                 inputMode="numeric"
@@ -366,7 +371,7 @@ function Step3({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-secret">Webhook Signing Secret</Label>
+          <Label htmlFor="whatsapp-secret">{t("webhookSigningSecret")}</Label>
           <Input
             id="whatsapp-secret"
             type="password"
@@ -380,20 +385,20 @@ function Step3({
         </div>
 
         <div className="space-y-2">
-          <Label>Webhook URL</Label>
+          <Label>{t("webhookUrl")}</Label>
           <div className="flex items-center gap-2">
             <Input
               readOnly
               value={webhookPlaceholder}
               className="font-mono text-xs text-muted-foreground"
-              aria-label="Webhook URL — se generará al finalizar"
+              aria-label={t("webhookUrlSeGeneraraAlFinalizar")}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              aria-label="Copiar texto"
+              aria-label={t("copiarTexto")}
             >
               {copied ? (
                 <CheckCircle2 className="h-4 w-4 text-green-500" aria-hidden />
@@ -403,8 +408,7 @@ function Step3({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            La URL real se mostrará en Configuración → Integraciones una vez
-            creado el workspace.
+            {t("laUrlRealSeMostraraEn")}
           </p>
         </div>
 
@@ -420,7 +424,7 @@ function Step3({
             {isTesting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             ) : null}
-            Probar conexión
+            {t("probarConexion")}
           </Button>
         )}
       </div>
@@ -437,8 +441,12 @@ function Step4({
   state: WizardState;
   workspaceId: string;
 }) {
-  const useCaseLabel =
-    USE_CASES.find((u) => u.id === state.useCase)?.label ?? state.useCase ?? "";
+  const t = useTranslations("ui.onboardingWizard");
+  const tc = useTranslations("ui.constantes");
+  const useCaseLabel = (() => {
+    const uc = USE_CASES.find((u) => u.id === state.useCase);
+    return uc ? tc(uc.label) : (state.useCase ?? "");
+  })();
 
   return (
     <div className="space-y-6">
@@ -447,18 +455,20 @@ function Step4({
           <CheckCircle2 className="h-8 w-8 text-primary" aria-hidden />
         </span>
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          ¡Todo listo!
+          {t("todoListo")}
         </h1>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Tu workspace ha sido creado. Aquí un resumen de lo configurado.
+          {t("tuWorkspaceHaSidoCreadoAqui")}
         </p>
       </div>
 
       <div className="rounded-xl border border-border bg-card divide-y divide-border">
-        <Row label="Negocio" value={state.businessName} />
-        {state.industry && <Row label="Industria" value={state.industry} />}
-        <Row label="Tipo de agente" value={useCaseLabel} />
-        <Row label="Prompt inicial" value="Generado automáticamente" />
+        <Row label={t("negocio")} value={state.businessName} />
+        {state.industry && (
+          <Row label={t("industria")} value={state.industry} />
+        )}
+        <Row label={t("tipoDeAgente")} value={useCaseLabel} />
+        <Row label={t("promptInicial")} value="Generado automáticamente" />
         {state.whatsappApiKey && (
           <Row
             label={WHATSAPP_LABEL[state.whatsappProvider]}
@@ -466,15 +476,14 @@ function Step4({
           />
         )}
         <Row
-          label="Webhook URL"
+          label={t("webhookUrl")}
           value={`/api/webhooks/${state.whatsappProvider}?wsid=${workspaceId}`}
           mono
         />
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
-        Puedes ajustar todo esto en Configuración → Integraciones y
-        Configuración → Prompt.
+        {t("puedesAjustarTodoEstoEnConfiguracion")}
       </p>
     </div>
   );
@@ -509,6 +518,8 @@ function Row({
 const TOTAL_STEPS = 4;
 
 export function OnboardingWizard() {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.onboardingWizard");
   const router = useRouter();
 
   const [step, setStep] = useState(0);
@@ -567,7 +578,7 @@ export function OnboardingWizard() {
         useCase: state.useCase!,
         businessName: state.businessName.trim(),
         industry: state.industry.trim() || undefined,
-        description: state.description.trim() || undefined,
+        description: tc(state.description).trim() || undefined,
         whatsappProvider: state.whatsappProvider,
         whatsappApiKey: state.whatsappApiKey.trim() || undefined,
         whatsappPhone: state.whatsappPhone.trim() || undefined,
@@ -587,7 +598,7 @@ export function OnboardingWizard() {
       setStep(3);
     } catch (err) {
       console.error("[OnboardingWizard] handleFinalize error:", err);
-      toast.error("Error inesperado al crear el workspace");
+      toast.error(t("errorInesperadoAlCrearElWorkspace"));
     } finally {
       setIsSubmitting(false);
     }
@@ -613,7 +624,7 @@ export function OnboardingWizard() {
         error?: string;
       };
       if (!json.ok) {
-        toast.error(json.error ?? "API Key inválida o sin acceso");
+        toast.error(json.error ?? t("apiKeyInvalidaOSinAcceso"));
         return;
       }
       if (provider === "kapso") {
@@ -701,7 +712,7 @@ export function OnboardingWizard() {
             disabled={isSubmitting}
           >
             <ChevronLeft className="h-4 w-4 mr-1" aria-hidden />
-            Atrás
+            {t("atras")}
           </Button>
         ) : (
           <div />
@@ -717,7 +728,7 @@ export function OnboardingWizard() {
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             ) : null}
-            {isLastDataStep ? "Finalizar" : "Continuar"}
+            {isLastDataStep ? t("finalizar") : t("continuar")}
             {!isLastDataStep && !isSubmitting && (
               <ChevronRight className="h-4 w-4 ml-1" aria-hidden />
             )}
@@ -728,7 +739,7 @@ export function OnboardingWizard() {
             onClick={() => router.push("/inbox")}
             className="w-full sm:w-auto"
           >
-            Ir al inbox
+            {t("irAlInbox")}
             <ChevronRight className="h-4 w-4 ml-1" aria-hidden />
           </Button>
         )}

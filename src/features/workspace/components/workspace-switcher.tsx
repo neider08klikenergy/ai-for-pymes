@@ -1,18 +1,19 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { switchWorkspace } from "@/features/workspace/services/actions";
 import { cn } from "@/lib/utils";
+import { useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { switchWorkspace } from "@/features/workspace/services/actions";
 
 interface WorkspaceSwitcherProps {
   workspaces: { workspace_id: string; name: string }[];
@@ -23,6 +24,7 @@ export function WorkspaceSwitcher({
   workspaces,
   activeId,
 }: WorkspaceSwitcherProps) {
+  const t = useTranslations("ui.workspaceSwitcher");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -47,10 +49,10 @@ export function WorkspaceSwitcher({
             "font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40",
             "max-w-[160px] sm:max-w-[220px]",
           )}
-          aria-label="Cambiar de workspace"
+          aria-label={t("cambiarDeWorkspace")}
         >
           <span className="truncate" title={active?.name}>
-            {active?.name ?? "Workspace"}
+            {active?.name ?? t("workspace")}
           </span>
           {isPending ? (
             <Loader2
@@ -63,7 +65,7 @@ export function WorkspaceSwitcher({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel>Cambiar de workspace</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("cambiarDeWorkspace")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {workspaces.map((w) => (
           <DropdownMenuItem

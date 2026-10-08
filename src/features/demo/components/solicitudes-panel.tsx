@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Panel de agencia → Solicitudes de demo. El equipo de Felrick ve quién pidió
 // la demo, sus datos y lleva el seguimiento (estado, fecha de la demo, notas).
 
@@ -78,6 +80,8 @@ export function SolicitudesPanel({
 }: {
   solicitudes: SolicitudFila[];
 }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.solicitudesPanel");
   const [filtro, setFiltro] = useState<EstadoSolicitud | "activas">("activas");
   const visibles = solicitudes.filter((s) =>
     filtro === "activas"
@@ -91,27 +95,20 @@ export function SolicitudesPanel({
     <div className="mx-auto w-full max-w-5xl flex flex-col gap-5">
       <div>
         <h1 className="font-display text-xl font-semibold flex items-center gap-2">
-          <CalendarCheck className="h-5 w-5 text-primary" aria-hidden="true" />
-          Solicitudes de demo
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Negocios que pidieron una demo desde la página /demo. Después de la
-          demo, crea su workspace en Workspaces.
-        </p>
+          <CalendarCheck className="h-5 w-5 text-primary" aria-hidden="true" />{t("solicitudesDeDemo")}</h1>
+        <p className="text-sm text-muted-foreground">{t("negociosQuePidieronUnaDemoDesde")}</p>
       </div>
 
       <div
         className="flex flex-wrap gap-1"
         role="group"
-        aria-label="Filtrar por estado"
+        aria-label={t("filtrarPorEstado")}
       >
         <Button
           size="sm"
           variant={filtro === "activas" ? "default" : "outline"}
           onClick={() => setFiltro("activas")}
-        >
-          En curso
-        </Button>
+        >{t("enCurso")}</Button>
         {ESTADOS.map((e) => (
           <Button
             key={e}
@@ -119,7 +116,7 @@ export function SolicitudesPanel({
             variant={filtro === e ? "default" : "outline"}
             onClick={() => setFiltro(e)}
           >
-            {ESTADO_LABEL[e]}
+            {tc(ESTADO_LABEL[e])}
             <span className="ml-1 tabular-nums opacity-70">{cuenta(e)}</span>
           </Button>
         ))}
@@ -128,11 +125,8 @@ export function SolicitudesPanel({
       {visibles.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center">
           <Inbox className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
-          <p className="font-medium">No hay solicitudes aquí</p>
-          <p className="text-sm text-muted-foreground">
-            Comparte el enlace <span className="font-mono">/demo</span> para que
-            los negocios pidan su demo.
-          </p>
+          <p className="font-medium">{t("noHaySolicitudesAqui")}</p>
+          <p className="text-sm text-muted-foreground">{t("comparteElEnlace")}{" "}<span className="font-mono">/demo</span>{" "}{t("paraQueLosNegociosPidanSu")}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -149,6 +143,8 @@ export function SolicitudesPanel({
 }
 
 function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.solicitudesPanel");
   const router = useRouter();
   const [estado, setEstado] = useState<EstadoSolicitud>(s.estado);
   const [notas, setNotas] = useState(s.notas ?? "");
@@ -171,7 +167,7 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
         toast.error(r.error);
         return;
       }
-      toast.success("Solicitud actualizada");
+      toast.success(t("solicitudActualizada"));
       router.refresh();
     });
   }
@@ -196,7 +192,7 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
               COLOR[s.estado],
             )}
           >
-            {ESTADO_LABEL[s.estado]}
+            {tc(ESTADO_LABEL[s.estado])}
           </span>
           <span className="text-xs text-muted-foreground">
             · {fecha(s.created_at)}
@@ -233,9 +229,7 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
 
       <div className="grid gap-2 content-start">
         <div className="grid gap-1">
-          <Label htmlFor={`est-${s.id}`} className="text-xs">
-            Estado
-          </Label>
+          <Label htmlFor={`est-${s.id}`} className="text-xs">{t("estado")}</Label>
           <select
             id={`est-${s.id}`}
             className={SELECT_CLASS}
@@ -244,15 +238,13 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
           >
             {ESTADOS.map((e) => (
               <option key={e} value={e}>
-                {ESTADO_LABEL[e]}
+                {tc(ESTADO_LABEL[e])}
               </option>
             ))}
           </select>
         </div>
         <div className="grid gap-1">
-          <Label htmlFor={`demo-${s.id}`} className="text-xs">
-            Fecha de la demo
-          </Label>
+          <Label htmlFor={`demo-${s.id}`} className="text-xs">{t("fechaDeLaDemo")}</Label>
           <Input
             id={`demo-${s.id}`}
             type="datetime-local"
@@ -262,9 +254,7 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
           />
         </div>
         <div className="grid gap-1">
-          <Label htmlFor={`notas-${s.id}`} className="text-xs">
-            Notas internas
-          </Label>
+          <Label htmlFor={`notas-${s.id}`} className="text-xs">{t("notasInternas")}</Label>
           <Textarea
             id={`notas-${s.id}`}
             rows={2}
@@ -272,9 +262,7 @@ function TarjetaSolicitud({ solicitud: s }: { solicitud: SolicitudFila }) {
             onChange={(e) => setNotas(e.target.value)}
           />
         </div>
-        <Button size="sm" disabled={!cambiado || pendiente} onClick={guardar}>
-          Guardar
-        </Button>
+        <Button size="sm" disabled={!cambiado || pendiente} onClick={guardar}>{t("guardar")}</Button>
       </div>
     </li>
   );

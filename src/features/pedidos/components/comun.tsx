@@ -3,19 +3,31 @@
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { PedidoFila } from "../types";
+import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { ESTADO_COLOR, type EstadoPedido } from "../lib/estados";
 import type { ResultadoAccion } from "../services/pedidos-actions";
-import { ESTADO_COLOR, ESTADO_LABEL, type EstadoPedido } from "../lib/estados";
 
-/** Texto del botón que avanza el pedido al siguiente estado de producción. */
-export const ACCION_SIGUIENTE: Partial<Record<EstadoPedido, string>> = {
-  confirmado: "Pasar a producción",
-  en_produccion: "Marcar listo",
-  listo: "Marcar entregado",
+/** Botón que avanza el pedido: clave de pedidos.siguiente.* (traducida en pantalla). */
+export const ACCION_SIGUIENTE: Partial<
+  Record<EstadoPedido, "confirmado" | "en_produccion" | "listo">
+> = {
+  confirmado: "confirmado",
+  en_produccion: "en_produccion",
+  listo: "listo",
 };
+
+/** Texto del botón que avanza el pedido, en el idioma del panel. */
+export function useAccionSiguiente(): (estado: EstadoPedido) => string | null {
+  const t = useTranslations("pedidos.siguiente");
+  return (estado) => {
+    const clave = ACCION_SIGUIENTE[estado];
+    return clave ? t(clave) : null;
+  };
+}
 
 const LINEA_LABEL: Record<string, string> = {
   ponque_personalizado: "Ponqué",
@@ -42,6 +54,7 @@ export function EstadoBadge({
   estado: EstadoPedido;
   className?: string;
 }) {
+  const t = useTranslations("pedidos.estados");
   return (
     <span
       className={cn(
@@ -50,7 +63,7 @@ export function EstadoBadge({
         className,
       )}
     >
-      {ESTADO_LABEL[estado]}
+      {t(estado)}
     </span>
   );
 }
@@ -82,7 +95,11 @@ export function toastResultado(r: ResultadoAccion): boolean {
   return true;
 }
 
-export async function abrirComprobante(storagePath: string) {
+export async function abrirComprobante(
+  storagePath: string,
+  /** Texto del error ya traducido (pedidos.comun.errorComprobante). */
+  textoError: string,
+) {
   // Se abre la pestaña antes del await para que el navegador no la bloquee.
   const ventana = window.open("", "_blank");
   try {
@@ -97,7 +114,7 @@ export async function abrirComprobante(storagePath: string) {
     else window.open(json.url, "_blank");
   } catch {
     ventana?.close();
-    toast.error("No se pudo abrir el comprobante");
+    toast.error(textoError);
   }
 }
 
@@ -122,12 +139,9 @@ export function CampoAviso({
   tieneChat: boolean;
   ventanaAbierta: boolean | null;
 }) {
+  const t = useTranslations("pedidos.comun");
   if (!tieneChat) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Este pedido no tiene chat de WhatsApp: avisa al cliente por otro medio.
-      </p>
-    );
+    return <p className="text-xs text-muted-foreground">{t("sinChat")}</p>;
   }
   return (
     <div className="grid gap-2 rounded-lg border border-border/60 p-3">
@@ -138,14 +152,14 @@ export function CampoAviso({
           onCheckedChange={(v) => onAvisar(v === true)}
         />
         <Label htmlFor={`${id}-avisar`} className="cursor-pointer">
-          Avisar al cliente por WhatsApp
+          {t("avisarCliente")}
         </Label>
       </div>
       {avisar && (
         <>
           <Textarea
             id={`${id}-texto`}
-            aria-label="Mensaje para el cliente"
+            aria-label={t("mensajeCliente")}
             value={texto}
             rows={5}
             maxLength={1000}
@@ -157,10 +171,7 @@ export function CampoAviso({
                 className="h-3.5 w-3.5 mt-0.5 shrink-0"
                 aria-hidden="true"
               />
-              Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp
-              no deja enviar texto libre. Si la plantilla de este aviso está
-              aprobada (Settings → Templates), se envía la plantilla; si no, el
-              texto queda como nota en el chat.
+              {t("ventanaCerrada")}
             </p>
           )}
         </>

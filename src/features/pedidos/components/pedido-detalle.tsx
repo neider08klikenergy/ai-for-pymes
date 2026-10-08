@@ -11,11 +11,12 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { siguienteEstado } from "../lib/estados";
+import { useLocale, useTranslations } from "next-intl";
 import { fechaCorta, horaLocal, pesos } from "../lib/fechas";
 import { AlertTriangle, MessageCircle, Wallet, X } from "lucide-react";
 
-function fechaLarga(iso: string, zona: string): string {
-  return new Intl.DateTimeFormat("es-CO", {
+function fechaLarga(iso: string, zona: string, idioma: string): string {
+  return new Intl.DateTimeFormat(idioma === "en" ? "en-US" : "es-CO", {
     timeZone: zona,
     day: "numeric",
     month: "short",
@@ -23,12 +24,13 @@ function fechaLarga(iso: string, zona: string): string {
   }).format(new Date(iso));
 }
 import type { PedidoFila } from "../types";
-import { ACCION_SIGUIENTE, EstadoBadge, nombreProducto } from "./comun";
+import { EstadoBadge, nombreProducto, useAccionSiguiente } from "./comun";
 
+// label: clave de pedidos.detalle.estadoPago.*
 const PAGO_ESTADO: Record<string, { label: string; className: string }> = {
-  por_verificar: { label: "Por verificar", className: "text-warning" },
-  confirmado: { label: "Confirmado", className: "text-success" },
-  rechazado: { label: "Rechazado", className: "text-destructive" },
+  por_verificar: { label: "por_verificar", className: "text-warning" },
+  confirmado: { label: "confirmado", className: "text-success" },
+  rechazado: { label: "rechazado", className: "text-destructive" },
 };
 
 function Fila({
@@ -69,6 +71,10 @@ export function PedidoDetalle({
   const activo =
     pedido && pedido.estado !== "entregado" && pedido.estado !== "cancelado";
   const d = pedido?.detalle ?? {};
+  const t = useTranslations("pedidos.detalle");
+  const tp = useTranslations("pedidos.pagos");
+  const idioma = useLocale();
+  const accionSiguiente = useAccionSiguiente();
 
   return (
     <Sheet open={!!pedido} onOpenChange={(o) => !o && onClose()}>
@@ -81,40 +87,45 @@ export function PedidoDetalle({
                 <EstadoBadge estado={pedido.estado} />
               </div>
               <SheetDescription>
-                Entrega {fechaCorta(pedido.fecha_entrega, zona)} ·{" "}
-                {horaLocal(pedido.fecha_entrega, zona)}
+                {t("entrega")} {fechaCorta(pedido.fecha_entrega, zona, idioma)}{" "}
+                · {horaLocal(pedido.fecha_entrega, zona, idioma)}
               </SheetDescription>
             </SheetHeader>
 
             <section className="grid gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Pedido
+                {t("pedido")}
               </h3>
               <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-sm">
-                <Fila label="Producto">{nombreProducto(pedido)}</Fila>
-                <Fila label="Sede">{pedido.sede?.nombre ?? "—"}</Fila>
-                <Fila label="Entrega">
+                <Fila label={t("producto")}>{nombreProducto(pedido)}</Fila>
+                <Fila label={t("sede")}>{pedido.sede?.nombre ?? "—"}</Fila>
+                <Fila label={t("entrega")}>
                   {pedido.modalidad === "domicilio"
-                    ? `Domicilio: ${pedido.direccion_entrega ?? "sin dirección"}`
-                    : "Recoge en sede"}
+                    ? t("domicilioEn", {
+                        direccion:
+                          pedido.direccion_entrega ?? t("sinDireccion"),
+                      })
+                    : t("recogeEnSede")}
                 </Fila>
                 {pedido.modalidad === "domicilio" && (
-                  <Fila label="Domicilio">
+                  <Fila label={t("domicilio")}>
                     {pesos(pedido.valor_domicilio)}
                     <span className="text-xs text-muted-foreground">
                       {pedido.domicilio_origen === "persona"
-                        ? " · valor dado por el equipo en el chat"
+                        ? ` · ${t("valorEquipo")}`
                         : pedido.domicilio_origen === "tarifa"
-                          ? " · según tarifa"
+                          ? ` · ${t("segunTarifa")}`
                           : ""}
                     </span>
                   </Fila>
                 )}
-                {d.decoracion && <Fila label="Decoración">{d.decoracion}</Fila>}
-                {d.mensaje && <Fila label="Mensaje">“{d.mensaje}”</Fila>}
-                {d.forma && <Fila label="Forma">{d.forma}</Fila>}
+                {d.decoracion && (
+                  <Fila label={t("decoracion")}>{d.decoracion}</Fila>
+                )}
+                {d.mensaje && <Fila label={t("mensaje")}>“{d.mensaje}”</Fila>}
+                {d.forma && <Fila label={t("forma")}>{d.forma}</Fila>}
                 {(d.notas || pedido.notas) && (
-                  <Fila label="Notas">
+                  <Fila label={t("notas")}>
                     {[d.notas, pedido.notas].filter(Boolean).join(" · ")}
                   </Fila>
                 )}
@@ -123,11 +134,11 @@ export function PedidoDetalle({
 
             <section className="grid gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Cliente
+                {t("cliente")}
               </h3>
               <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-sm">
-                <Fila label="Nombre">{pedido.nombre_cliente}</Fila>
-                <Fila label="Teléfono">{pedido.telefono ?? "—"}</Fila>
+                <Fila label={t("nombre")}>{pedido.nombre_cliente}</Fila>
+                <Fila label={t("telefono")}>{pedido.telefono ?? "—"}</Fila>
               </dl>
               {pedido.conversation_id && (
                 <Link
@@ -139,7 +150,7 @@ export function PedidoDetalle({
                       className="h-4 w-4 mr-1.5"
                       aria-hidden="true"
                     />
-                    Abrir chat
+                    {t("abrirChat")}
                   </Button>
                 </Link>
               )}
@@ -147,14 +158,14 @@ export function PedidoDetalle({
 
             <section className="grid gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Pagos
+                {t("pagos")}
               </h3>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[
-                  ["Total", pedido.total, ""],
-                  ["Pagado", pedido.pagado, "text-success"],
+                  [t("total"), pedido.total, ""],
+                  [t("pagado"), pedido.pagado, "text-success"],
                   [
-                    "Saldo",
+                    t("saldo"),
                     pedido.saldo,
                     pedido.saldo > 0 ? "text-warning" : "",
                   ],
@@ -176,14 +187,19 @@ export function PedidoDetalle({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Anticipo mínimo: {pesos(pedido.anticipo_requerido)}
+                {t("anticipoMinimo", {
+                  monto: pesos(pedido.anticipo_requerido),
+                })}
                 {pedido.valor_domicilio > 0 &&
-                  ` · producto ${pesos(pedido.total - pedido.valor_domicilio)} + domicilio ${pesos(pedido.valor_domicilio)}`}
+                  ` · ${t("productoMasDomicilio", {
+                    producto: pesos(pedido.total - pedido.valor_domicilio),
+                    domicilio: pesos(pedido.valor_domicilio),
+                  })}`}
               </p>
               {!pedido.precio_validado && (
                 <p className="flex items-center gap-1 text-xs text-warning">
                   <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-                  Precio del tarifario sin validar por el negocio
+                  {t("precioSinValidar")}
                 </p>
               )}
               {pedido.pagos.length > 0 ? (
@@ -194,19 +210,25 @@ export function PedidoDetalle({
                       className="flex flex-wrap items-center justify-between gap-x-3 rounded-md border border-border/50 px-2.5 py-1.5"
                     >
                       <span>
-                        {fechaCorta(pg.created_at, zona)} ·{" "}
-                        {pg.tipo === "saldo_favor" ? "saldo a favor" : pg.tipo}
-                        {pg.referencia ? ` · ref ${pg.referencia}` : ""}
+                        {fechaCorta(pg.created_at, zona, idioma)} ·{" "}
+                        {tp.has(`tipo.${pg.tipo}`)
+                          ? tp(`tipo.${pg.tipo}` as "tipo.anticipo")
+                          : pg.tipo}
+                        {pg.referencia ? ` · ${t("ref")} ${pg.referencia}` : ""}
                       </span>
                       <span className="tabular-nums">
                         {pesos(pg.monto_reportado ?? pg.monto_esperado)}{" "}
                         <span className={PAGO_ESTADO[pg.estado]?.className}>
-                          {PAGO_ESTADO[pg.estado]?.label ?? pg.estado}
+                          {PAGO_ESTADO[pg.estado]
+                            ? t(
+                                `estadoPago.${PAGO_ESTADO[pg.estado].label}` as "estadoPago.confirmado",
+                              )
+                            : pg.estado}
                         </span>
                       </span>
                       {pg.motivo_rechazo && (
                         <span className="w-full text-muted-foreground">
-                          Motivo: {pg.motivo_rechazo}
+                          {t("motivo")}: {pg.motivo_rechazo}
                         </span>
                       )}
                     </li>
@@ -214,7 +236,7 @@ export function PedidoDetalle({
                 </ul>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Sin comprobantes todavía.
+                  {t("sinComprobantes")}
                 </p>
               )}
 
@@ -225,14 +247,21 @@ export function PedidoDetalle({
                       className="mr-1 inline h-3.5 w-3.5"
                       aria-hidden="true"
                     />
-                    Dejó saldo a favor de{" "}
-                    {pesos(pedido.saldo_favor_generado.monto_inicial)}
+                    {t("dejoSaldo", {
+                      monto: pesos(pedido.saldo_favor_generado.monto_inicial),
+                    })}
                   </p>
                   <p className="text-muted-foreground">
-                    Disponible{" "}
-                    {pesos(pedido.saldo_favor_generado.monto_disponible)} ·
-                    vence{" "}
-                    {fechaLarga(pedido.saldo_favor_generado.vence_at, zona)}
+                    {t("disponibleVence", {
+                      monto: pesos(
+                        pedido.saldo_favor_generado.monto_disponible,
+                      ),
+                      fecha: fechaLarga(
+                        pedido.saldo_favor_generado.vence_at,
+                        zona,
+                        idioma,
+                      ),
+                    })}
                   </p>
                 </div>
               )}
@@ -244,8 +273,9 @@ export function PedidoDetalle({
                       className="mr-1 inline h-3.5 w-3.5 text-success"
                       aria-hidden="true"
                     />
-                    El cliente tiene {pesos(pedido.saldo_favor_cliente)} de
-                    saldo a favor
+                    {t("clienteTieneSaldo", {
+                      monto: pesos(pedido.saldo_favor_cliente),
+                    })}
                   </span>
                   {puedeActuar && (
                     <Button
@@ -255,10 +285,11 @@ export function PedidoDetalle({
                       disabled={ocupado}
                       onClick={() => onAplicarSaldo(pedido)}
                     >
-                      Usar{" "}
-                      {pesos(
-                        Math.min(pedido.saldo, pedido.saldo_favor_cliente),
-                      )}
+                      {t("usar", {
+                        monto: pesos(
+                          Math.min(pedido.saldo, pedido.saldo_favor_cliente),
+                        ),
+                      })}
                     </Button>
                   )}
                 </div>
@@ -274,7 +305,7 @@ export function PedidoDetalle({
                   disabled={ocupado}
                 >
                   <X className="h-4 w-4 mr-1" aria-hidden="true" />
-                  Cancelar pedido
+                  {t("cancelarPedido")}
                 </Button>
                 {siguiente && (
                   <Button
@@ -282,7 +313,7 @@ export function PedidoDetalle({
                     onClick={() => onAvanzar(pedido)}
                     disabled={ocupado}
                   >
-                    {ocupado ? "Guardando…" : ACCION_SIGUIENTE[pedido.estado]}
+                    {ocupado ? t("guardando") : accionSiguiente(pedido.estado)}
                   </Button>
                 )}
               </div>

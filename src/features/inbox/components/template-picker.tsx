@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import {
+  sendTemplateAction,
+  getApprovedTemplates,
+} from "../services/template-actions";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import {
-  getApprovedTemplates,
-  sendTemplateAction,
-} from "../services/template-actions";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TemplateRow } from "../services/templates";
 
 // This component takes a conversationId and NOTHING that names a workspace.
@@ -50,6 +51,7 @@ export function TemplatePicker({
   conversationId,
   onSent,
 }: TemplatePickerProps) {
+  const t = useTranslations("inbox.templates");
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateRow | null>(
@@ -107,15 +109,15 @@ export function TemplatePicker({
         variables,
       );
       if (result.ok) {
-        toast.success("Template enviado");
+        toast.success(t("enviado"));
         setSelectedTemplate(null);
         setVariables([]);
         onSent?.();
       } else {
-        toast.error(result.error ?? "Error al enviar el template");
+        toast.error(result.error ?? t("errorEnviar"));
       }
     } catch {
-      toast.error("Error inesperado al enviar el template");
+      toast.error(t("errorInesperado"));
     } finally {
       setIsPending(false);
     }
@@ -127,7 +129,7 @@ export function TemplatePicker({
       <div
         className="space-y-2 p-1"
         aria-busy="true"
-        aria-label="Cargando templates"
+        aria-label={t("cargando")}
       >
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-12 w-full rounded-lg" />
@@ -140,7 +142,7 @@ export function TemplatePicker({
   if (!isLoading && templates.length === 0) {
     return (
       <p className="py-3 text-center text-sm text-muted-foreground">
-        Sin templates aprobados
+        {t("sinTemplates")}
       </p>
     );
   }
@@ -158,7 +160,7 @@ export function TemplatePicker({
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            aria-label="Volver a lista de templates"
+            aria-label={t("volverLista")}
             className="h-7 w-7 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -182,13 +184,13 @@ export function TemplatePicker({
                   htmlFor={`tpl-var-${index}`}
                   className="text-xs text-muted-foreground"
                 >
-                  Variable {`{{${index + 1}}}`}
+                  {t("variable")} {`{{${index + 1}}}`}
                 </Label>
                 <Input
                   id={`tpl-var-${index}`}
                   value={value}
                   onChange={(e) => handleVariableChange(index, e.target.value)}
-                  placeholder="Valor..."
+                  placeholder={t("valor")}
                   className="h-8 text-sm"
                   disabled={isPending}
                 />
@@ -207,7 +209,7 @@ export function TemplatePicker({
           aria-busy={isPending}
         >
           <Send className="h-4 w-4 mr-2" aria-hidden="true" />
-          {isPending ? "Enviando..." : "Enviar template"}
+          {isPending ? t("enviando") : t("enviarTemplate")}
         </Button>
       </div>
     );

@@ -12,7 +12,7 @@ export interface AgentTypeMeta {
 
 export const AGENT_TYPE_META: Record<AgentType, AgentTypeMeta> = {
   setter: {
-    label: "Setter",
+    label: "setter",
     tagline: "Califica leads y agenda citas",
     promptGuidance: [
       "Define el objetivo: calificar y agendar.",
@@ -22,7 +22,7 @@ export const AGENT_TYPE_META: Record<AgentType, AgentTypeMeta> = {
     ],
   },
   soporte: {
-    label: "Soporte",
+    label: "soporte",
     tagline: "Resuelve dudas con precisión",
     promptGuidance: [
       "Describe los temas que el agente puede resolver.",
@@ -32,7 +32,7 @@ export const AGENT_TYPE_META: Record<AgentType, AgentTypeMeta> = {
     ],
   },
   agendamiento: {
-    label: "Agendamiento",
+    label: "agendamiento",
     tagline: "Reserva y confirma citas",
     promptGuidance: [
       "Explica cómo agenda (link o calendario directo).",

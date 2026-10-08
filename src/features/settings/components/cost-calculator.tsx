@@ -1,24 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Calculator } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogHeader,
+  DialogContent,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectTrigger,
+  SelectContent,
 } from "@/components/ui/select";
+import { useState } from "react";
+import { Calculator } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 // ── Price table (Meta 2024 approximate, USD per template message) ─────────────
 
@@ -44,10 +45,10 @@ const PRICES: Record<string, Record<string, number>> = {
 };
 
 const COUNTRIES = [
-  { value: "MX", label: "México" },
-  { value: "PA", label: "Panamá" },
-  { value: "ES", label: "España" },
-  { value: "CO", label: "Colombia" },
+  { value: "MX", label: "mexico" },
+  { value: "PA", label: "panama" },
+  { value: "ES", label: "espana" },
+  { value: "CO", label: "colombia" },
 ] as const;
 
 type CountryCode = (typeof COUNTRIES)[number]["value"];
@@ -66,6 +67,8 @@ function fmt(usd: number) {
 // ── Calculator content (separated so it only renders when dialog is open) ────
 
 function CalculatorContent() {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.costCalculator");
   const [volume, setVolume] = useState(1000);
   const [type, setType] = useState<"marketing" | "utility">("utility");
   const [country, setCountry] = useState<CountryCode>("MX");
@@ -79,7 +82,7 @@ function CalculatorContent() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium text-foreground">
-            Mensajes por mes
+            {t("mensajesPorMes")}
           </Label>
           <span className="font-mono text-sm font-bold text-foreground tabular-nums">
             {volume.toLocaleString("es-MX")}
@@ -93,7 +96,7 @@ function CalculatorContent() {
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
           className="w-full h-1.5 rounded-full cursor-pointer accent-primary"
-          aria-label="Mensajes por mes"
+          aria-label={t("mensajesPorMes")}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>100</span>
@@ -107,7 +110,7 @@ function CalculatorContent() {
           htmlFor="calc-type"
           className="text-sm font-medium text-foreground"
         >
-          Tipo de template
+          {t("tipoDeTemplate")}
         </Label>
         <Select
           value={type}
@@ -117,8 +120,8 @@ function CalculatorContent() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="utility">Utilidad</SelectItem>
-            <SelectItem value="marketing">Marketing</SelectItem>
+            <SelectItem value="utility">{t("utilidad")}</SelectItem>
+            <SelectItem value="marketing">{t("marketing")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -129,7 +132,7 @@ function CalculatorContent() {
           htmlFor="calc-country"
           className="text-sm font-medium text-foreground"
         >
-          País destino
+          {t("paisDestino")}
         </Label>
         <Select
           value={country}
@@ -141,7 +144,7 @@ function CalculatorContent() {
           <SelectContent>
             {COUNTRIES.map((c) => (
               <SelectItem key={c.value} value={c.value}>
-                {c.label}
+                {tc(c.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -151,13 +154,13 @@ function CalculatorContent() {
       {/* Result */}
       <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Estimado mensual
+          {t("estimadoMensual")}
         </p>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              {volume.toLocaleString("es-MX")} msgs × {fmt(pricePerMsg)}
+              {volume.toLocaleString("es-MX")} {t("msgs")} {fmt(pricePerMsg)}
             </span>
             <span className="font-mono font-semibold text-foreground tabular-nums">
               {fmt(monthlyCost)}
@@ -165,17 +168,17 @@ function CalculatorContent() {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              Mensajes dentro de ventana 24h
+              {t("mensajesDentroDeVentana24h")}
             </span>
             <span className="font-mono font-semibold text-primary tabular-nums">
-              Gratis
+              {t("gratis")}
             </span>
           </div>
         </div>
 
         <div className="border-t border-border pt-3 flex items-center justify-between">
           <span className="text-sm font-bold text-foreground">
-            Total estimado/mes
+            {t("totalEstimadoMes")}
           </span>
           <span className="font-mono text-xl font-extrabold text-foreground tabular-nums">
             {fmt(monthlyCost)}
@@ -183,8 +186,7 @@ function CalculatorContent() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Estimado · Precio Meta 2024 aproximado · Los costos reales varían por
-          plan y volumen negociado.
+          {t("estimadoPrecioMeta2024AproximadoLos")}
         </p>
       </div>
     </div>
@@ -194,22 +196,22 @@ function CalculatorContent() {
 // ── Public component ──────────────────────────────────────────────────────────
 
 export function CostCalculator() {
+  const t = useTranslations("ui.costCalculator");
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Calculator className="h-4 w-4 mr-2" aria-hidden="true" />
-          Calculadora de costos
+          {t("calculadoraDeCostos")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display">
-            Calculadora de costos WhatsApp
+            {t("calculadoraDeCostosWhatsapp")}
           </DialogTitle>
           <DialogDescription>
-            Estima el costo mensual de tus envíos de templates basándote en
-            volumen y tipo. Los mensajes dentro de la ventana de 24h son gratis.
+            {t("estimaElCostoMensualDeTus")}
           </DialogDescription>
         </DialogHeader>
         <CalculatorContent />

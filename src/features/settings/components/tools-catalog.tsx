@@ -17,6 +17,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ToolConfigPanel, CONFIGURABLE_TOOLS } from "./tool-config-panel";
@@ -72,6 +73,8 @@ const sensitivityConfig: Record<
 };
 
 export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.toolsCatalog");
   // Toggling or configuring a tool needs manager (the tools API); agents and
   // viewers see the catalog read-only instead of controls that would fail.
   const canManage = role === "admin" || role === "manager";
@@ -115,7 +118,7 @@ export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
         ),
       );
       toast.error(
-        err instanceof Error ? err.message : "Error al actualizar tool",
+        err instanceof Error ? err.message : tr("errorAlActualizarTool"),
       );
     } finally {
       setPending((prev) => {
@@ -130,7 +133,7 @@ export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
     return (
       <div className="py-10 text-center">
         <p className="text-sm text-muted-foreground">
-          No hay tools disponibles en el catálogo.
+          {tr("noHayToolsDisponiblesEnEl")}
         </p>
       </div>
     );
@@ -140,15 +143,14 @@ export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-lg font-semibold text-foreground">
-          Catálogo de Tools
+          {tr("catalogoDeTools")}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Activa o desactiva las capacidades del agente para este workspace.
+          {tr("activaODesactivaLasCapacidadesDel")}
         </p>
         {!canManage && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Solo managers y administradores del workspace pueden activar o
-            configurar tools.
+            {tr("soloManagersYAdministradoresDelWorkspace")}
           </p>
         )}
       </div>
@@ -192,12 +194,12 @@ export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
                       {BadgeIcon && (
                         <BadgeIcon className="h-3 w-3" aria-hidden="true" />
                       )}
-                      {config.label}
+                      {tc(config.label)}
                     </Badge>
                   </div>
                   {tool.description && (
                     <p className="text-xs text-muted-foreground line-clamp-2">
-                      {tool.description}
+                      {tc(tool.description)}
                     </p>
                   )}
                   {configurable && (
@@ -208,7 +210,7 @@ export function ToolsCatalog({ workspaceId, role, initialTools }: Props) {
                       aria-expanded={isOpen}
                     >
                       <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      Configurar
+                      {tr("configurar")}
                       <ChevronDown
                         className={cn(
                           "h-3.5 w-3.5 transition-transform",

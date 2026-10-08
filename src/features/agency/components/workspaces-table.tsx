@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ function formatDate(iso: string): string {
 }
 
 export function WorkspacesTable({ workspaces }: Props) {
+  const t = useTranslations("ui.workspacesTable");
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -78,7 +80,7 @@ export function WorkspacesTable({ workspaces }: Props) {
         toast.error(result.error);
         return;
       }
-      toast.success("Cliente eliminado");
+      toast.success(t("clienteEliminado"));
       router.refresh();
     });
   }
@@ -88,11 +90,11 @@ export function WorkspacesTable({ workspaces }: Props) {
       {/* Toolbar */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <Input
-          placeholder="Buscar workspace..."
+          placeholder={t("buscarWorkspace")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
-          aria-label="Buscar workspace por nombre o slug"
+          aria-label={t("buscarWorkspacePorNombreOSlug")}
         />
         <Button
           size="sm"
@@ -100,7 +102,7 @@ export function WorkspacesTable({ workspaces }: Props) {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-          Nuevo cliente
+          {t("nuevoCliente")}
         </Button>
       </div>
 
@@ -137,12 +139,12 @@ export function WorkspacesTable({ workspaces }: Props) {
             <Building2 className="h-8 w-8 opacity-40" strokeWidth={1.5} />
             <div className="text-center">
               <p className="text-sm font-medium text-foreground">
-                {search ? "Sin resultados" : "Sin workspaces aún"}
+                {search ? t("sinResultados") : t("sinWorkspacesAun")}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {search
-                  ? "Prueba con otro término de búsqueda"
-                  : "Da de alta tu primer cliente"}
+                  ? t("pruebaConOtroTerminoDeBusqueda")
+                  : t("daDeAltaTuPrimerCliente")}
               </p>
             </div>
             {!search && (
@@ -152,7 +154,7 @@ export function WorkspacesTable({ workspaces }: Props) {
                 onClick={() => setSheetOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-                Dar de alta cliente
+                {t("darDeAltaCliente")}
               </Button>
             )}
           </div>
@@ -182,7 +184,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             {/* Miembros */}
             <div className="flex items-center gap-2 md:block">
               <span className="text-xs text-muted-foreground md:hidden">
-                Miembros:
+                {t("miembros")}
               </span>
               <p className="font-mono text-sm font-bold text-foreground">
                 {workspace.member_count}
@@ -192,7 +194,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             {/* Conversaciones */}
             <div className="flex items-center gap-2 md:block">
               <span className="text-xs text-muted-foreground md:hidden">
-                Conversaciones:
+                {t("conversaciones")}
               </span>
               <p className="font-mono text-sm text-foreground">
                 {workspace.conversation_count}
@@ -202,7 +204,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             {/* WhatsApp provider badge */}
             <div className="flex items-center gap-2 md:block">
               <span className="text-xs text-muted-foreground md:hidden">
-                WhatsApp:
+                {t("whatsapp")}
               </span>
               {workspace.whatsapp_provider ? (
                 <Badge
@@ -211,10 +213,10 @@ export function WorkspacesTable({ workspaces }: Props) {
                 >
                   <Wifi className="h-3 w-3" aria-hidden="true" />
                   {workspace.whatsapp_provider === "zernio"
-                    ? "Zernio"
+                    ? t("zernio")
                     : workspace.whatsapp_provider === "kapso"
-                      ? "Kapso"
-                      : "YCloud"}
+                      ? t("kapso")
+                      : t("ycloud")}
                 </Badge>
               ) : (
                 <Badge
@@ -222,7 +224,7 @@ export function WorkspacesTable({ workspaces }: Props) {
                   className="border-border text-muted-foreground gap-1 w-fit"
                 >
                   <WifiOff className="h-3 w-3" aria-hidden="true" />
-                  No conectado
+                  {t("noConectado")}
                 </Badge>
               )}
             </div>
@@ -230,7 +232,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             {/* Fecha */}
             <div className="flex items-center gap-2 md:block">
               <span className="text-xs text-muted-foreground md:hidden">
-                Creado:
+                {t("creado")}
               </span>
               <p className="font-mono text-xs text-muted-foreground">
                 {formatDate(workspace.created_at)}
@@ -248,7 +250,7 @@ export function WorkspacesTable({ workspaces }: Props) {
               >
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only sm:ml-1.5 text-xs">
-                  Inbox
+                  {t("inbox")}
                 </span>
               </Button>
               <Button
@@ -260,7 +262,7 @@ export function WorkspacesTable({ workspaces }: Props) {
               >
                 <Settings className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only sm:ml-1.5 text-xs">
-                  Gestionar
+                  {t("gestionar")}
                 </span>
               </Button>
 
@@ -273,7 +275,7 @@ export function WorkspacesTable({ workspaces }: Props) {
                     aria-label={`Confirmar eliminación de ${workspace.name}`}
                     onClick={() => handleDelete(workspace.id)}
                   >
-                    Eliminar
+                    {t("eliminar")}
                   </Button>
                   <Button
                     size="sm"
@@ -281,7 +283,7 @@ export function WorkspacesTable({ workspaces }: Props) {
                     className="h-8 px-2.5 text-xs text-muted-foreground"
                     onClick={() => setConfirmId(null)}
                   >
-                    Cancelar
+                    {t("cancelar")}
                   </Button>
                 </div>
               ) : (

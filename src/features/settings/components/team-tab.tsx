@@ -1,36 +1,37 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogHeader,
+  DialogContent,
 } from "@/components/ui/dialog";
 import {
+  Copy,
   Users,
+  Loader2,
   UserPlus,
   UserMinus,
+  RefreshCw,
+  CheckCheck,
   UserCheck,
   AlertCircle,
-  Loader2,
-  RefreshCw,
-  Copy,
-  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect, useCallback } from "react";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -136,6 +137,7 @@ function TeamSkeleton() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 function TeamEmpty({ onInvite }: { onInvite: () => void }) {
+  const t = useTranslations("ui.teamTab");
   return (
     <div className="flex flex-col items-center justify-center py-14 gap-4 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted">
@@ -143,16 +145,15 @@ function TeamEmpty({ onInvite }: { onInvite: () => void }) {
       </div>
       <div>
         <p className="font-display text-sm font-semibold text-foreground">
-          Solo tú en el equipo
+          {t("soloTuEnElEquipo")}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Invita a colaboradores para que accedan al inbox y gestionen
-          conversaciones.
+          {t("invitaAColaboradoresParaQueAccedan")}
         </p>
       </div>
       <Button size="sm" className="gap-1.5 mt-1" onClick={onInvite}>
         <UserPlus className="h-4 w-4" aria-hidden="true" />
-        Invitar miembro
+        {t("invitarMiembro")}
       </Button>
     </div>
   );
@@ -163,6 +164,7 @@ function TeamEmpty({ onInvite }: { onInvite: () => void }) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function TeamTab({ workspaceId }: Props) {
+  const t = useTranslations("ui.teamTab");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -243,14 +245,14 @@ export function TeamTab({ workspaceId }: Props) {
       if (json.credentials) {
         // New account — show credentials for the agency to share.
         setCreatedCreds(json.credentials);
-        toast.success("Cuenta creada");
+        toast.success(t("cuentaCreada"));
       } else {
         // Existing user added to the workspace.
         toast.success(`${inviteEmail} agregado al workspace`);
         closeInvite();
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error desconocido");
+      toast.error(err instanceof Error ? err.message : t("errorDesconocido"));
     } finally {
       setInviting(false);
     }
@@ -270,9 +272,9 @@ export function TeamTab({ workspaceId }: Props) {
       setMembers((prev) =>
         prev.map((m) => (m.user_id === userId ? { ...m, role } : m)),
       );
-      toast.success("Rol actualizado");
+      toast.success(t("rolActualizado"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error desconocido");
+      toast.error(err instanceof Error ? err.message : t("errorDesconocido"));
     } finally {
       setUpdatingRole(null);
     }
@@ -299,9 +301,9 @@ export function TeamTab({ workspaceId }: Props) {
           m.user_id === member.user_id ? { ...m, is_active: next } : m,
         ),
       );
-      toast.success(next ? "Miembro reactivado" : "Miembro desactivado");
+      toast.success(next ? t("miembroReactivado") : t("miembroDesactivado"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error desconocido");
+      toast.error(err instanceof Error ? err.message : t("errorDesconocido"));
     } finally {
       setTogglingActive(null);
     }
@@ -332,7 +334,7 @@ export function TeamTab({ workspaceId }: Props) {
         </div>
         <div>
           <p className="font-display text-sm font-semibold text-foreground">
-            No se pudo cargar el equipo
+            {t("noSePudoCargarElEquipo")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{error}</p>
         </div>
@@ -343,7 +345,7 @@ export function TeamTab({ workspaceId }: Props) {
           className="gap-1.5"
         >
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          Reintentar
+          {t("reintentar")}
         </Button>
       </div>
     );
@@ -356,11 +358,11 @@ export function TeamTab({ workspaceId }: Props) {
         <div className="flex items-center gap-2 mb-1">
           <Users className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="font-display text-base font-semibold text-foreground">
-            Equipo
+            {t("equipo")}
           </h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Gestiona los miembros que tienen acceso a este workspace.
+          {t("gestionaLosMiembrosQueTienenAcceso")}
         </p>
       </div>
 
@@ -383,7 +385,7 @@ export function TeamTab({ workspaceId }: Props) {
               onClick={() => setInviteOpen(true)}
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Invitar miembro
+              {t("invitarMiembro")}
             </Button>
           </div>
 
@@ -428,7 +430,7 @@ export function TeamTab({ workspaceId }: Props) {
                   {/* Status badge */}
                   {!member.is_active && (
                     <span className="inline-flex items-center rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-0.5 text-xs font-medium text-destructive">
-                      Inactivo
+                      {t("inactivo")}
                     </span>
                   )}
 
@@ -507,22 +509,23 @@ export function TeamTab({ workspaceId }: Props) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-base font-semibold">
-              {createdCreds ? "Credenciales del cliente" : "Invitar miembro"}
+              {createdCreds ? t("credencialesDelCliente") : t("invitarMiembro")}
             </DialogTitle>
           </DialogHeader>
           {createdCreds ? (
             <div className="space-y-4 pt-2">
               <p className="text-sm text-muted-foreground">
-                Comparte estas credenciales con el usuario. No se vuelven a
-                mostrar.
+                {t("comparteEstasCredencialesConElUsuario")}
               </p>
               <div className="space-y-1 rounded-lg border border-warning/30 bg-warning/5 p-3 font-mono text-xs">
                 <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">Email: </span>
+                  <span className="text-muted-foreground">{t("email")} </span>
                   {createdCreds.email}
                 </p>
                 <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">Contraseña: </span>
+                  <span className="text-muted-foreground">
+                    {t("contrasena")}{" "}
+                  </span>
                   {createdCreds.password}
                 </p>
               </div>
@@ -542,10 +545,10 @@ export function TeamTab({ workspaceId }: Props) {
                   ) : (
                     <Copy className="h-4 w-4" aria-hidden="true" />
                   )}
-                  Copiar
+                  {t("copiar")}
                 </Button>
                 <Button type="button" size="sm" onClick={closeInvite}>
-                  Listo
+                  {t("listo")}
                 </Button>
               </DialogFooter>
             </div>
@@ -556,7 +559,7 @@ export function TeamTab({ workspaceId }: Props) {
                   htmlFor="invite-email"
                   className="text-sm font-medium text-foreground"
                 >
-                  Email
+                  {t("email2")}
                 </Label>
                 <Input
                   id="invite-email"
@@ -564,7 +567,7 @@ export function TeamTab({ workspaceId }: Props) {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="colaborador@empresa.com"
+                  placeholder={t("colaboradorEmpresaCom")}
                   className="font-mono text-sm"
                   aria-required="true"
                 />
@@ -574,7 +577,7 @@ export function TeamTab({ workspaceId }: Props) {
                   htmlFor="invite-role"
                   className="text-sm font-medium text-foreground"
                 >
-                  Rol
+                  {t("rol")}
                 </Label>
                 <Select
                   value={inviteRole}
@@ -586,41 +589,40 @@ export function TeamTab({ workspaceId }: Props) {
                   <SelectContent>
                     <SelectItem value="admin">
                       <div>
-                        <span className="font-medium">Admin</span>
+                        <span className="font-medium">{t("admin")}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Acceso completo
+                          {t("accesoCompleto")}
                         </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="manager">
                       <div>
-                        <span className="font-medium">Manager</span>
+                        <span className="font-medium">{t("manager")}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Gestiona agentes y reportes
+                          {t("gestionaAgentesYReportes")}
                         </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="agent">
                       <div>
-                        <span className="font-medium">Agente</span>
+                        <span className="font-medium">{t("agente")}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Opera el inbox
+                          {t("operaElInbox")}
                         </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="viewer">
                       <div>
-                        <span className="font-medium">Viewer</span>
+                        <span className="font-medium">{t("viewer")}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Solo lectura
+                          {t("soloLectura")}
                         </span>
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Se crea su cuenta al instante. Sin correos: comparte las
-                  credenciales y entra directo.
+                  {t("seCreaSuCuentaAlInstante")}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -628,9 +630,9 @@ export function TeamTab({ workspaceId }: Props) {
                   htmlFor="invite-password"
                   className="text-sm font-medium text-foreground"
                 >
-                  Contraseña
+                  {t("contrasena2")}
                   <span className="ml-1 text-muted-foreground text-xs">
-                    (opcional)
+                    {t("opcional")}
                   </span>
                 </Label>
                 <Input
@@ -638,7 +640,7 @@ export function TeamTab({ workspaceId }: Props) {
                   type="text"
                   value={invitePassword}
                   onChange={(e) => setInvitePassword(e.target.value)}
-                  placeholder="Se genera una segura si lo dejas vacío"
+                  placeholder={t("seGeneraUnaSeguraSiLo")}
                   className="font-mono text-sm"
                   autoComplete="off"
                 />
@@ -650,7 +652,7 @@ export function TeamTab({ workspaceId }: Props) {
                   size="sm"
                   onClick={closeInvite}
                 >
-                  Cancelar
+                  {t("cancelar")}
                 </Button>
                 <Button
                   type="submit"
@@ -667,7 +669,7 @@ export function TeamTab({ workspaceId }: Props) {
                   ) : (
                     <UserPlus className="h-4 w-4" aria-hidden="true" />
                   )}
-                  {inviting ? "Creando..." : "Crear usuario"}
+                  {inviting ? t("creando") : t("crearUsuario")}
                 </Button>
               </DialogFooter>
             </form>

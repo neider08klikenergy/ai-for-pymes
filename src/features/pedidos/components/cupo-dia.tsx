@@ -8,25 +8,27 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CupoDia } from "../types";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { ajustarCupoDia } from "../services/pedidos-actions";
 import { Lock, LockOpen, Plus, RotateCcw } from "lucide-react";
 
+// texto: clave de pedidos.cupo.estado.*
 function estadoDe(c: CupoDia): { texto: string; clase: string } {
   if (c.cerrado)
     return {
-      texto: "Cupos cerrados",
+      texto: "cerrados",
       clase: "bg-destructive/15 text-destructive",
     };
   if (c.sin_limite)
-    return { texto: "Sin límite", clase: "bg-muted text-muted-foreground" };
+    return { texto: "sinLimite", clase: "bg-muted text-muted-foreground" };
   if (c.usados >= c.cupo_maximo)
-    return { texto: "Sin cupo", clase: "bg-destructive/15 text-destructive" };
+    return { texto: "sinCupo", clase: "bg-destructive/15 text-destructive" };
   if (c.usados >= c.cupo_automatico)
-    return { texto: "Decide el equipo", clase: "bg-warning/15 text-warning" };
-  return { texto: "Con cupo", clase: "bg-success/15 text-success" };
+    return { texto: "decideEquipo", clase: "bg-warning/15 text-warning" };
+  return { texto: "conCupo", clase: "bg-success/15 text-success" };
 }
 
 export function CupoDelDia({
@@ -43,6 +45,7 @@ export function CupoDelDia({
     Math.max(cupo.cupo_automatico, cupo.usados) + 1,
   );
   const estado = estadoDe(cupo);
+  const t = useTranslations("pedidos.cupo");
 
   function guardar(cambio: { cupo: number | null; cerrado: boolean }) {
     startTransition(async () => {
@@ -72,7 +75,7 @@ export function CupoDelDia({
     <div className="grid gap-2 rounded-lg border border-border/60 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          Cupo de personalizados · {cupo.sede}
+          {t("titulo", { sede: cupo.sede })}
         </p>
         <span
           className={cn(
@@ -80,7 +83,7 @@ export function CupoDelDia({
             estado.clase,
           )}
         >
-          {estado.texto}
+          {t(`estado.${estado.texto}` as "estado.conCupo")}
         </span>
       </div>
 
@@ -92,7 +95,7 @@ export function CupoDelDia({
             aria-valuemin={0}
             aria-valuemax={cupo.cupo_maximo}
             aria-valuenow={cupo.usados}
-            aria-label="Personalizados pagados en el día"
+            aria-label={t("medidor")}
           >
             <div
               className={cn(
@@ -112,19 +115,23 @@ export function CupoDelDia({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground tabular-nums">
-              {cupo.usados}
-            </span>{" "}
-            pagados · el agente agenda solo hasta{" "}
-            <span className="tabular-nums">{cupo.cupo_automatico}</span>
-            {cupo.cupo_maximo > cupo.cupo_automatico && (
-              <>
-                ; de ahí a{" "}
-                <span className="tabular-nums">{cupo.cupo_maximo}</span> decide
-                el equipo
-              </>
+            {t.rich(
+              cupo.cupo_maximo > cupo.cupo_automatico
+                ? "resumenConRevision"
+                : "resumen",
+              {
+                usados: cupo.usados,
+                automatico: cupo.cupo_automatico,
+                maximo: cupo.cupo_maximo,
+                fuerte: (c) => (
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {c}
+                  </span>
+                ),
+                num: (c) => <span className="tabular-nums">{c}</span>,
+              },
             )}
-            {cupo.ajustado && " (ajustado para este día)"}.
+            {cupo.ajustado && ` ${t("ajustado")}`}.
           </p>
         </>
       )}
@@ -137,7 +144,7 @@ export function CupoDelDia({
                 htmlFor={`cupo-${cupo.sede_id}`}
                 className="text-xs text-muted-foreground"
               >
-                Cupo automático del día
+                {t("cupoAutomatico")}
               </label>
               <Input
                 id={`cupo-${cupo.sede_id}`}
@@ -154,14 +161,14 @@ export function CupoDelDia({
                 disabled={pendiente}
                 onClick={() => guardar({ cupo: nuevo, cerrado: false })}
               >
-                Guardar
+                {t("guardar")}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setAbriendo(false)}
               >
-                Cancelar
+                {t("cancelar")}
               </Button>
             </>
           ) : (
@@ -174,7 +181,7 @@ export function CupoDelDia({
                   onClick={() => setAbriendo(true)}
                 >
                   <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-                  Abrir cupo extra
+                  {t("abrirExtra")}
                 </Button>
               )}
               {cupo.cerrado ? (
@@ -190,7 +197,7 @@ export function CupoDelDia({
                   }
                 >
                   <LockOpen className="h-4 w-4 mr-1.5" aria-hidden />
-                  Reabrir cupos
+                  {t("reabrir")}
                 </Button>
               ) : (
                 <Button
@@ -205,7 +212,7 @@ export function CupoDelDia({
                   }
                 >
                   <Lock className="h-4 w-4 mr-1.5" aria-hidden />
-                  Cerrar cupos
+                  {t("cerrar")}
                 </Button>
               )}
               {(cupo.ajustado || cupo.cerrado) && (
@@ -216,7 +223,7 @@ export function CupoDelDia({
                   onClick={() => guardar({ cupo: null, cerrado: false })}
                 >
                   <RotateCcw className="h-4 w-4 mr-1.5" aria-hidden />
-                  Cupo normal
+                  {t("normal")}
                 </Button>
               )}
             </>

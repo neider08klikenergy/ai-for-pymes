@@ -4,34 +4,66 @@
 // RLS (pedidos_update) y pd_confirmar_pago revisan el rol en la base de datos;
 // checkWorkspaceMember lo revisa antes para dar un mensaje claro.
 
-import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { checkWorkspaceMember } from "@/lib/auth/workspace-access";
 import {
   ESTADOS_PEDIDO,
-  ESTADO_LABEL,
   esEstadoPedido,
   transicionPermitida,
 } from "../lib/estados";
+import {
+  PLANTILLAS,
+  parametrosPlantilla,
+  type EventoPlantilla,
+} from "../lib/plantillas";
+import {
+  TEXTO_AVISO,
+  avisarCliente,
+  type PlantillaAviso,
+  type ResultadoAviso,
+} from "./notificar";
+import { z } from "zod";
+import { pesos } from "../lib/fechas";
+import { revalidatePath } from "next/cache";
 import type { DatosAviso } from "../lib/mensajes";
-import { PLANTILLAS, parametrosPlantilla, type EventoPlantilla } from "../lib/plantillas";
-import { avisarCliente, TEXTO_AVISO, type PlantillaAviso, type ResultadoAviso } from "./notificar";
+import { getTranslations } from "next-intl/server";
+import { createClient } from "@/lib/supabase/server";
+import { checkWorkspaceMember } from "@/lib/auth/workspace-access";
 
 export type ResultadoAccion =
-  | { ok: true; mensaje: string; aviso: ResultadoAviso; avisoTexto: string | null }
+  | {
+      ok: true;
+      mensaje: string;
+      aviso: ResultadoAviso;
+      avisoTexto: string | null;
+    }
   | { ok: false; error: string };
 
-const MENSAJES_RPC: Record<string, string> = {
-  PAGO_NO_EXISTE: "Ese pago ya no existe.",
-  NO_AUTORIZADO: "No tienes permiso para hacer esto.",
-  PAGO_YA_REVISADO: "Otra persona ya revisó este pago.",
-  PEDIDO_NO_ENCONTRADO: "Pedido no encontrado.",
-  NO_SE_PUEDE_CANCELAR: "Ese pedido ya está entregado o cancelado.",
-  PEDIDO_CERRADO: "Ese pedido ya está entregado o cancelado.",
-  PEDIDO_PAGADO: "Ese pedido ya está pagado.",
-  SIN_SALDO_A_FAVOR: "El cliente no tiene saldo a favor vigente.",
-};
+// Textos en messages/<idioma>.json → pedidos.acciones.*: las acciones responden
+// en el idioma del panel de quien las usa.
+type T = Awaited<ReturnType<typeof getTranslations<"pedidos.acciones">>>;
+
+/** Error de una función SQL (código) en el idioma del panel. */
+function errorRpc(
+  t: T,
+  codigo: string | undefined,
+  porDefecto: string,
+): string {
+  return codigo && t.has(`rpc.${codigo}`)
+    ? t(`rpc.${codigo}` as "rpc.NO_AUTORIZADO")
+    : porDefecto;
+}
+
+/** Resultado del aviso al cliente (TEXTO_AVISO dice si hay texto). */
+function textoAviso(t: T, aviso: ResultadoAviso): string | null {
+  return TEXTO_AVISO[aviso] === null
+    ? null
+    : t(`aviso.${aviso}` as "aviso.enviado");
+}
+
+/** Nombre del estado en el idioma del panel. */
+async function nombreEstado(estado: string): Promise<string> {
+  const te = await getTranslations("pedidos.estados");
+  return te.has(estado) ? te(estado as "listo") : estado;
+}
 
 const Aviso = z.string().trim().max(4096).nullable();
 
@@ -49,7 +81,9 @@ async function plantillaPara(
 ): Promise<PlantillaAviso | null> {
   const { data: p } = await supabase
     .from("pedidos")
-    .select("workspace_id, numero, nombre_cliente, fecha_entrega, modalidad, total, pagado, sedes(nombre)")
+    .select(
+      "workspace_id, numero, nombre_cliente, fecha_entrega, modalidad, total, pagado, sedes(nombre)",
+    )
     .eq("id", pedidoId)
     .maybeSingle();
   if (!p) return null;
@@ -59,7 +93,8 @@ async function plantillaPara(
     .eq("workspace_id", p.workspace_id)
     .eq("clave", "zona_horaria")
     .maybeSingle();
-  const zona = typeof regla?.valor === "string" ? regla.valor : "America/Bogota";
+  const zona =
+    typeof regla?.valor === "string" ? regla.valor : "America/Bogota";
   const sede = p.sedes as { nombre: string } | { nombre: string }[] | null;
   const datos: DatosAviso = {
     numero: p.numero as string,
@@ -94,8 +129,12 @@ export async function cambiarEstadoPedido(input: {
   /** Texto para el cliente; null o vacío = no avisar. */
   aviso?: string | null;
 }): Promise<ResultadoAccion> {
-  const parsed = CambioEstadoSchema.safeParse({ ...input, aviso: input.aviso ?? null });
-  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  const t = await getTranslations("pedidos.acciones");
+  const parsed = CambioEstadoSchema.safeParse({
+    ...input,
+    aviso: input.aviso ?? null,
+  });
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -105,23 +144,26 @@ export async function cambiarEstadoPedido(input: {
     .maybeSingle();
 
   if (!pedido || !esEstadoPedido(pedido.estado)) {
-    return { ok: false, error: "Pedido no encontrado" };
+    return { ok: false, error: t("rpc.PEDIDO_NO_ENCONTRADO") };
   }
 
   const acceso = await checkWorkspaceMember(pedido.workspace_id as string, {
     minRole: "agent",
   });
   if (!acceso.ok) {
-    return { ok: false, error: "No tienes permiso para cambiar pedidos" };
+    return { ok: false, error: t("sinPermisoPedidos") };
   }
 
   if (parsed.data.hacia === "cancelado") {
-    return { ok: false, error: "Para cancelar usa la opción Cancelar pedido" };
+    return { ok: false, error: t("usaCancelar") };
   }
   if (!transicionPermitida(pedido.estado, parsed.data.hacia)) {
     return {
       ok: false,
-      error: `No se puede pasar de "${ESTADO_LABEL[pedido.estado]}" a "${ESTADO_LABEL[parsed.data.hacia]}"`,
+      error: t("transicionNoPermitida", {
+        desde: await nombreEstado(pedido.estado),
+        hacia: await nombreEstado(parsed.data.hacia),
+      }),
     };
   }
 
@@ -136,10 +178,10 @@ export async function cambiarEstadoPedido(input: {
 
   if (error) {
     console.error("[pedidos] cambiarEstadoPedido:", error.message);
-    return { ok: false, error: "No se pudo actualizar el pedido" };
+    return { ok: false, error: t("noActualizado") };
   }
   if (!actualizado) {
-    return { ok: false, error: "El pedido cambió mientras tanto. Recarga la página." };
+    return { ok: false, error: t("cambioMientras") };
   }
 
   // El estado ya cambió: el aviso es aparte y nunca deshace el cambio.
@@ -157,9 +199,12 @@ export async function cambiarEstadoPedido(input: {
   revalidatePath("/pedidos");
   return {
     ok: true,
-    mensaje: `${pedido.numero}: ${ESTADO_LABEL[parsed.data.hacia]}`,
+    mensaje: t("estadoCambiado", {
+      numero: pedido.numero,
+      estado: await nombreEstado(parsed.data.hacia),
+    }),
     aviso,
-    avisoTexto: TEXTO_AVISO[aviso],
+    avisoTexto: textoAviso(t, aviso),
   };
 }
 
@@ -181,6 +226,7 @@ export async function revisarPago(input: {
   /** Texto para el cliente; null o vacío = no avisar. */
   aviso?: string | null;
 }): Promise<ResultadoAccion> {
+  const t = await getTranslations("pedidos.acciones");
   const parsed = RevisionSchema.safeParse({
     pagoId: input.pagoId,
     aprobar: input.aprobar,
@@ -188,9 +234,9 @@ export async function revisarPago(input: {
     motivo: input.motivo?.trim() ? input.motivo : null,
     aviso: input.aviso ?? null,
   });
-  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
   if (!parsed.data.aprobar && !parsed.data.motivo) {
-    return { ok: false, error: "Escribe el motivo del rechazo" };
+    return { ok: false, error: t("motivoRechazo") };
   }
 
   const supabase = await createClient();
@@ -199,19 +245,22 @@ export async function revisarPago(input: {
     .select("workspace_id, pedido_id, pedidos(conversation_id)")
     .eq("id", parsed.data.pagoId)
     .maybeSingle();
-  if (!pago) return { ok: false, error: MENSAJES_RPC.PAGO_NO_EXISTE };
+  if (!pago) return { ok: false, error: t("rpc.PAGO_NO_EXISTE") };
 
   const acceso = await checkWorkspaceMember(pago.workspace_id as string, {
     minRole: "agent",
   });
-  if (!acceso.ok) return { ok: false, error: MENSAJES_RPC.NO_AUTORIZADO };
+  if (!acceso.ok) return { ok: false, error: t("rpc.NO_AUTORIZADO") };
 
   const plantillaRevision = parsed.data.aviso
     ? await plantillaPara(
         supabase,
         pago.pedido_id as string,
         parsed.data.aprobar ? "pago_confirmado" : "pago_rechazado",
-        { monto: parsed.data.monto ?? undefined, motivo: parsed.data.motivo ?? undefined },
+        {
+          monto: parsed.data.monto ?? undefined,
+          motivo: parsed.data.motivo ?? undefined,
+        },
       )
     : null;
 
@@ -224,19 +273,23 @@ export async function revisarPago(input: {
 
   if (error) {
     console.error("[pedidos] revisarPago:", error.message);
-    return { ok: false, error: "No se pudo registrar la revisión" };
+    return { ok: false, error: t("noRevision") };
   }
 
   const r = (data ?? {}) as { ok?: boolean; error?: string; numero?: string };
   if (!r.ok) {
     return {
       ok: false,
-      error: MENSAJES_RPC[r.error ?? ""] ?? "No se pudo registrar la revisión",
+      error: errorRpc(t, r.error, t("noRevision")),
     };
   }
 
-  const ped = pago.pedidos as { conversation_id: string | null } | { conversation_id: string | null }[] | null;
-  const conversationId = (Array.isArray(ped) ? ped[0] : ped)?.conversation_id ?? null;
+  const ped = pago.pedidos as
+    | { conversation_id: string | null }
+    | { conversation_id: string | null }[]
+    | null;
+  const conversationId =
+    (Array.isArray(ped) ? ped[0] : ped)?.conversation_id ?? null;
   // La plantilla se arma con el pedido ANTES del pago (pagado aún sin este monto).
   const aviso = await avisarCliente({
     workspaceId: pago.workspace_id as string,
@@ -250,10 +303,12 @@ export async function revisarPago(input: {
   return {
     ok: true,
     mensaje: parsed.data.aprobar
-      ? `Pago confirmado${r.numero ? ` · ${r.numero}` : ""}`
-      : "Pago rechazado",
+      ? r.numero
+        ? t("pagoConfirmadoNumero", { numero: r.numero })
+        : t("pagoConfirmado")
+      : t("pagoRechazado"),
     aviso,
-    avisoTexto: TEXTO_AVISO[aviso],
+    avisoTexto: textoAviso(t, aviso),
   };
 }
 
@@ -273,13 +328,14 @@ export async function cancelarPedido(input: {
   motivo?: string | null;
   aviso?: string | null;
 }): Promise<ResultadoAccion> {
+  const t = await getTranslations("pedidos.acciones");
   const parsed = CancelarSchema.safeParse({
     pedidoId: input.pedidoId,
     generarSaldo: input.generarSaldo,
     motivo: input.motivo?.trim() ? input.motivo : null,
     aviso: input.aviso ?? null,
   });
-  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -287,10 +343,12 @@ export async function cancelarPedido(input: {
     .select("id, workspace_id, conversation_id")
     .eq("id", parsed.data.pedidoId)
     .maybeSingle();
-  if (!pedido) return { ok: false, error: MENSAJES_RPC.PEDIDO_NO_ENCONTRADO };
+  if (!pedido) return { ok: false, error: t("rpc.PEDIDO_NO_ENCONTRADO") };
 
-  const acceso = await checkWorkspaceMember(pedido.workspace_id as string, { minRole: "agent" });
-  if (!acceso.ok) return { ok: false, error: MENSAJES_RPC.NO_AUTORIZADO };
+  const acceso = await checkWorkspaceMember(pedido.workspace_id as string, {
+    minRole: "agent",
+  });
+  if (!acceso.ok) return { ok: false, error: t("rpc.NO_AUTORIZADO") };
 
   const { data, error } = await supabase.rpc("pd_cancelar_pedido", {
     p_pedido_id: parsed.data.pedidoId,
@@ -299,7 +357,7 @@ export async function cancelarPedido(input: {
   });
   if (error) {
     console.error("[pedidos] cancelarPedido:", error.message);
-    return { ok: false, error: "No se pudo cancelar el pedido" };
+    return { ok: false, error: t("noCancelado") };
   }
   const r = (data ?? {}) as {
     ok?: boolean;
@@ -308,12 +366,15 @@ export async function cancelarPedido(input: {
     saldo_generado?: number;
     vence_at?: string | null;
   };
-  if (!r.ok) return { ok: false, error: MENSAJES_RPC[r.error ?? ""] ?? "No se pudo cancelar el pedido" };
+  if (!r.ok)
+    return { ok: false, error: errorRpc(t, r.error, t("noCancelado")) };
 
   const vence = r.vence_at
-    ? new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" }).format(
-        new Date(r.vence_at),
-      )
+    ? new Intl.DateTimeFormat("es-CO", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(r.vence_at))
     : "";
   const aviso = await avisarCliente({
     workspaceId: pedido.workspace_id as string,
@@ -322,7 +383,9 @@ export async function cancelarPedido(input: {
     userId: acceso.userId,
     plantilla: parsed.data.aviso
       ? await plantillaPara(supabase, parsed.data.pedidoId, "cancelado", {
-          saldoFavor: r.saldo_generado ? { monto: r.saldo_generado, vence } : undefined,
+          saldoFavor: r.saldo_generado
+            ? { monto: r.saldo_generado, vence }
+            : undefined,
         })
       : null,
   });
@@ -331,18 +394,24 @@ export async function cancelarPedido(input: {
   return {
     ok: true,
     mensaje: r.saldo_generado
-      ? `${r.numero}: cancelado · saldo a favor de $${r.saldo_generado.toLocaleString("es-CO")}`
-      : `${r.numero}: cancelado`,
+      ? t("canceladoConSaldo", {
+          numero: r.numero ?? "",
+          monto: pesos(r.saldo_generado),
+        })
+      : t("cancelado", { numero: r.numero ?? "" }),
     aviso,
-    avisoTexto: TEXTO_AVISO[aviso],
+    avisoTexto: textoAviso(t, aviso),
   };
 }
 
 // ── Pagar con saldo a favor ──────────────────────────────────────────────────
 
-export async function aplicarSaldoFavor(pedidoId: string): Promise<ResultadoAccion> {
+export async function aplicarSaldoFavor(
+  pedidoId: string,
+): Promise<ResultadoAccion> {
+  const t = await getTranslations("pedidos.acciones");
   if (!z.string().uuid().safeParse(pedidoId).success) {
-    return { ok: false, error: "Datos no válidos" };
+    return { ok: false, error: t("datosNoValidos") };
   }
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -350,10 +419,12 @@ export async function aplicarSaldoFavor(pedidoId: string): Promise<ResultadoAcci
     .select("workspace_id")
     .eq("id", pedidoId)
     .maybeSingle();
-  if (!pedido) return { ok: false, error: MENSAJES_RPC.PEDIDO_NO_ENCONTRADO };
+  if (!pedido) return { ok: false, error: t("rpc.PEDIDO_NO_ENCONTRADO") };
 
-  const acceso = await checkWorkspaceMember(pedido.workspace_id as string, { minRole: "agent" });
-  if (!acceso.ok) return { ok: false, error: MENSAJES_RPC.NO_AUTORIZADO };
+  const acceso = await checkWorkspaceMember(pedido.workspace_id as string, {
+    minRole: "agent",
+  });
+  if (!acceso.ok) return { ok: false, error: t("rpc.NO_AUTORIZADO") };
 
   const { data, error } = await supabase.rpc("pd_aplicar_saldo", {
     p_pedido_id: pedidoId,
@@ -361,15 +432,23 @@ export async function aplicarSaldoFavor(pedidoId: string): Promise<ResultadoAcci
   });
   if (error) {
     console.error("[pedidos] aplicarSaldoFavor:", error.message);
-    return { ok: false, error: "No se pudo aplicar el saldo a favor" };
+    return { ok: false, error: t("noSaldo") };
   }
-  const r = (data ?? {}) as { ok?: boolean; error?: string; numero?: string; aplicado?: number };
-  if (!r.ok) return { ok: false, error: MENSAJES_RPC[r.error ?? ""] ?? "No se pudo aplicar el saldo" };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    error?: string;
+    numero?: string;
+    aplicado?: number;
+  };
+  if (!r.ok) return { ok: false, error: errorRpc(t, r.error, t("noSaldo")) };
 
   revalidatePath("/pedidos");
   return {
     ok: true,
-    mensaje: `${r.numero}: se aplicaron $${(r.aplicado ?? 0).toLocaleString("es-CO")} de saldo a favor`,
+    mensaje: t("saldoAplicado", {
+      numero: r.numero ?? "",
+      monto: pesos(r.aplicado ?? 0),
+    }),
     aviso: "sin_aviso",
     avisoTexto: null,
   };
@@ -398,8 +477,9 @@ export async function ajustarCupoDia(input: {
   cerrado: boolean;
   nota?: string | null;
 }): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const t = await getTranslations("pedidos.acciones");
   const parsed = CupoDiaSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
   const { sedeId, fecha, cupo, cerrado } = parsed.data;
   const nota = parsed.data.nota?.trim() || null;
 
@@ -409,10 +489,12 @@ export async function ajustarCupoDia(input: {
     .select("id, workspace_id, nombre")
     .eq("id", sedeId)
     .maybeSingle();
-  if (!sede) return { ok: false, error: "Sede no encontrada" };
+  if (!sede) return { ok: false, error: t("sedeNoEncontrada") };
 
-  const acceso = await checkWorkspaceMember(sede.workspace_id as string, { minRole: "agent" });
-  if (!acceso.ok) return { ok: false, error: "No tienes permiso para cambiar cupos" };
+  const acceso = await checkWorkspaceMember(sede.workspace_id as string, {
+    minRole: "agent",
+  });
+  if (!acceso.ok) return { ok: false, error: t("sinPermisoCupos") };
 
   const {
     data: { user },
@@ -421,7 +503,11 @@ export async function ajustarCupoDia(input: {
   // Sin ajuste: se borra la fila y queda el cupo normal de la sede.
   const { error } =
     cupo === null && !cerrado
-      ? await supabase.from("cupos_dia").delete().eq("sede_id", sedeId).eq("fecha", fecha)
+      ? await supabase
+          .from("cupos_dia")
+          .delete()
+          .eq("sede_id", sedeId)
+          .eq("fecha", fecha)
       : await supabase.from("cupos_dia").upsert(
           {
             workspace_id: sede.workspace_id,
@@ -437,16 +523,16 @@ export async function ajustarCupoDia(input: {
         );
   if (error) {
     console.error("[pedidos] ajustar cupo:", error.message);
-    return { ok: false, error: "No se pudo guardar el cupo" };
+    return { ok: false, error: t("noCupo") };
   }
 
   revalidatePath("/pedidos");
   return {
     ok: true,
     mensaje: cerrado
-      ? "Cupos cerrados para ese día"
+      ? t("cuposCerrados")
       : cupo === null
-        ? "Cupo normal de la sede"
-        : `Cupo del día: ${cupo}`,
+        ? t("cupoNormal")
+        : t("cupoDia", { cupo }),
   };
 }

@@ -1,21 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Plus, Trash2, AlertTriangle, Info, Hash, Send } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
-  SheetContent,
-  SheetHeader,
   SheetTitle,
+  SheetHeader,
+  SheetContent,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-import type { TemplateRow } from "@/features/inbox/services/templates";
 import {
   CATEGORY_LABELS,
   TEMPLATE_CATEGORIES,
@@ -24,8 +15,18 @@ import {
   type TemplateCategory,
   type TemplateVariable,
 } from "@/features/settings/lib/template-form";
-import { AiTemplateGenerator } from "./ai-template-generator";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { WhatsAppPreview } from "./whatsapp-preview";
+import { AiTemplateGenerator } from "./ai-template-generator";
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { TemplateRow } from "@/features/inbox/services/templates";
+import { Plus, Trash2, AlertTriangle, Info, Hash, Send } from "lucide-react";
 
 // ── Prefill (used by the Biblioteca tab) ────────────────────────────────────────
 
@@ -48,10 +49,10 @@ const CATEGORY_HINT: Record<TemplateCategory, string> = {
 };
 
 const QUICK_VARIABLES = [
-  { label: "Nombre", example: "María" },
-  { label: "Negocio", example: "Clínica Sonrisa" },
-  { label: "Fecha", example: "martes 18 de junio" },
-  { label: "Hora", example: "10:00 a. m." },
+  { label: "nombre", example: "María" },
+  { label: "negocio", example: "Clínica Sonrisa" },
+  { label: "fecha", example: "martes 18 de junio" },
+  { label: "hora", example: "10:00 a. m." },
 ] as const;
 
 type FormButton = TemplateButton & { _key: string };
@@ -79,6 +80,8 @@ export function TemplateFormSheet({
   onOpenChange,
   onSaved,
 }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.templateFormSheet");
   const isEdit = Boolean(template);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -266,11 +269,11 @@ export function TemplateFormSheet({
         );
       }
 
-      toast.success(isEdit ? "Plantilla actualizada" : "Borrador creado");
+      toast.success(isEdit ? tr("plantillaActualizada") : tr("borradorCreado"));
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlGuardar"));
     } finally {
       setIsLoading(false);
     }
@@ -287,11 +290,10 @@ export function TemplateFormSheet({
       >
         <SheetHeader className="mb-6">
           <SheetTitle className="font-display">
-            {isEdit ? "Editar plantilla" : "Nueva plantilla"}
+            {isEdit ? tr("editarPlantilla") : tr("nuevaPlantilla")}
           </SheetTitle>
           <SheetDescription>
-            Se guarda como borrador. Envíala a aprobación desde la lista cuando
-            esté lista.
+            {tr("seGuardaComoBorradorEnvialaA")}
           </SheetDescription>
         </SheetHeader>
 
@@ -305,9 +307,9 @@ export function TemplateFormSheet({
                   htmlFor="tpl-name"
                   className="text-sm font-medium text-foreground"
                 >
-                  Nombre{" "}
+                  {tr("nombre")}{" "}
                   <span className="font-normal text-xs text-muted-foreground">
-                    (minúsculas, números y guion bajo)
+                    {tr("minusculasNumerosYGuionBajo")}
                   </span>
                 </Label>
                 <div className="relative">
@@ -321,7 +323,7 @@ export function TemplateFormSheet({
                           .replace(/[^a-z0-9_]/g, "_"),
                       )
                     }
-                    placeholder="ej. recordatorio_cita"
+                    placeholder={tr("ejRecordatorioCita")}
                     maxLength={512}
                     required
                     className={cn(
@@ -349,7 +351,7 @@ export function TemplateFormSheet({
               {/* Category */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  Categoría
+                  {tr("categoria")}
                 </Label>
                 <div className="grid grid-cols-2 gap-3">
                   {TEMPLATE_CATEGORIES.map((cat) => (
@@ -395,8 +397,7 @@ export function TemplateFormSheet({
                       aria-hidden="true"
                     />
                     <p className="text-xs leading-relaxed text-amber-300">
-                      Las plantillas de marketing deben ofrecer una opción para
-                      dejar de recibir mensajes (usa el pie estándar).
+                      {tr("lasPlantillasDeMarketingDebenOfrecer")}
                     </p>
                   </div>
                 )}
@@ -405,9 +406,9 @@ export function TemplateFormSheet({
               {/* Header */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  Encabezado{" "}
+                  {tr("encabezado")}{" "}
                   <span className="font-normal text-xs text-muted-foreground">
-                    (opcional, solo texto)
+                    {tr("opcionalSoloTexto")}
                   </span>
                 </Label>
                 <div className="flex gap-2">
@@ -424,7 +425,7 @@ export function TemplateFormSheet({
                       )}
                       aria-pressed={headerType === t}
                     >
-                      {t === "none" ? "Ninguno" : "Texto"}
+                      {t === "none" ? tr("ninguno") : tr("texto")}
                     </button>
                   ))}
                 </div>
@@ -433,10 +434,10 @@ export function TemplateFormSheet({
                     <Input
                       value={headerText}
                       onChange={(e) => setHeaderText(e.target.value)}
-                      placeholder="Texto del encabezado"
+                      placeholder={tr("textoDelEncabezado")}
                       maxLength={60}
                       className="pr-12"
-                      aria-label="Texto del encabezado"
+                      aria-label={tr("textoDelEncabezado")}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums text-muted-foreground">
                       {headerText.length}/60
@@ -452,7 +453,7 @@ export function TemplateFormSheet({
                     htmlFor="tpl-body"
                     className="text-sm font-medium text-foreground"
                   >
-                    Cuerpo del mensaje
+                    {tr("cuerpoDelMensaje")}
                   </Label>
                   {detectedIndices.length > 0 && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -475,7 +476,7 @@ export function TemplateFormSheet({
                     maxLength={1024}
                     required
                     className="resize-none pr-2"
-                    aria-label="Cuerpo del mensaje"
+                    aria-label={tr("cuerpoDelMensaje")}
                   />
                   <span className="absolute bottom-2 right-3 text-xs tabular-nums text-muted-foreground">
                     {body.length}/1024
@@ -490,11 +491,11 @@ export function TemplateFormSheet({
                     onClick={() => handleAddVariable()}
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                    Agregar variable
+                    {tr("agregarVariable")}
                   </Button>
                   {QUICK_VARIABLES.map((v) => (
                     <Button
-                      key={v.label}
+                      key={tc(v.label)}
                       type="button"
                       variant="outline"
                       size="sm"
@@ -502,7 +503,7 @@ export function TemplateFormSheet({
                       onClick={() => handleAddVariable(v.example)}
                     >
                       <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                      {v.label}
+                      {tc(v.label)}
                     </Button>
                   ))}
                 </div>
@@ -511,7 +512,7 @@ export function TemplateFormSheet({
                 {syncedVariables.length > 0 && (
                   <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Ejemplos de variables (requeridos por Meta)
+                      {tr("ejemplosDeVariablesRequeridosPorMeta")}
                     </p>
                     {syncedVariables.map((v) => (
                       <div key={v.index} className="flex items-center gap-2">
@@ -552,19 +553,19 @@ export function TemplateFormSheet({
               {/* Footer */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  Pie{" "}
+                  {tr("pie")}{" "}
                   <span className="font-normal text-xs text-muted-foreground">
-                    (opcional)
+                    {tr("opcional")}
                   </span>
                 </Label>
                 <div className="relative">
                   <Input
                     value={footerText}
                     onChange={(e) => setFooterText(e.target.value)}
-                    placeholder="Texto del pie"
+                    placeholder={tr("textoDelPie")}
                     maxLength={60}
                     className="pr-12"
-                    aria-label="Texto del pie"
+                    aria-label={tr("textoDelPie")}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums text-muted-foreground">
                     {footerText.length}/60
@@ -580,7 +581,8 @@ export function TemplateFormSheet({
                     className="accent-primary"
                   />
                   <span className="text-sm text-muted-foreground">
-                    Usar pie estándar de baja (&quot;{STANDARD_OPT_OUT}&quot;)
+                    {tr("usarPieEstandarDeBaja")}
+                    {STANDARD_OPT_OUT}&quot;)
                   </span>
                 </label>
               </div>
@@ -588,9 +590,9 @@ export function TemplateFormSheet({
               {/* Buttons */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  Botones{" "}
+                  {tr("botones")}{" "}
                   <span className="font-normal text-xs text-muted-foreground">
-                    (máx 3)
+                    {tr("max3")}
                   </span>
                 </Label>
                 {buttons.map((btn) => (
@@ -607,17 +609,19 @@ export function TemplateFormSheet({
                           })
                         }
                         className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        aria-label="Tipo de botón"
+                        aria-label={tr("tipoDeBoton")}
                       >
-                        <option value="quick_reply">Respuesta rápida</option>
+                        <option value="quick_reply">
+                          {tr("respuestaRapida")}
+                        </option>
                         <option value="url">URL</option>
-                        <option value="phone">Teléfono</option>
+                        <option value="phone">{tr("telefono")}</option>
                       </select>
                       <button
                         type="button"
                         onClick={() => removeButton(btn._key)}
                         className="rounded p-1.5 text-muted-foreground transition-colors hover:text-destructive"
-                        aria-label="Eliminar botón"
+                        aria-label={tr("eliminarBoton")}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -627,9 +631,9 @@ export function TemplateFormSheet({
                       onChange={(e) =>
                         updateButton(btn._key, { text: e.target.value })
                       }
-                      placeholder="Texto del botón"
+                      placeholder={tr("textoDelBoton")}
                       maxLength={25}
-                      aria-label="Texto del botón"
+                      aria-label={tr("textoDelBoton")}
                     />
                     {btn.type === "url" && (
                       <Input
@@ -639,7 +643,7 @@ export function TemplateFormSheet({
                         }
                         placeholder="https://ejemplo.com"
                         type="url"
-                        aria-label="URL del botón"
+                        aria-label={tr("urlDelBoton")}
                       />
                     )}
                     {btn.type === "phone" && (
@@ -650,7 +654,7 @@ export function TemplateFormSheet({
                         }
                         placeholder="+52 55 1234 5678"
                         type="tel"
-                        aria-label="Teléfono del botón"
+                        aria-label={tr("telefonoDelBoton")}
                       />
                     )}
                   </div>
@@ -663,7 +667,8 @@ export function TemplateFormSheet({
                     onClick={addButton}
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                    Agregar botón ({buttons.length}/3)
+                    {tr("agregarBoton")}
+                    {buttons.length}/3)
                   </Button>
                 )}
               </div>
@@ -678,10 +683,10 @@ export function TemplateFormSheet({
               <div className="flex items-center gap-3 border-t border-border pt-4">
                 <Button type="submit" disabled={!canSave} aria-busy={isLoading}>
                   {isLoading
-                    ? "Guardando…"
+                    ? tr("guardando")
                     : isEdit
-                      ? "Guardar cambios"
-                      : "Crear borrador"}
+                      ? tr("guardarCambios")
+                      : tr("crearBorrador")}
                 </Button>
                 <Button
                   type="button"
@@ -689,7 +694,7 @@ export function TemplateFormSheet({
                   onClick={() => onOpenChange(false)}
                   disabled={isLoading}
                 >
-                  Cancelar
+                  {tr("cancelar")}
                 </Button>
               </div>
             </div>
@@ -707,8 +712,7 @@ export function TemplateFormSheet({
               />
               <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Send className="h-3 w-3" aria-hidden="true" />
-                Tras guardar, envíala a aprobación desde la lista. Meta tarda
-                24–48 h.
+                {tr("trasGuardarEnvialaAAprobacionDesde")}
               </p>
             </div>
           </div>

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
+  Music,
+  Loader2,
   FileText,
   Download,
-  Music,
   Paperclip,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import type { MediaMeta } from "@/features/inbox/services/media-handler";
 
 interface MessageAttachmentProps {
@@ -69,13 +70,14 @@ async function fetchSignedUrl(storagePath: string): Promise<string | null> {
 // ─── Sub-renderers ────────────────────────────────────────────────────────────
 
 function ImageAttachment({ url, caption }: { url: string; caption?: string }) {
+  const t = useTranslations("inbox.adjuntos");
   return (
     <div className="space-y-1">
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}
-          alt={caption ?? "Imagen recibida"}
+          alt={caption ?? t("imagenRecibida")}
           className="max-h-64 max-w-full rounded-md object-cover"
           loading="lazy"
         />
@@ -94,12 +96,13 @@ function AudioAttachment({
   url: string;
   transcript?: string;
 }) {
+  const t = useTranslations("inbox.adjuntos");
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2 min-w-[220px]">
         <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
         <audio controls className="h-8 max-w-full" src={url}>
-          Tu navegador no soporta audio.
+          {t("sinAudio")}
         </audio>
       </div>
       {transcript && (
@@ -112,9 +115,10 @@ function AudioAttachment({
 }
 
 function VideoAttachment({ url }: { url: string }) {
+  const t = useTranslations("inbox.adjuntos");
   return (
     <video controls className="max-h-64 max-w-full rounded-md" src={url}>
-      Tu navegador no soporta video.
+      {t("sinVideo")}
     </video>
   );
 }
@@ -154,12 +158,14 @@ function DocumentAttachment({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function MessageAttachment({ media, type }: MessageAttachmentProps) {
+  const t = useTranslations("inbox.adjuntos");
   const parsed = parseMediaMeta(media);
   const kind = categorize(type, parsed.mime_type);
   // Foto del catálogo que envió la IA: URL pública https, sin archivo en
   // whatsapp-media que firmar.
   const publicUrl =
-    typeof media.image_url === "string" && media.image_url.startsWith("https://")
+    typeof media.image_url === "string" &&
+    media.image_url.startsWith("https://")
       ? media.image_url
       : null;
 
@@ -208,7 +214,7 @@ export function MessageAttachment({ media, type }: MessageAttachmentProps) {
       <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 max-w-[280px]">
         <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         <span className="text-xs text-muted-foreground">
-          Descargando archivo…
+          {t("descargando")}
         </span>
       </div>
     );
@@ -228,7 +234,7 @@ export function MessageAttachment({ media, type }: MessageAttachmentProps) {
     return (
       <div className="flex items-center gap-2 text-xs text-destructive">
         <AlertCircle className="h-3 w-3" />
-        <span>No disponible</span>
+        <span>{t("noDisponible")}</span>
       </div>
     );
   }

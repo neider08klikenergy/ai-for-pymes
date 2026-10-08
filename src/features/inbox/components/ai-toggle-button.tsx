@@ -1,8 +1,9 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useAiToggle } from "@/features/inbox/hooks/use-ai-toggle";
 
 interface AiToggleButtonProps {
@@ -14,6 +15,7 @@ export function AiToggleButton({
   conversationId,
   initialEnabled,
 }: AiToggleButtonProps) {
+  const t = useTranslations("inbox.chat");
   const { aiEnabled, toggle, isPending } = useAiToggle(
     conversationId,
     initialEnabled,
@@ -37,7 +39,7 @@ export function AiToggleButton({
           aiEnabled ? "text-primary" : "text-muted-foreground",
         )}
       >
-        {aiEnabled ? "IA Activa" : "Humano activo"}
+        {aiEnabled ? t("iaActiva") : t("humanoActivo")}
       </Label>
     </div>
   );

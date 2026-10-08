@@ -1,25 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import type {
+  ConversationState,
+  ConversationWithContact,
+} from "@/features/inbox/types";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./conversation-item";
+import { usePathname, useRouter } from "next/navigation";
 import { useRealtimeConversations } from "@/features/inbox/hooks/use-realtime-conversations";
-import type {
-  ConversationWithContact,
-  ConversationState,
-} from "@/features/inbox/types";
 
 type FilterTab = "all" | "ai_active" | "human_active" | "handoff_pending";
 
 const TABS: { id: FilterTab; label: string }[] = [
-  { id: "all", label: "Todos" },
-  { id: "ai_active", label: "IA activa" },
-  { id: "human_active", label: "Humano" },
-  { id: "handoff_pending", label: "Handoff" },
+  { id: "all", label: "todos" },
+  { id: "ai_active", label: "iaActiva" },
+  { id: "human_active", label: "humano" },
+  { id: "handoff_pending", label: "handoff" },
 ];
 
 interface InboxLayoutProps {
@@ -33,6 +34,7 @@ export function InboxLayout({
   workspaceId,
   children,
 }: InboxLayoutProps) {
+  const t = useTranslations("inbox.lista");
   const router = useRouter();
   const pathname = usePathname();
   const [search, setSearch] = useState("");
@@ -65,7 +67,7 @@ export function InboxLayout({
         className={cn(
           "w-80 shrink-0 border-r border-border/50 flex flex-col overflow-hidden",
         )}
-        aria-label="Conversaciones"
+        aria-label={t("conversaciones")}
       >
         {/* Header */}
         <div className="shrink-0 px-4 pt-3 pb-2 border-b border-border/50 space-y-2">
@@ -87,16 +89,16 @@ export function InboxLayout({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o teléfono..."
+              placeholder={t("buscar")}
               className="pl-8 h-8 text-xs bg-muted/30 border-border/40 placeholder:text-muted-foreground/50"
-              aria-label="Buscar conversaciones"
+              aria-label={t("buscarConversaciones")}
             />
           </div>
 
           {/* Status filter tabs */}
           <div
             role="tablist"
-            aria-label="Filtrar por estado"
+            aria-label={t("filtrarEstado")}
             className="flex gap-1 flex-wrap"
           >
             {TABS.map((tab) => (
@@ -115,7 +117,7 @@ export function InboxLayout({
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 )}
               >
-                {tab.label}
+                {t(`filtros.${tab.label}` as "filtros.todos")}
               </Button>
             ))}
           </div>
@@ -126,13 +128,13 @@ export function InboxLayout({
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <p className="text-sm text-muted-foreground">
                 {search || activeTab !== "all"
-                  ? "Sin resultados"
-                  : "No hay conversaciones"}
+                  ? t("sinResultados")
+                  : t("sinConversaciones")}
               </p>
               <p className="text-xs text-muted-foreground/60 mt-1">
                 {search || activeTab !== "all"
-                  ? "Intenta con otro filtro o búsqueda"
-                  : "Los contactos de WhatsApp aparecerán aquí"}
+                  ? t("otroFiltro")
+                  : t("apareceran")}
               </p>
             </div>
           ) : (

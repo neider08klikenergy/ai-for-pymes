@@ -1,52 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectTrigger,
+  SelectContent,
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetTitle,
   SheetContent,
   SheetHeader,
-  SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import {
+  type ActionType,
+  type TriggerType,
   saveAutomationRule,
   type AutomationRule,
-  type TriggerType,
-  type ActionType,
 } from "../services/automation-actions";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useState, useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { TemplateRow } from "@/features/inbox/services/templates";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TRIGGER_LABELS: Record<TriggerType, string> = {
-  first_message: "Primer mensaje del contacto",
-  inactivity_24h: "Sin respuesta en 24h",
-  window_closing: "Ventana de 24h cerrando (2h restantes)",
-  handoff_requested: "IA solicita handoff",
-  lead_qualified: "Lead calificado",
-  keyword_match: "Palabra clave detectada",
+  first_message: "primerMensajeDelContacto",
+  inactivity_24h: "sinRespuestaEn24h",
+  window_closing: "ventanaDe24hCerrando2hRestantes",
+  handoff_requested: "iaSolicitaHandoff",
+  lead_qualified: "leadCalificado",
+  keyword_match: "palabraClaveDetectada",
 };
 
 const ACTION_LABELS: Record<ActionType, string> = {
-  send_template: "Enviar template",
-  assign_agent: "Asignar a agente",
-  add_tag: "Agregar etiqueta",
-  close_conversation: "Cerrar conversación",
-  handoff_human: "Transferir a humano",
+  send_template: "enviarTemplate",
+  assign_agent: "asignarAAgente",
+  add_tag: "agregarEtiqueta",
+  close_conversation: "cerrarConversacion",
+  handoff_human: "transferirAHumano",
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -70,6 +71,8 @@ export function AutomationRuleForm({
   onOpenChange,
   onSaved,
 }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.automationRuleForm");
   const isEdit = Boolean(rule);
   const approvedTemplates = templates.filter((t) => t.status === "approved");
 
@@ -187,7 +190,7 @@ export function AutomationRuleForm({
     }
 
     toast.success(
-      isEdit ? "Automatización actualizada" : "Automatización creada",
+      isEdit ? tr("automatizacionActualizada") : tr("automatizacionCreada"),
     );
     onSaved();
     onOpenChange(false);
@@ -200,11 +203,9 @@ export function AutomationRuleForm({
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle className="font-display">
-            {isEdit ? "Editar automatización" : "Nueva automatización"}
+            {isEdit ? tr("editarAutomatizacion") : tr("nuevaAutomatizacion")}
           </SheetTitle>
-          <SheetDescription>
-            Define cuándo se activa y qué acción ejecuta automáticamente.
-          </SheetDescription>
+          <SheetDescription>{tr("defineCuandoSeActivaYQue")}</SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -214,13 +215,13 @@ export function AutomationRuleForm({
               htmlFor="rule-name"
               className="text-sm font-medium text-foreground"
             >
-              Nombre de la regla
+              {tr("nombreDeLaRegla")}
             </Label>
             <Input
               id="rule-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="ej. Bienvenida a nuevos contactos"
+              placeholder={tr("ejBienvenidaANuevosContactos")}
               maxLength={120}
               required
               className={cn(
@@ -247,7 +248,7 @@ export function AutomationRuleForm({
               htmlFor="rule-trigger"
               className="text-sm font-medium text-foreground"
             >
-              Disparador
+              {tr("disparador")}
             </Label>
             <Select
               value={triggerType}
@@ -259,7 +260,7 @@ export function AutomationRuleForm({
               <SelectContent>
                 {(Object.keys(TRIGGER_LABELS) as TriggerType[]).map((key) => (
                   <SelectItem key={key} value={key}>
-                    {TRIGGER_LABELS[key]}
+                    {tc(TRIGGER_LABELS[key])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -272,14 +273,14 @@ export function AutomationRuleForm({
                   htmlFor="rule-keywords"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  Palabras clave{" "}
-                  <span className="font-normal">(separadas por coma)</span>
+                  {tr("palabrasClave")}{" "}
+                  <span className="font-normal">{tr("separadasPorComa")}</span>
                 </Label>
                 <Input
                   id="rule-keywords"
                   value={keywords}
                   onChange={(e) => setKeywords(e.target.value)}
-                  placeholder="ej. precio, info, cotización"
+                  placeholder={tr("ejPrecioInfoCotizacion")}
                   className="h-8 text-sm"
                   aria-required="true"
                 />
@@ -293,7 +294,7 @@ export function AutomationRuleForm({
               htmlFor="rule-action"
               className="text-sm font-medium text-foreground"
             >
-              Acción
+              {tr("accion")}
             </Label>
             <Select
               value={actionType}
@@ -305,7 +306,7 @@ export function AutomationRuleForm({
               <SelectContent>
                 {(Object.keys(ACTION_LABELS) as ActionType[]).map((key) => (
                   <SelectItem key={key} value={key}>
-                    {ACTION_LABELS[key]}
+                    {tc(ACTION_LABELS[key])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -318,7 +319,7 @@ export function AutomationRuleForm({
                   htmlFor="rule-template"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  Template aprobado
+                  {tr("templateAprobado")}
                 </Label>
                 {approvedTemplates.length === 0 ? (
                   <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning flex items-center gap-1.5">
@@ -326,8 +327,7 @@ export function AutomationRuleForm({
                       className="h-3.5 w-3.5 shrink-0"
                       aria-hidden="true"
                     />
-                    No hay templates aprobados por Meta. Sincroniza plantillas
-                    primero.
+                    {tr("noHayTemplatesAprobadosPorMeta")}
                   </p>
                 ) : (
                   <Select
@@ -335,7 +335,7 @@ export function AutomationRuleForm({
                     onValueChange={setSelectedTemplate}
                   >
                     <SelectTrigger id="rule-template">
-                      <SelectValue placeholder="Selecciona un template" />
+                      <SelectValue placeholder={tr("seleccionaUnTemplate")} />
                     </SelectTrigger>
                     <SelectContent>
                       {approvedTemplates.map((t) => (
@@ -352,8 +352,7 @@ export function AutomationRuleForm({
             {/* Assign agent — placeholder */}
             {actionType === "assign_agent" && (
               <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                La asignación de agente específico estará disponible
-                próximamente. La regla se guardará sin agente asignado.
+                {tr("laAsignacionDeAgenteEspecificoEstara")}
               </p>
             )}
 
@@ -364,13 +363,13 @@ export function AutomationRuleForm({
                   htmlFor="rule-tag"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  Nombre de la etiqueta
+                  {tr("nombreDeLaEtiqueta")}
                 </Label>
                 <Input
                   id="rule-tag"
                   value={tagName}
                   onChange={(e) => setTagName(e.target.value)}
-                  placeholder="ej. interesado, por-agendar"
+                  placeholder={tr("ejInteresadoPorAgendar")}
                   className="h-8 text-sm"
                   aria-required="true"
                 />
@@ -381,15 +380,17 @@ export function AutomationRuleForm({
           {/* Enabled toggle */}
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Habilitada</p>
+              <p className="text-sm font-medium text-foreground">
+                {tr("habilitada")}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Las reglas deshabilitadas no se ejecutan
+                {tr("lasReglasDeshabilitadasNoSeEjecutan")}
               </p>
             </div>
             <Switch
               checked={enabled}
               onCheckedChange={setEnabled}
-              aria-label="Habilitar automatización"
+              aria-label={tr("habilitarAutomatizacion")}
             />
           </div>
 
@@ -398,8 +399,8 @@ export function AutomationRuleForm({
             actionType === "handoff_human") && (
             <p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
               {actionType === "close_conversation"
-                ? "La conversación se marcará como cerrada automáticamente cuando se cumpla el disparador."
-                : "Se iniciará un handoff al equipo humano cuando se cumpla el disparador."}
+                ? tr("laConversacionSeMarcaraComoCerrada")
+                : tr("seIniciaraUnHandoffAlEquipo")}
             </p>
           )}
 
@@ -411,10 +412,10 @@ export function AutomationRuleForm({
               aria-busy={isLoading}
             >
               {isLoading
-                ? "Guardando..."
+                ? tr("guardando")
                 : isEdit
-                  ? "Guardar cambios"
-                  : "Crear automatización"}
+                  ? tr("guardarCambios")
+                  : tr("crearAutomatizacion")}
             </Button>
             <Button
               type="button"
@@ -422,7 +423,7 @@ export function AutomationRuleForm({
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancelar
+              {tr("cancelar")}
             </Button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { StatusIcon } from "./status-icon";
+import { useTranslations } from "next-intl";
 import { PenLine, Bot } from "lucide-react";
 import type { MessageRow } from "@/features/inbox/types";
 import { MessageAttachment } from "./message-attachment";
@@ -11,6 +12,7 @@ interface ChatMessageProps {
 
 /** Author chip for outbound messages: "IA" badge or the operator's name. */
 function OutboundAuthor({ message }: { message: MessageRow }) {
+  const t = useTranslations("inbox.chat");
   // AI-generated when there is no human sender.
   if (!message.sender_user_id) {
     return (
@@ -20,7 +22,7 @@ function OutboundAuthor({ message }: { message: MessageRow }) {
       </span>
     );
   }
-  const name = message.sender?.full_name ?? "Operador";
+  const name = message.sender?.full_name ?? t("operador");
   const initial = name.trim()[0]?.toUpperCase() ?? "·";
   return (
     <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -50,6 +52,7 @@ function isInternalNote(message: MessageRow): boolean {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const t = useTranslations("inbox.chat");
   const isOutbound = message.direction === "out";
   const zona = useZonaHoraria();
   const time = formatTime(message.created_at, zona);
@@ -63,7 +66,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <div className="flex items-center gap-1.5 text-warning">
             <PenLine className="h-3 w-3 shrink-0" aria-hidden="true" />
             <span className="text-[10px] font-medium uppercase tracking-wide">
-              Nota interna
+              {t("notaInterna")}
             </span>
           </div>
           {message.body && (
@@ -95,7 +98,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
       >
         {/* Una ubicación no trae archivo: su texto (dirección, enlace) va en body */}
-        {message.type !== "text" && message.type !== "system" && message.type !== "location" ? (
+        {message.type !== "text" &&
+        message.type !== "system" &&
+        message.type !== "location" ? (
           <MessageAttachment media={message.meta} type={message.type} />
         ) : (
           message.body && (

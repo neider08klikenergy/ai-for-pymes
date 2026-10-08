@@ -1,23 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
 import {
   CATEGORY_LABELS,
   TEMPLATE_CATEGORIES,
   type TemplateCategory,
 } from "@/features/settings/lib/template-form";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Sparkles, RefreshCw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,15 +36,15 @@ const USE_CASE_LABELS: Record<UseCase, string> = {
   notificacion: "Notificación / Aviso",
 };
 
-
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function GeneratingSkeleton() {
+  const t = useTranslations("ui.aiTemplateGenerator");
   return (
     <div
       className="space-y-2 animate-pulse"
       aria-busy="true"
-      aria-label="Generando plantilla..."
+      aria-label={t("generandoPlantilla")}
     >
       <div className="h-3.5 bg-muted rounded w-4/5" />
       <div className="h-3.5 bg-muted rounded w-full" />
@@ -57,6 +58,7 @@ function GeneratingSkeleton() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
+  const t = useTranslations("ui.aiTemplateGenerator");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<TemplateCategory>("utility");
   const [useCase, setUseCase] = useState<UseCase>("notificacion");
@@ -106,14 +108,16 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
   function handleUseTemplate() {
     if (!preview) return;
     onGenerated(preview);
-    toast.success("Plantilla aplicada al cuerpo del mensaje");
+    toast.success(t("plantillaAplicadaAlCuerpoDelMensaje"));
   }
 
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
-        <p className="text-sm font-semibold text-foreground">Generar con IA</p>
+        <p className="text-sm font-semibold text-foreground">
+          {t("generarConIa")}
+        </p>
       </div>
 
       {/* Description */}
@@ -122,13 +126,13 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
           htmlFor="ai-description"
           className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
         >
-          Objetivo de la plantilla
+          {t("objetivoDeLaPlantilla")}
         </Label>
         <Textarea
           id="ai-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ej: Recordatorio de cita médica para el día siguiente con dirección y hora"
+          placeholder={t("ejRecordatorioDeCitaMedicaPara")}
           rows={2}
           className="resize-none text-sm"
           disabled={isLoading}
@@ -143,7 +147,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
             htmlFor="ai-category"
             className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
           >
-            Categoría
+            {t("categoria")}
           </Label>
           <Select
             value={category}
@@ -169,7 +173,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
             htmlFor="ai-use-case"
             className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
           >
-            Caso de uso
+            {t("casoDeUso")}
           </Label>
           <Select
             value={useCase}
@@ -201,7 +205,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
         className="w-full gap-2"
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        {isLoading ? "Generando..." : "Generar plantilla"}
+        {isLoading ? t("generando") : t("generarPlantilla")}
       </Button>
 
       {/* Loading skeleton */}
@@ -216,13 +220,13 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
         <div className="space-y-3 pt-1 border-t border-border">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Vista previa
+              {t("vistaPrevia")}
             </p>
             <button
               type="button"
               onClick={handleGenerate}
               className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
-              aria-label="Regenerar plantilla"
+              aria-label={t("regenerarPlantilla")}
               disabled={isLoading}
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -239,7 +243,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
             onClick={handleUseTemplate}
             className="w-full"
           >
-            Usar esta plantilla
+            {t("usarEstaPlantilla")}
           </Button>
         </div>
       )}

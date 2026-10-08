@@ -45,7 +45,8 @@ export async function crearSolicitudDemo(input: unknown): Promise<ResultadoSolic
   const { error } = await db.from("solicitudes_demo").insert(datos);
   if (error) {
     console.error("[demo] crearSolicitudDemo:", error.message);
-    return { ok: false, error: "No pudimos guardar tus datos. Intenta de nuevo en un momento." };
+    // Clave de demo.errores: la traduce la página
+    return { ok: false, error: "guardar" };
   }
   return { ok: true };
 }

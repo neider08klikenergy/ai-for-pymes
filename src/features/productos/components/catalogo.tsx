@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 // Catálogo del negocio: productos con sus variantes (sabor, tamaño → precio).
 // Es la fuente de precios del agente (cotizar_producto).
 
@@ -22,11 +23,11 @@ import {
   MODOS,
   MODO_AYUDA,
   MODO_LABEL,
-  coincideBusqueda,
-  nombreVariante,
-  agruparPorCategoria,
   type Producto,
   type Variante,
+  nombreVariante,
+  coincideBusqueda,
+  agruparPorCategoria,
   type ModoDisponibilidad,
 } from "../lib/catalogo";
 import {
@@ -37,11 +38,17 @@ import {
   importarDesdeShopify,
   type ResultadoProducto,
 } from "../services/productos-actions";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Package,
+  Download,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ImagenesEditor } from "./imagenes-editor";
-import { createClient } from "@/lib/supabase/client";
-import { BUCKET_IMAGENES, rutaImagenPropia } from "../lib/imagenes";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -49,9 +56,11 @@ import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ImagenesEditor } from "./imagenes-editor";
 import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/lib/supabase/client";
 import { pesos } from "@/features/pedidos/lib/fechas";
-import { ChevronDown, Download, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { BUCKET_IMAGENES, rutaImagenPropia } from "../lib/imagenes";
 
 interface Props {
   workspaceId: string;
@@ -146,7 +155,13 @@ function rangoPrecios(p: Producto): string {
   return min === max ? pesos(min) : `${pesos(min)} – ${pesos(max)}`;
 }
 
-export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify }: Props) {
+export function CatalogoProductos({
+  workspaceId,
+  productos,
+  puedeEditar,
+  shopify,
+}: Props) {
+  const t = useTranslations("ui.catalogo");
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
@@ -171,7 +186,11 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
     });
   }
 
-  function ejecutar(accion: () => Promise<ResultadoProducto>, exito: string, despues?: () => void) {
+  function ejecutar(
+    accion: () => Promise<ResultadoProducto>,
+    exito: string,
+    despues?: () => void,
+  ) {
     startTransition(async () => {
       const r = await accion();
       if (!r.ok) {
@@ -194,7 +213,11 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
       .storage.from(BUCKET_IMAGENES)
       .remove(rutas)
       .then(({ error }) => {
-        if (error) console.warn("[productos] fotos sin guardar no borradas:", error.message);
+        if (error)
+          console.warn(
+            "[productos] fotos sin guardar no borradas:",
+            error.message,
+          );
       });
   }
 
@@ -205,7 +228,10 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
         toast.error(r.error);
         return;
       }
-      toast.success("Catálogo importado desde Shopify", { description: r.resumen, duration: 10000 });
+      toast.success(t("catalogoImportadoDesdeShopify"), {
+        description: r.resumen,
+        duration: 10000,
+      });
       router.refresh();
     });
   }
@@ -265,33 +291,38 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar producto, sabor o tamaño"
+            placeholder={t("buscarProductoSaborOTamano")}
             className="pl-8"
-            aria-label="Buscar en el catálogo"
+            aria-label={t("buscarEnElCatalogo")}
           />
         </div>
         {puedeEditar && shopify && (
-          <Button variant="outline" disabled={importando} onClick={importar} title={`Tienda: ${shopify}`}>
+          <Button
+            variant="outline"
+            disabled={importando}
+            onClick={importar}
+            title={`Tienda: ${shopify}`}
+          >
             <Download className="h-4 w-4" aria-hidden="true" />
-            {importando ? "Importando…" : "Importar desde Shopify"}
+            {importando ? t("importando") : t("importarDesdeShopify")}
           </Button>
         )}
         {puedeEditar && (
           <Button onClick={() => setProducto(PRODUCTO_NUEVO)}>
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Nuevo producto
+            {t("nuevoProducto")}
           </Button>
         )}
       </div>
 
       {puedeEditar && !shopify && (
         <p className="text-xs text-muted-foreground">
-          ¿El negocio vende en Shopify? Puedes traer sus productos y precios:{" "}
+          {t("elNegocioVendeEnShopifyPuedes")}{" "}
           <Link
             href="/settings?tab=integraciones"
             className="underline underline-offset-2 hover:text-foreground"
           >
-            conecta la tienda en Settings → Integraciones → Shopify
+            {t("conectaLaTiendaEnSettingsIntegraciones")}
           </Link>
           .
         </p>
@@ -299,30 +330,34 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
 
       {sinValidar > 0 && (
         <p className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-          Hay <strong className="tabular-nums">{sinValidar}</strong> precios sin validar. El agente
-          los usa igual, pero el pedido queda marcado como &quot;precio por validar&quot;.
+          {t("hay")} <strong className="tabular-nums">{sinValidar}</strong>{" "}
+          {t("preciosSinValidarElAgenteLos")}
         </p>
       )}
 
       {productos.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
-          <Package className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <Package
+            className="h-8 w-8 text-muted-foreground"
+            aria-hidden="true"
+          />
           <div>
-            <p className="font-medium">Todavía no hay productos</p>
+            <p className="font-medium">{t("todaviaNoHayProductos")}</p>
             <p className="text-sm text-muted-foreground">
-              Crea el primero para que el agente pueda cotizarlo.
+              {t("creaElPrimeroParaQueEl")}
             </p>
           </div>
           {puedeEditar && (
             <Button onClick={() => setProducto(PRODUCTO_NUEVO)}>
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Nuevo producto
+              {t("nuevoProducto")}
             </Button>
           )}
         </div>
       ) : visibles.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-          Ningún producto coincide con &quot;{busqueda}&quot;.
+          {t("ningunProductoCoincideCon")}
+          {busqueda}&quot;.
         </p>
       ) : (
         grupos.map(([categoria, lista]) => (
@@ -354,8 +389,12 @@ export function CatalogoProductos({ workspaceId, productos, puedeEditar, shopify
           pendiente={pendiente}
           workspaceId={workspaceId}
           onCambiar={setProducto}
-          onImagenes={(imagenes) => setProducto((f) => (f ? { ...f, imagenes } : f))}
-          onSubida={(url) => setProducto((f) => (f ? { ...f, subidas: [...f.subidas, url] } : f))}
+          onImagenes={(imagenes) =>
+            setProducto((f) => (f ? { ...f, imagenes } : f))
+          }
+          onSubida={(url) =>
+            setProducto((f) => (f ? { ...f, subidas: [...f.subidas, url] } : f))
+          }
           onCerrar={cerrarProducto}
           onGuardar={() => guardarFormProducto(producto)}
           onBorrar={
@@ -413,6 +452,8 @@ function FilaProducto({
   onNuevaVariante: () => void;
   onEditarVariante: (v: Variante) => void;
 }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.catalogo");
   const panelId = `variantes-${p.id}`;
   return (
     <li className={cn("rounded-xl border bg-card", !p.activo && "opacity-60")}>
@@ -433,28 +474,41 @@ function FilaProducto({
             />
           ) : (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Package
+                className="h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
             </span>
           )}
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-1.5">
               <span className="font-medium truncate">{p.nombre}</span>
-              <Etiqueta>{MODO_LABEL[p.modo_disponibilidad]}</Etiqueta>
-              {p.origen === "shopify" && <Etiqueta>Shopify</Etiqueta>}
-              {!p.activo && <Etiqueta>Inactivo</Etiqueta>}
+              <Etiqueta>{tc(MODO_LABEL[p.modo_disponibilidad])}</Etiqueta>
+              {p.origen === "shopify" && <Etiqueta>{t("shopify")}</Etiqueta>}
+              {!p.activo && <Etiqueta>{t("inactivo")}</Etiqueta>}
             </span>
             <span className="block text-xs text-muted-foreground">
-              {p.variantes.length === 1 ? "1 variante" : `${p.variantes.length} variantes`} ·{" "}
-              {rangoPrecios(p)} · <span className="font-mono">{p.slug}</span>
+              {p.variantes.length === 1
+                ? t("n1Variante")
+                : `${p.variantes.length} variantes`}{" "}
+              · {rangoPrecios(p)} · <span className="font-mono">{p.slug}</span>
             </span>
           </span>
           <ChevronDown
-            className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", abierto && "rotate-180")}
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              abierto && "rotate-180",
+            )}
             aria-hidden="true"
           />
         </button>
         {puedeEditar && (
-          <Button variant="ghost" size="icon" onClick={onEditar} aria-label={`Editar ${p.nombre}`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEditar}
+            aria-label={`Editar ${p.nombre}`}
+          >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </Button>
         )}
@@ -464,26 +518,37 @@ function FilaProducto({
         <div id={panelId} className="border-t px-3 pb-3">
           {p.variantes.length === 0 ? (
             <p className="py-3 text-sm text-muted-foreground">
-              Sin variantes: el agente no puede cotizar este producto todavía.
+              {t("sinVariantesElAgenteNoPuede")}
             </p>
           ) : (
             <ul className="divide-y">
               {p.variantes.map((v) => (
-                <li key={v.id} className={cn("flex items-center gap-3 py-2", !v.activa && "opacity-60")}>
+                <li
+                  key={v.id}
+                  className={cn(
+                    "flex items-center gap-3 py-2",
+                    !v.activa && "opacity-60",
+                  )}
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate">{nombreVariante(v.opciones)}</p>
+                    <p className="text-sm truncate">
+                      {nombreVariante(v.opciones)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {[v.porciones && `${v.porciones} porciones`, v.incluye].filter(Boolean).join(" · ") ||
-                        " "}
+                      {[v.porciones && `${v.porciones} porciones`, v.incluye]
+                        .filter(Boolean)
+                        .join(" · ") || " "}
                     </p>
                   </div>
                   {!v.validado && (
                     <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] text-warning">
-                      Por validar
+                      {t("porValidar")}
                     </span>
                   )}
-                  {!v.activa && <Etiqueta>Inactiva</Etiqueta>}
-                  <span className="text-sm font-medium tabular-nums">{pesos(v.precio)}</span>
+                  {!v.activa && <Etiqueta>{t("inactiva")}</Etiqueta>}
+                  <span className="text-sm font-medium tabular-nums">
+                    {pesos(v.precio)}
+                  </span>
                   {puedeEditar && (
                     <Button
                       variant="ghost"
@@ -499,9 +564,14 @@ function FilaProducto({
             </ul>
           )}
           {puedeEditar && (
-            <Button variant="outline" size="sm" className="mt-2" onClick={onNuevaVariante}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={onNuevaVariante}
+            >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Agregar variante
+              {t("agregarVariante")}
             </Button>
           )}
         </div>
@@ -520,7 +590,17 @@ function Etiqueta({ children }: { children: React.ReactNode }) {
 
 // ── Diálogos ─────────────────────────────────────────────────────────────────
 
-function Campo({ id, label, ayuda, children }: { id: string; label: string; ayuda?: string; children: React.ReactNode }) {
+function Campo({
+  id,
+  label,
+  ayuda,
+  children,
+}: {
+  id: string;
+  label: string;
+  ayuda?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -564,25 +644,35 @@ function PieDialogo({
   onBorrar?: () => void;
   textoBorrar: string;
 }) {
+  const t = useTranslations("ui.catalogo");
   const [confirmar, setConfirmar] = useState(false);
   return (
     <DialogFooter className="gap-2">
       {onBorrar &&
         (confirmar ? (
-          <Button variant="destructive" disabled={pendiente} onClick={onBorrar} className="sm:mr-auto">
+          <Button
+            variant="destructive"
+            disabled={pendiente}
+            onClick={onBorrar}
+            className="sm:mr-auto"
+          >
             {textoBorrar}
           </Button>
         ) : (
-          <Button variant="ghost" onClick={() => setConfirmar(true)} className="sm:mr-auto text-destructive">
+          <Button
+            variant="ghost"
+            onClick={() => setConfirmar(true)}
+            className="sm:mr-auto text-destructive"
+          >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Borrar
+            {t("borrar")}
           </Button>
         ))}
       <Button variant="outline" onClick={onCerrar}>
-        Cancelar
+        {t("cancelar")}
       </Button>
       <Button disabled={pendiente} onClick={onGuardar}>
-        Guardar
+        {t("guardar")}
       </Button>
     </DialogFooter>
   );
@@ -610,38 +700,43 @@ function DialogoProducto({
   onGuardar: () => void;
   onBorrar?: () => void;
 }) {
-  const set = (cambios: Partial<ProductoForm>) => onCambiar({ ...form, ...cambios });
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.catalogo");
+  const set = (cambios: Partial<ProductoForm>) =>
+    onCambiar({ ...form, ...cambios });
   return (
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{form.id ? "Editar producto" : "Nuevo producto"}</DialogTitle>
+          <DialogTitle>
+            {form.id ? t("editarProducto") : t("nuevoProducto")}
+          </DialogTitle>
           <DialogDescription>
-            Los sabores, tamaños y precios se cargan como variantes del producto.
+            {t("losSaboresTamanosYPreciosSe")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <Campo id="pr-nombre" label="Nombre">
+          <Campo id="pr-nombre" label={t("nombre")}>
             <Input
               id="pr-nombre"
               value={form.nombre}
               onChange={(e) => set({ nombre: e.target.value })}
-              placeholder="Golovesa"
+              placeholder={t("golovesa")}
             />
           </Campo>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Campo id="pr-categoria" label="Categoría">
+            <Campo id="pr-categoria" label={t("categoria")}>
               <Input
                 id="pr-categoria"
                 value={form.categoria}
                 onChange={(e) => set({ categoria: e.target.value })}
-                placeholder="Tortas frías"
+                placeholder={t("tortasFrias")}
               />
             </Campo>
             <Campo
               id="pr-slug"
-              label="Código para el agente"
-              ayuda={form.id ? undefined : "Si lo dejas vacío, sale del nombre."}
+              label={t("codigoParaElAgente")}
+              ayuda={form.id ? undefined : t("siLoDejasVacioSaleDel")}
             >
               <Input
                 id="pr-slug"
@@ -652,10 +747,16 @@ function DialogoProducto({
               />
             </Campo>
           </div>
-          <Campo id="pr-modo" label="Disponibilidad" ayuda={MODO_AYUDA[form.modo_disponibilidad]}>
+          <Campo
+            id="pr-modo"
+            label={t("disponibilidad")}
+            ayuda={tc(MODO_AYUDA[form.modo_disponibilidad])}
+          >
             <Select
               value={form.modo_disponibilidad}
-              onValueChange={(v) => set({ modo_disponibilidad: v as ModoDisponibilidad })}
+              onValueChange={(v) =>
+                set({ modo_disponibilidad: v as ModoDisponibilidad })
+              }
             >
               <SelectTrigger id="pr-modo">
                 <SelectValue />
@@ -663,7 +764,7 @@ function DialogoProducto({
               <SelectContent>
                 {MODOS.map((m) => (
                   <SelectItem key={m} value={m}>
-                    {MODO_LABEL[m]}
+                    {tc(MODO_LABEL[m])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -672,8 +773,8 @@ function DialogoProducto({
           {!form.id && (
             <Campo
               id="pr-precio"
-              label="Precio (opcional)"
-              ayuda="Para productos sin sabores ni tamaños. Si tiene variantes, agrégalas después."
+              label={t("precioOpcional")}
+              ayuda={t("paraProductosSinSaboresNiTamanos")}
             >
               <Input
                 id="pr-precio"
@@ -685,7 +786,7 @@ function DialogoProducto({
               />
             </Campo>
           )}
-          <Campo id="pr-desc" label="Descripción">
+          <Campo id="pr-desc" label={t("descripcion")}>
             <Textarea
               id="pr-desc"
               rows={3}
@@ -694,7 +795,7 @@ function DialogoProducto({
             />
           </Campo>
           <div className="grid gap-1.5">
-            <Label>Fotos</Label>
+            <Label>{t("fotos")}</Label>
             <ImagenesEditor
               workspaceId={workspaceId}
               imagenes={form.imagenes}
@@ -705,11 +806,11 @@ function DialogoProducto({
           <div className="grid gap-3 sm:grid-cols-[1fr_90px] sm:items-end">
             <Interruptor
               id="pr-activo"
-              label="Activo (el agente lo ofrece)"
+              label={t("activoElAgenteLoOfrece")}
               checked={form.activo}
               onChange={(v) => set({ activo: v })}
             />
-            <Campo id="pr-orden" label="Orden">
+            <Campo id="pr-orden" label={t("orden")}>
               <Input
                 id="pr-orden"
                 type="number"
@@ -725,7 +826,7 @@ function DialogoProducto({
           onCerrar={onCerrar}
           onGuardar={onGuardar}
           onBorrar={onBorrar}
-          textoBorrar="Sí, borrar producto y variantes"
+          textoBorrar={t("siBorrarProductoYVariantes")}
         />
       </DialogContent>
     </Dialog>
@@ -747,42 +848,47 @@ function DialogoVariante({
   onGuardar: () => void;
   onBorrar?: () => void;
 }) {
-  const set = (cambios: Partial<VarianteForm>) => onCambiar({ ...form, ...cambios });
+  const t = useTranslations("ui.catalogo");
+  const set = (cambios: Partial<VarianteForm>) =>
+    onCambiar({ ...form, ...cambios });
   return (
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{form.id ? "Editar variante" : "Nueva variante"}</DialogTitle>
-          <DialogDescription>
-            El agente cotiza con el sabor y el tamaño que pida el cliente.
-          </DialogDescription>
+          <DialogTitle>
+            {form.id ? t("editarVariante") : t("nuevaVariante")}
+          </DialogTitle>
+          <DialogDescription>{t("elAgenteCotizaConElSabor")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Campo id="va-sabor" label="Sabor">
+            <Campo id="va-sabor" label={t("sabor")}>
               <Input
                 id="va-sabor"
                 value={form.sabor}
                 onChange={(e) => set({ sabor: e.target.value })}
-                placeholder="Red Velvet"
+                placeholder={t("redVelvet")}
               />
             </Campo>
-            <Campo id="va-tamano" label="Tamaño">
+            <Campo id="va-tamano" label={t("tamano")}>
               <Input
                 id="va-tamano"
                 value={form.tamano}
                 onChange={(e) => set({ tamano: e.target.value })}
-                placeholder="1/2 lb"
+                placeholder={t("n12Lb")}
               />
             </Campo>
           </div>
           {Object.keys(form.otras).length > 0 && (
             <p className="text-xs text-muted-foreground">
-              Otras opciones: {Object.entries(form.otras).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+              {t("otrasOpciones")}{" "}
+              {Object.entries(form.otras)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(" · ")}
             </p>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Campo id="va-precio" label="Precio">
+            <Campo id="va-precio" label={t("precio")}>
               <Input
                 id="va-precio"
                 type="number"
@@ -792,7 +898,7 @@ function DialogoVariante({
                 onChange={(e) => set({ precio: e.target.value })}
               />
             </Campo>
-            <Campo id="va-porciones" label="Porciones">
+            <Campo id="va-porciones" label={t("porciones")}>
               <Input
                 id="va-porciones"
                 value={form.porciones}
@@ -801,23 +907,23 @@ function DialogoVariante({
               />
             </Campo>
           </div>
-          <Campo id="va-incluye" label="Incluye">
+          <Campo id="va-incluye" label={t("incluye")}>
             <Input
               id="va-incluye"
               value={form.incluye}
               onChange={(e) => set({ incluye: e.target.value })}
-              placeholder="Decoración básica"
+              placeholder={t("decoracionBasica")}
             />
           </Campo>
           <Interruptor
             id="va-validado"
-            label="Precio validado por el negocio"
+            label={t("precioValidadoPorElNegocio")}
             checked={form.validado}
             onChange={(v) => set({ validado: v })}
           />
           <Interruptor
             id="va-activa"
-            label="Activa (el agente la cotiza)"
+            label={t("activaElAgenteLaCotiza")}
             checked={form.activa}
             onChange={(v) => set({ activa: v })}
           />
@@ -827,7 +933,7 @@ function DialogoVariante({
           onCerrar={onCerrar}
           onGuardar={onGuardar}
           onBorrar={onBorrar}
-          textoBorrar="Sí, borrar variante"
+          textoBorrar={t("siBorrarVariante")}
         />
       </DialogContent>
     </Dialog>

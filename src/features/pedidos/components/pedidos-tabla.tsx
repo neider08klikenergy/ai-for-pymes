@@ -21,11 +21,12 @@ import { cn } from "@/lib/utils";
 import type { PedidoFila } from "../types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useLocale, useTranslations } from "next-intl";
+import { ESTADOS_PEDIDO, siguienteEstado } from "../lib/estados";
 import type { FiltroEstado, FiltrosPedidos } from "../lib/filtros";
 import { fechaCorta, horaLocal, pesos, sumarDias } from "../lib/fechas";
-import { ACCION_SIGUIENTE, EstadoBadge, nombreProducto } from "./comun";
+import { EstadoBadge, nombreProducto, useAccionSiguiente } from "./comun";
 import { AlertTriangle, ChevronRight, Search, Truck, X } from "lucide-react";
-import { ESTADOS_PEDIDO, ESTADO_LABEL, siguienteEstado } from "../lib/estados";
 
 export interface AccionesFila {
   puedeActuar: boolean;
@@ -46,12 +47,14 @@ export function FiltrosTabla({
   onCambiar: (cambios: Partial<FiltrosPedidos>) => void;
 }) {
   const [q, setQ] = useState(filtros.q);
+  const t = useTranslations("pedidos.tabla");
+  const te = useTranslations("pedidos.estados");
 
   const atajos: { label: string; desde: string; hasta: string }[] = [
-    { label: "Hoy", desde: hoy, hasta: hoy },
-    { label: "Mañana", desde: sumarDias(hoy, 1), hasta: sumarDias(hoy, 1) },
-    { label: "7 días", desde: hoy, hasta: sumarDias(hoy, 7) },
-    { label: "30 días", desde: hoy, hasta: sumarDias(hoy, 30) },
+    { label: t("hoy"), desde: hoy, hasta: hoy },
+    { label: t("manana"), desde: sumarDias(hoy, 1), hasta: sumarDias(hoy, 1) },
+    { label: t("dias", { n: 7 }), desde: hoy, hasta: sumarDias(hoy, 7) },
+    { label: t("dias", { n: 30 }), desde: hoy, hasta: sumarDias(hoy, 30) },
   ];
 
   return (
@@ -71,14 +74,14 @@ export function FiltrosTabla({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por número, nombre o teléfono (Enter)"
-            aria-label="Buscar pedidos"
+            placeholder={t("buscar")}
+            aria-label={t("buscarPedidos")}
             className="pl-8 pr-8"
           />
           {q && (
             <button
               type="button"
-              aria-label="Limpiar búsqueda"
+              aria-label={t("limpiarBusqueda")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setQ("");
@@ -93,17 +96,17 @@ export function FiltrosTabla({
           value={filtros.estado}
           onValueChange={(v) => onCambiar({ estado: v as FiltroEstado })}
         >
-          <SelectTrigger className="sm:w-[200px]" aria-label="Estado">
+          <SelectTrigger className="sm:w-[200px]" aria-label={t("estado")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="activos">Activos (sin entregados)</SelectItem>
+            <SelectItem value="activos">{t("activos")}</SelectItem>
             {ESTADOS_PEDIDO.map((e) => (
               <SelectItem key={e} value={e}>
-                {ESTADO_LABEL[e]}
+                {te(e)}
               </SelectItem>
             ))}
-            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="todos">{t("todos")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -117,9 +120,9 @@ export function FiltrosTabla({
               e.target.value && onCambiar({ desde: e.target.value })
             }
             className="w-[150px]"
-            aria-label="Entrega desde"
+            aria-label={t("entregaDesde")}
           />
-          <span className="text-muted-foreground">a</span>
+          <span className="text-muted-foreground">{t("a")}</span>
           <Input
             type="date"
             value={filtros.hasta}
@@ -128,7 +131,7 @@ export function FiltrosTabla({
               e.target.value && onCambiar({ hasta: e.target.value })
             }
             className="w-[150px]"
-            aria-label="Entrega hasta"
+            aria-label={t("entregaHasta")}
           />
         </div>
         <div className="flex flex-wrap gap-1">
@@ -161,6 +164,8 @@ function BotonAvanzar({
   pedido: PedidoFila;
   acciones: AccionesFila;
 }) {
+  const t = useTranslations("pedidos.tabla");
+  const accionSiguiente = useAccionSiguiente();
   // Pago por verificar: el siguiente paso está en la pestaña de pagos.
   if (pedido.estado === "por_verificar" && acciones.puedeActuar) {
     return (
@@ -169,7 +174,7 @@ function BotonAvanzar({
         onClick={(e) => e.stopPropagation()}
         className="inline-flex h-7 items-center rounded-md border border-warning/40 px-2 text-xs text-warning hover:bg-warning/10"
       >
-        Revisar pago
+        {t("revisarPago")}
       </Link>
     );
   }
@@ -187,7 +192,7 @@ function BotonAvanzar({
         acciones.onAvanzar(pedido);
       }}
     >
-      {ocupado ? "Guardando…" : ACCION_SIGUIENTE[pedido.estado]}
+      {ocupado ? t("guardando") : accionSiguiente(pedido.estado)}
     </Button>
   );
 }
@@ -207,6 +212,8 @@ export function TablaPedidos({
   acciones: AccionesFila;
   vacio: string;
 }) {
+  const t = useTranslations("pedidos.tabla");
+  const idioma = useLocale();
   if (pedidos.length === 0) {
     return (
       <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
@@ -222,15 +229,15 @@ export function TablaPedidos({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Entrega</TableHead>
-              <TableHead>Pedido</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Producto</TableHead>
-              {mostrarSede && <TableHead>Sede</TableHead>}
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Saldo</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acción</TableHead>
+              <TableHead>{t("entrega")}</TableHead>
+              <TableHead>{t("pedido")}</TableHead>
+              <TableHead>{t("cliente")}</TableHead>
+              <TableHead>{t("producto")}</TableHead>
+              {mostrarSede && <TableHead>{t("sede")}</TableHead>}
+              <TableHead className="text-right">{t("total")}</TableHead>
+              <TableHead className="text-right">{t("saldo")}</TableHead>
+              <TableHead>{t("estado")}</TableHead>
+              <TableHead className="text-right">{t("accion")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -247,11 +254,11 @@ export function TablaPedidos({
                 <TableCell className="whitespace-nowrap">
                   {mostrarFecha && (
                     <span className="block text-xs text-muted-foreground">
-                      {fechaCorta(p.fecha_entrega, zona)}
+                      {fechaCorta(p.fecha_entrega, zona, idioma)}
                     </span>
                   )}
                   <span className="font-medium tabular-nums">
-                    {horaLocal(p.fecha_entrega, zona)}
+                    {horaLocal(p.fecha_entrega, zona, idioma)}
                   </span>
                 </TableCell>
                 <TableCell className="font-mono text-xs font-semibold">
@@ -266,13 +273,13 @@ export function TablaPedidos({
                     {p.modalidad === "domicilio" && (
                       <Truck
                         className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                        aria-label="Domicilio"
+                        aria-label={t("domicilio")}
                       />
                     )}
                     {!p.precio_validado && (
                       <AlertTriangle
                         className="h-3.5 w-3.5 shrink-0 text-warning"
-                        aria-label="Precio sin validar"
+                        aria-label={t("precioSinValidar")}
                       />
                     )}
                   </span>
@@ -324,8 +331,9 @@ export function TablaPedidos({
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium tabular-nums">
-                  {mostrarFecha && `${fechaCorta(p.fecha_entrega, zona)} · `}
-                  {horaLocal(p.fecha_entrega, zona)}
+                  {mostrarFecha &&
+                    `${fechaCorta(p.fecha_entrega, zona, idioma)} · `}
+                  {horaLocal(p.fecha_entrega, zona, idioma)}
                 </span>
                 <EstadoBadge estado={p.estado} />
               </div>
@@ -353,7 +361,7 @@ export function TablaPedidos({
                 <span
                   className={cn("tabular-nums", p.saldo > 0 && "text-warning")}
                 >
-                  Saldo {pesos(p.saldo)}
+                  {t("saldo")} {pesos(p.saldo)}
                 </span>
                 <BotonAvanzar pedido={p} acciones={acciones} />
               </div>

@@ -1,17 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useActionState } from "react";
+import { Loader2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { signup } from "@/features/auth/services/actions";
-import { cn } from "@/lib/utils";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("auth.signup");
   return (
     <Button
       type="submit"
@@ -23,10 +25,10 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          Creando cuenta...
+          {t("enviando")}
         </>
       ) : (
-        "Crear cuenta"
+        t("boton")
       )}
     </Button>
   );
@@ -34,26 +36,25 @@ function SubmitButton() {
 
 export function SignupForm() {
   const [state, formAction] = useActionState(signup, null);
+  const t = useTranslations("auth");
 
   return (
     <div className={cn("glass rounded-xl p-8 w-full max-w-md space-y-6")}>
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-          Crear cuenta
+          {t("signup.titulo")}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Empieza a gestionar tu inbox con IA
-        </p>
+        <p className="text-sm text-muted-foreground">{t("signup.subtitulo")}</p>
       </div>
 
       <form action={formAction} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("email")}</Label>
           <Input
             id="email"
             name="email"
             type="email"
-            placeholder="tu@email.com"
+            placeholder={t("placeholderEmail")}
             autoComplete="email"
             aria-required="true"
             required
@@ -61,7 +62,7 @@ export function SignupForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Contraseña</Label>
+          <Label htmlFor="password">{t("contrasena")}</Label>
           <Input
             id="password"
             name="password"
@@ -83,12 +84,12 @@ export function SignupForm() {
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        ¿Ya tienes cuenta?{" "}
+        {t("signup.yaTienes")}{" "}
         <Link
           href="/login"
           className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
         >
-          Iniciar sesión
+          {t("signup.iniciarSesion")}
         </Link>
       </p>
     </div>

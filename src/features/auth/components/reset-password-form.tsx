@@ -1,16 +1,18 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { updatePassword } from "@/features/auth/services/actions";
-import { cn } from "@/lib/utils";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("auth.reset");
   return (
     <Button
       type="submit"
@@ -22,10 +24,10 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          Guardando...
+          {t("enviando")}
         </>
       ) : (
-        "Guardar contraseña"
+        t("boton")
       )}
     </Button>
   );
@@ -33,21 +35,20 @@ function SubmitButton() {
 
 export function ResetPasswordForm() {
   const [state, formAction] = useActionState(updatePassword, null);
+  const t = useTranslations("auth.reset");
 
   return (
     <div className={cn("glass rounded-xl p-8 w-full max-w-md space-y-6")}>
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-          Nueva contraseña
+          {t("titulo")}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Ingresa tu nueva contraseña para continuar
-        </p>
+        <p className="text-sm text-muted-foreground">{t("subtitulo")}</p>
       </div>
 
       <form action={formAction} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">Nueva contraseña</Label>
+          <Label htmlFor="password">{t("campo")}</Label>
           <Input
             id="password"
             name="password"

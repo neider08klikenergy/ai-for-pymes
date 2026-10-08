@@ -8,15 +8,15 @@ export const MODOS = ["siempre", "por_dia", "bajo_pedido"] as const;
 export type ModoDisponibilidad = (typeof MODOS)[number];
 
 export const MODO_LABEL: Record<ModoDisponibilidad, string> = {
-  siempre: "Siempre disponible",
-  por_dia: "Menú del día",
-  bajo_pedido: "Bajo pedido",
+  siempre: "siempreDisponible",
+  por_dia: "menuDelDia",
+  bajo_pedido: "bajoPedido",
 };
 
 export const MODO_AYUDA: Record<ModoDisponibilidad, string> = {
-  siempre: "Se vende en el horario de la sede. La sede puede marcarlo agotado un día.",
-  por_dia: "Solo se ofrece si la sede lo carga en el menú de ese día, con o sin cantidad.",
-  bajo_pedido: "Se hace por encargo: aplica la anticipación mínima y el cupo diario.",
+  siempre: "seVendeEnElHorarioDe",
+  por_dia: "soloSeOfreceSiLaSede",
+  bajo_pedido: "seHacePorEncargoAplicaLa",
 };
 
 export interface Variante {

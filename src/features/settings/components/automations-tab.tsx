@@ -1,30 +1,31 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition } from "react";
 import {
-  MessageCircle,
-  Clock,
-  AlertTriangle,
-  Users,
+  Zap,
   Star,
-  Search,
   Plus,
+  Users,
+  Clock,
+  Search,
   Pencil,
   Trash2,
-  Zap,
+  AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
+import {
+  type ActionType,
+  type TriggerType,
+  type AutomationRule,
+  deleteAutomationRule,
+  toggleAutomationRule,
+} from "../services/automation-actions";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import {
-  deleteAutomationRule,
-  toggleAutomationRule,
-  type AutomationRule,
-  type TriggerType,
-  type ActionType,
-} from "../services/automation-actions";
 import { AutomationRuleForm } from "./automation-rule-form";
 import type { TemplateRow } from "@/features/inbox/services/templates";
 
@@ -35,32 +36,32 @@ const TRIGGER_META: Record<
   { label: string; Icon: React.ElementType; className: string }
 > = {
   first_message: {
-    label: "Primer mensaje",
+    label: "primerMensaje",
     Icon: MessageCircle,
     className: "text-info bg-info/10",
   },
   inactivity_24h: {
-    label: "Sin respuesta 24h",
+    label: "sinRespuesta24h",
     Icon: Clock,
     className: "text-warning bg-warning/10",
   },
   window_closing: {
-    label: "Ventana cerrando",
+    label: "ventanaCerrando",
     Icon: AlertTriangle,
     className: "text-orange-400 bg-orange-400/10",
   },
   handoff_requested: {
-    label: "IA solicita handoff",
+    label: "iaSolicitaHandoff",
     Icon: Users,
     className: "text-secondary bg-secondary/10",
   },
   lead_qualified: {
-    label: "Lead calificado",
+    label: "leadCalificado",
     Icon: Star,
     className: "text-primary bg-primary/10",
   },
   keyword_match: {
-    label: "Palabra clave",
+    label: "palabraClave",
     Icon: Search,
     className: "text-muted-foreground bg-muted",
   },
@@ -79,11 +80,12 @@ const ACTION_LABELS: Record<ActionType, string> = {
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function AutomationsSkeleton() {
+  const t = useTranslations("ui.automationsTab");
   return (
     <div
       className="space-y-3"
       aria-busy="true"
-      aria-label="Cargando automatizaciones..."
+      aria-label={t("cargandoAutomatizaciones")}
     >
       {Array.from({ length: 3 }).map((_, i) => (
         <Skeleton key={i} className="h-20 w-full rounded-lg" />
@@ -95,6 +97,7 @@ function AutomationsSkeleton() {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState({ onNew }: { onNew: () => void }) {
+  const t = useTranslations("ui.automationsTab");
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -102,16 +105,15 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       </div>
       <div>
         <p className="text-sm font-medium text-foreground">
-          No hay automatizaciones configuradas
+          {t("noHayAutomatizacionesConfiguradas")}
         </p>
         <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-          Las automatizaciones envían mensajes y realizan acciones
-          automáticamente cuando ocurren eventos en tus conversaciones.
+          {t("lasAutomatizacionesEnvianMensajesYRealiz")}
         </p>
       </div>
       <Button size="sm" onClick={onNew}>
         <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-        Nueva automatización
+        {t("nuevaAutomatizacion")}
       </Button>
     </div>
   );
@@ -134,6 +136,8 @@ function RuleCard({
   onToggle,
   isToggling,
 }: RuleCardProps) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.automationsTab");
   const trigger = TRIGGER_META[rule.trigger_type];
   const { Icon } = trigger;
   const actionLabel = ACTION_LABELS[rule.action_type];
@@ -169,7 +173,7 @@ function RuleCard({
               )}
             >
               <Icon className="h-3 w-3" aria-hidden="true" />
-              {trigger.label}
+              {tc(trigger.label)}
             </span>
 
             <span className="text-xs text-muted-foreground" aria-hidden="true">
@@ -203,8 +207,8 @@ function RuleCard({
             disabled={isToggling}
             aria-label={
               rule.enabled
-                ? "Deshabilitar automatización"
-                : "Habilitar automatización"
+                ? t("deshabilitarAutomatizacion")
+                : t("habilitarAutomatizacion")
             }
             className="mr-1"
           />
@@ -237,6 +241,7 @@ interface Props {
 }
 
 export function AutomationsTab({ workspaceId }: Props) {
+  const t = useTranslations("ui.automationsTab");
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -317,7 +322,7 @@ export function AutomationsTab({ workspaceId }: Props) {
         toast.error(result.error);
         return;
       }
-      toast.success("Automatización eliminada");
+      toast.success(t("automatizacionEliminada"));
       setRules((prev) => prev.filter((r) => r.id !== rule.id));
     });
   }
@@ -342,7 +347,9 @@ export function AutomationsTab({ workspaceId }: Props) {
     }
 
     toast.success(
-      enabled ? "Automatización habilitada" : "Automatización deshabilitada",
+      enabled
+        ? t("automatizacionHabilitada")
+        : t("automatizacionDeshabilitada"),
     );
   }
 
@@ -363,7 +370,7 @@ export function AutomationsTab({ workspaceId }: Props) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-base font-medium text-foreground">
-              Automatizaciones
+              {t("automatizaciones")}
             </h2>
             {!isLoading && !loadError && (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -375,7 +382,7 @@ export function AutomationsTab({ workspaceId }: Props) {
           </div>
           <Button size="sm" onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-            Nueva automatización
+            {t("nuevaAutomatizacion")}
           </Button>
         </div>
 
@@ -391,7 +398,7 @@ export function AutomationsTab({ workspaceId }: Props) {
               onClick={fetchData}
               className="shrink-0"
             >
-              Reintentar
+              {t("reintentar")}
             </Button>
           </div>
         ) : rules.length === 0 ? (

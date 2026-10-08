@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { CatalogoProductos } from "./catalogo";
 import { MenuDelDia } from "./menu-dia";
+import { useTranslations } from "next-intl";
+import { CatalogoProductos } from "./catalogo";
 import { CalendarCheck, Package, Tags } from "lucide-react";
 import { urlProductos, type VistaProductos } from "../lib/catalogo";
 import type { PantallaProductos } from "../services/productos-queries";
@@ -17,9 +18,13 @@ interface Props {
   puedeEditarMenu: boolean;
 }
 
-const PESTANAS: { vista: VistaProductos; label: string; Icon: React.ElementType }[] = [
-  { vista: "catalogo", label: "Catálogo", Icon: Tags },
-  { vista: "menu", label: "Menú del día", Icon: CalendarCheck },
+const PESTANAS: {
+  vista: VistaProductos;
+  label: string;
+  Icon: React.ElementType;
+}[] = [
+  { vista: "catalogo", label: "catalogo", Icon: Tags },
+  { vista: "menu", label: "menuDelDia", Icon: CalendarCheck },
 ];
 
 /** Cambia cuando el servidor trae otro menú (otra sede, otra fecha o "Copiar de ayer"). */
@@ -31,24 +36,35 @@ function firmaMenu(p: PantallaProductos): string {
   return `${p.sedeId}:${p.fecha}:${filas}`;
 }
 
-export function ProductosBoard({ workspaceId, pantalla, puedeEditarCatalogo, puedeEditarMenu }: Props) {
+export function ProductosBoard({
+  workspaceId,
+  pantalla,
+  puedeEditarCatalogo,
+  puedeEditarMenu,
+}: Props) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.productosBoard");
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 flex flex-col gap-5">
       <div className="flex items-center gap-2">
         <Package className="h-5 w-5 text-primary" aria-hidden="true" />
-        <h1 className="font-display text-xl font-semibold">Productos</h1>
+        <h1 className="font-display text-xl font-semibold">{t("productos")}</h1>
       </div>
 
       <nav
         className="flex gap-1 overflow-x-auto rounded-xl bg-muted/40 p-1 w-fit max-w-full"
-        aria-label="Vistas de productos"
+        aria-label={t("vistasDeProductos")}
       >
         {PESTANAS.map(({ vista, label, Icon }) => {
           const activa = pantalla.vista === vista;
           return (
             <Link
               key={vista}
-              href={urlProductos({ vista, sede: pantalla.sedeId, fecha: pantalla.fecha })}
+              href={urlProductos({
+                vista,
+                sede: pantalla.sedeId,
+                fecha: pantalla.fecha,
+              })}
               scroll={false}
               aria-current={activa ? "page" : undefined}
               className={cn(
@@ -59,7 +75,7 @@ export function ProductosBoard({ workspaceId, pantalla, puedeEditarCatalogo, pue
               )}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              {label}
+              {tc(label)}
             </Link>
           );
         })}

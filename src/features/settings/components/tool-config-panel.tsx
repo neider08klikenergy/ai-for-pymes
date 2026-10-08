@@ -1,19 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Save, Link as LinkIcon } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import {
   WEBHOOK_VARIABLES,
-  WEBHOOK_VARIABLE_CATEGORIES,
-  scheduleLinkConfigSchema,
-  webhookConfigSchema,
   type WebhookField,
+  webhookConfigSchema,
+  scheduleLinkConfigSchema,
+  WEBHOOK_VARIABLE_CATEGORIES,
 } from "@/features/tools/lib/tool-config";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Plus, Trash2, Save, Link as LinkIcon } from "lucide-react";
 
 // ── Shared save helper ──────────────────────────────────────────────────────────
 
@@ -37,8 +38,11 @@ async function saveToolConfig(
 
 /** Small "unsaved changes" hint shown next to a save button. */
 function DirtyHint({ dirty }: { dirty: boolean }) {
+  const t = useTranslations("ui.toolConfigPanel");
   if (!dirty) return null;
-  return <span className="text-xs text-amber-400">• cambios sin guardar</span>;
+  return (
+    <span className="text-xs text-amber-400">{t("cambiosSinGuardar")}</span>
+  );
 }
 
 // ── schedule_link ───────────────────────────────────────────────────────────────
@@ -50,6 +54,7 @@ function ScheduleLinkForm({
   workspaceId: string;
   initialConfig: Record<string, unknown> | null;
 }) {
+  const t = useTranslations("ui.toolConfigPanel");
   const initialLink = (initialConfig?.scheduling_link as string) ?? "";
   const [link, setLink] = useState(initialLink);
   const [baseline, setBaseline] = useState(initialLink);
@@ -62,16 +67,16 @@ function ScheduleLinkForm({
       scheduling_link: link,
     });
     if (!parsed.success) {
-      toast.error("Pon una URL válida que empiece con https://");
+      toast.error(t("ponUnaUrlValidaQueEmpiece"));
       return;
     }
     setSaving(true);
     try {
       await saveToolConfig(workspaceId, "schedule_link", parsed.data);
       setBaseline(parsed.data.scheduling_link);
-      toast.success("Link de agendamiento guardado");
+      toast.success(t("linkDeAgendamientoGuardado"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      toast.error(err instanceof Error ? err.message : t("errorAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -84,7 +89,7 @@ function ScheduleLinkForm({
           htmlFor="sched-link"
           className="text-sm font-medium text-foreground"
         >
-          Link de agendamiento
+          {t("linkDeAgendamiento")}
         </Label>
         <div className="relative">
           <LinkIcon
@@ -101,8 +106,7 @@ function ScheduleLinkForm({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          El agente enviará este enlace cuando alguien quiera agendar (Calendly,
-          el booking de HighLevel, etc.).
+          {t("elAgenteEnviaraEsteEnlaceCuando")}
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -113,7 +117,7 @@ function ScheduleLinkForm({
           aria-busy={saving}
         >
           <Save className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          {saving ? "Guardando…" : "Guardar link"}
+          {saving ? t("guardando") : t("guardarLink")}
         </Button>
         <DirtyHint dirty={dirty} />
       </div>
@@ -130,6 +134,7 @@ function WebhookForm({
   workspaceId: string;
   initialConfig: Record<string, unknown> | null;
 }) {
+  const t = useTranslations("ui.toolConfigPanel");
   const initialUrl = (initialConfig?.webhook_url as string) ?? "";
   const initialFields = Array.isArray(initialConfig?.payload_fields)
     ? (initialConfig.payload_fields as WebhookField[])
@@ -161,7 +166,7 @@ function WebhookForm({
   function insertVariable(token: string) {
     const idx = focusedIdx ?? fields.length - 1;
     if (idx < 0) {
-      toast.message("Agrega un campo primero para insertar la variable");
+      toast.message(t("agregaUnCampoPrimeroParaInsertar"));
       return;
     }
     setFields((prev) =>
@@ -183,16 +188,16 @@ function WebhookForm({
       payload_fields: fields,
     });
     if (!parsed.success) {
-      toast.error("Revisa la URL (HTTPS) y que cada campo tenga nombre válido");
+      toast.error(t("revisaLaUrlHttpsYQue"));
       return;
     }
     setSaving(true);
     try {
       await saveToolConfig(workspaceId, "custom_webhook", parsed.data);
       setBaseline(JSON.stringify(parsed.data));
-      toast.success("Webhook guardado");
+      toast.success(t("webhookGuardado"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      toast.error(err instanceof Error ? err.message : t("errorAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -203,7 +208,7 @@ function WebhookForm({
       {/* URL — grouped in a card with the request contract as a code block */}
       <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
         <Label htmlFor="wh-url" className="text-sm font-medium text-foreground">
-          URL del webhook
+          {t("urlDelWebhook")}
         </Label>
         <div className="relative">
           <LinkIcon
@@ -220,7 +225,7 @@ function WebhookForm({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          El agente hará POST a esta URL (solo HTTPS público) con:
+          {t("elAgenteHaraPostAEsta")}
         </p>
         <pre className="overflow-x-auto rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
           {`{ "workspace_id": "…", "payload": { … } }`}
@@ -230,16 +235,15 @@ function WebhookForm({
       {/* Payload fields */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground">
-          Payload{" "}
+          {t("payload")}{" "}
           <span className="font-normal text-xs text-muted-foreground">
-            (campos con variables)
+            {t("camposConVariables")}
           </span>
         </Label>
 
         {fields.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Sin campos: se enviará un payload por defecto (nombre, teléfono,
-            último mensaje y nota).
+            {t("sinCamposSeEnviaraUnPayload")}
           </p>
         )}
 
@@ -274,13 +278,13 @@ function WebhookForm({
 
         <Button type="button" variant="outline" size="sm" onClick={addField}>
           <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          Agregar campo
+          {t("agregarCampo")}
         </Button>
 
         {/* Variable chips — grouped by category, styled as tokens */}
         <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Variables — clic para insertar en el campo enfocado
+            {t("variablesClicParaInsertarEnEl")}
           </p>
           {WEBHOOK_VARIABLE_CATEGORIES.map((category) => (
             <div key={category} className="space-y-1.5">
@@ -318,7 +322,7 @@ function WebhookForm({
           aria-busy={saving}
         >
           <Save className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          {saving ? "Guardando…" : "Guardar webhook"}
+          {saving ? t("guardando") : t("guardarWebhook")}
         </Button>
         <DirtyHint dirty={dirty} />
       </div>

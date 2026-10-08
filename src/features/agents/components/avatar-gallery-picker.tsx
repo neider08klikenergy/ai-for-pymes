@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { AVATAR_PRESETS, AgentAvatar } from "./agent-avatar";
 
 export function AvatarGalleryPicker({
@@ -10,11 +11,12 @@ export function AvatarGalleryPicker({
   value: string;
   onChange: (key: string) => void;
 }) {
+  const t = useTranslations("ui.avatarGalleryPicker");
   return (
     <div
       className="grid grid-cols-6 gap-3"
       role="radiogroup"
-      aria-label="Galería de avatares"
+      aria-label={t("galeriaDeAvatares")}
     >
       {AVATAR_PRESETS.map((p) => {
         const isSelected = value === p.key;

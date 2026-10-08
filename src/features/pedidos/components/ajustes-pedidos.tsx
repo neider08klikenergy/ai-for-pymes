@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Settings → Negocio: cuentas de pago, domicilios y sedes del módulo de pedidos.
 // Solo se muestra si el workspace usa pedidos (ver cargarAjustesPedidos).
 
@@ -144,6 +146,7 @@ function SelectorSede({
   valor: string | null;
   onChange: (v: string | null) => void;
 }) {
+  const t = useTranslations("ui.ajustesPedidos");
   return (
     <Select
       value={valor ?? TODAS}
@@ -153,7 +156,7 @@ function SelectorSede({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={TODAS}>Todas las sedes</SelectItem>
+        <SelectItem value={TODAS}>{t("todasLasSedes")}</SelectItem>
         {sedes.map((s) => (
           <SelectItem key={s.id} value={s.id}>
             {s.nombre}
@@ -195,6 +198,7 @@ function BotonBorrar({
   onBorrar: () => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("ui.ajustesPedidos");
   const [seguro, setSeguro] = useState(false);
   return (
     <Button
@@ -207,7 +211,7 @@ function BotonBorrar({
       className="mr-auto"
     >
       <Trash2 className="h-4 w-4 mr-1.5" aria-hidden="true" />
-      {seguro ? "¿Seguro? Borrar" : "Borrar"}
+      {seguro ? t("seguroBorrar") : t("borrar")}
     </Button>
   );
 }
@@ -254,10 +258,9 @@ function Interruptor({
 }
 
 function Inactiva() {
+  const t = useTranslations("ui.ajustesPedidos");
   return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-      Inactiva
-    </span>
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{t("inactiva")}</span>
   );
 }
 
@@ -285,6 +288,8 @@ function cuentaVacia(orden: number, anterior?: CuentaPago): CuentaForm {
 }
 
 function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.ajustesPedidos");
   const { cuentas, sedes } = ajustes;
   const [editando, setEditando] = useState<CuentaForm | null>(null);
   const [nota, setNota] = useState(ajustes.notaPagos);
@@ -296,8 +301,8 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
   return (
     <Seccion
       icono={Landmark}
-      titulo="Cuentas de pago"
-      descripcion="El agente las comparte cuando el cliente va a pagar. Las de una sede solo salen en pedidos de esa sede."
+      titulo={tr("cuentasDePago")}
+      descripcion={tr("elAgenteLasComparteCuandoEl")}
       accion={
         puedeEditar && (
           <Button
@@ -305,17 +310,12 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
             variant="outline"
             onClick={() => setEditando(cuentaVacia(siguienteOrden, cuentas[0]))}
           >
-            <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-            Agregar cuenta
-          </Button>
+            <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />{tr("agregarCuenta")}</Button>
         )
       }
     >
       {cuentas.length === 0 ? (
-        <p className="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
-          Sin cuentas. Mientras no agregues una, el agente dice que una persona
-          envía los datos de pago.
-        </p>
+        <p className="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">{tr("sinCuentasMientrasNoAgreguesUna")}</p>
       ) : (
         <ul className="divide-y divide-border/50 rounded-md border border-border/50">
           {cuentas.map((c) => (
@@ -351,7 +351,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
       )}
 
       <div className="grid gap-1.5">
-        <Label htmlFor="nota-pagos">Nota debajo de las cuentas</Label>
+        <Label htmlFor="nota-pagos">{tr("notaDebajoDeLasCuentas")}</Label>
         <Textarea
           id="nota-pagos"
           rows={2}
@@ -359,7 +359,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
           value={nota}
           disabled={!puedeEditar}
           onChange={(e) => setNota(e.target.value)}
-          placeholder="Ej: Solo transferencias inmediatas. Si necesitas factura electrónica, pídela al pagar."
+          placeholder={tr("ejSoloTransferenciasInmediatasSiNecesita")}
           className="resize-none"
         />
         {puedeEditar && nota.trim() !== ajustes.notaPagos.trim() && (
@@ -373,17 +373,13 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                 "Nota guardada",
               )
             }
-          >
-            Guardar nota
-          </Button>
+          >{tr("guardarNota")}</Button>
         )}
       </div>
 
       {ajustes.vistaPrevia && (
         <div className="grid gap-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            Así lo recibe el cliente (cuentas para todas las sedes)
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">{tr("asiLoRecibeElClienteCuentas")}</p>
           <pre className="whitespace-pre-wrap rounded-md bg-muted/50 px-3 py-2 font-sans text-xs">
             {ajustes.vistaPrevia}
           </pre>
@@ -395,15 +391,13 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editando.id ? "Editar cuenta" : "Nueva cuenta de pago"}
+                {editando.id ? tr("editarCuenta") : tr("nuevaCuentaDePago")}
               </DialogTitle>
-              <DialogDescription>
-                Revisa bien el número: el agente lo comparte tal cual.
-              </DialogDescription>
+              <DialogDescription>{tr("revisaBienElNumeroElAgente")}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Campo id="cp-tipo" label="Tipo">
+                <Campo id="cp-tipo" label={tr("tipo")}>
                   <Select
                     value={editando.tipo}
                     onValueChange={(v) =>
@@ -416,7 +410,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                     <SelectContent>
                       {TIPOS_CUENTA.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {TIPO_CUENTA_LABEL[t]}
+                          {tc(TIPO_CUENTA_LABEL[t])}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -425,7 +419,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                 <Campo
                   id="cp-banco"
                   label={
-                    editando.tipo === "llave" ? "Sistema" : "Banco o entidad"
+                    editando.tipo === "llave" ? tr("sistema") : tr("bancoOEntidad")
                   }
                 >
                   <Input
@@ -436,10 +430,10 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                     }
                     placeholder={
                       editando.tipo === "llave"
-                        ? "Bre-B"
+                        ? tr("breB")
                         : editando.tipo === "billetera"
-                          ? "Nequi"
-                          : "Bancolombia"
+                          ? tr("nequi")
+                          : tr("bancolombia")
                     }
                   />
                 </Campo>
@@ -448,10 +442,10 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                 id="cp-numero"
                 label={
                   editando.tipo === "llave"
-                    ? "Llave"
+                    ? tr("llave")
                     : editando.tipo === "billetera"
-                      ? "Celular"
-                      : "Número de cuenta"
+                      ? tr("celular")
+                      : tr("numeroDeCuenta")
                 }
               >
                 <Input
@@ -464,29 +458,29 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                 />
               </Campo>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Campo id="cp-titular" label="Titular">
+                <Campo id="cp-titular" label={tr("titular")}>
                   <Input
                     id="cp-titular"
                     value={editando.titular}
                     onChange={(e) =>
                       setEditando({ ...editando, titular: e.target.value })
                     }
-                    placeholder="GOLOSITA 1984 SAS"
+                    placeholder={tr("golosita1984Sas")}
                   />
                 </Campo>
-                <Campo id="cp-doc" label="Documento">
+                <Campo id="cp-doc" label={tr("documento")}>
                   <Input
                     id="cp-doc"
                     value={editando.documento}
                     onChange={(e) =>
                       setEditando({ ...editando, documento: e.target.value })
                     }
-                    placeholder="NIT 901524286"
+                    placeholder={tr("nit901524286")}
                   />
                 </Campo>
               </div>
               <div className="grid gap-3 sm:grid-cols-[1fr_90px]">
-                <Campo id="cp-sede" label="Sede">
+                <Campo id="cp-sede" label={tr("sede")}>
                   <SelectorSede
                     id="cp-sede"
                     sedes={sedes}
@@ -494,7 +488,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                     onChange={(v) => setEditando({ ...editando, sede_id: v })}
                   />
                 </Campo>
-                <Campo id="cp-orden" label="Orden">
+                <Campo id="cp-orden" label={tr("orden")}>
                   <Input
                     id="cp-orden"
                     type="number"
@@ -511,7 +505,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
               </div>
               <Interruptor
                 id="cp-activa"
-                label="Activa (el agente la comparte)"
+                label={tr("activaElAgenteLaComparte")}
                 checked={editando.activa}
                 onChange={(v) => setEditando({ ...editando, activa: v })}
               />
@@ -529,9 +523,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                   }
                 />
               )}
-              <Button variant="outline" onClick={() => setEditando(null)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setEditando(null)}>{tr("cancelar")}</Button>
               <Button
                 disabled={pendiente}
                 onClick={() =>
@@ -541,9 +533,7 @@ function CuentasPago({ workspaceId, ajustes, puedeEditar }: Props) {
                     () => setEditando(null),
                   )
                 }
-              >
-                Guardar
-              </Button>
+              >{tr("guardar")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -560,6 +550,7 @@ type TarifaForm = Omit<TarifaDomicilio, "id" | "zona"> & {
 };
 
 function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
+  const tr = useTranslations("ui.ajustesPedidos");
   const { tarifas, sedes } = ajustes;
   const [editando, setEditando] = useState<TarifaForm | null>(null);
   const { pendiente, ejecutar } = useGuardar();
@@ -594,8 +585,8 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
   return (
     <Seccion
       icono={Truck}
-      titulo="Domicilios"
-      descripcion="El agente da el valor del domicilio antes de pedir el pago. Si una dirección no tiene tarifa, le dice al cliente que espere un momento y pasa la conversación al equipo para que escriba el valor en el chat."
+      titulo={tr("domicilios")}
+      descripcion={tr("elAgenteDaElValorDel")}
       accion={
         puedeEditar && (
           <Button
@@ -611,16 +602,12 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
               })
             }
           >
-            <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-            Agregar tarifa
-          </Button>
+            <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />{tr("agregarTarifa")}</Button>
         )
       }
     >
       {ordenadas.length === 0 ? (
-        <p className="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
-          Sin tarifas: cada domicilio lo cotiza una persona del equipo.
-        </p>
+        <p className="rounded-md bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">{tr("sinTarifasCadaDomicilioLoCotiza")}</p>
       ) : (
         <ul className="divide-y divide-border/50 rounded-md border border-border/50">
           {ordenadas.map((t) => (
@@ -629,7 +616,7 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
                 <p className="text-sm font-medium">
                   {t.zona
                     ? `Zona: ${t.zona}`
-                    : "Cualquier dirección (tarifa plana)"}
+                    : tr("cualquierDireccionTarifaPlana")}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {nombreSede(sedes, t.sede_id)}
@@ -656,12 +643,12 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
 
       {sedes.length > 0 && (
         <div className="grid gap-2 rounded-md bg-muted/30 p-3">
-          <p className="text-xs font-medium">Probar una dirección</p>
+          <p className="text-xs font-medium">{tr("probarUnaDireccion")}</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={pruebaSede} onValueChange={setPruebaSede}>
               <SelectTrigger
                 className="sm:w-[190px]"
-                aria-label="Sede que despacha"
+                aria-label={tr("sedeQueDespacha")}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -674,8 +661,8 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
               </SelectContent>
             </Select>
             <Input
-              aria-label="Dirección de prueba"
-              placeholder="Cra 30 # 12-10, barrio Barzal"
+              aria-label={tr("direccionDePrueba")}
+              placeholder={tr("cra301210BarrioBarzal")}
               value={pruebaDir}
               onChange={(e) => setPruebaDir(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && probar()}
@@ -686,9 +673,7 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
               disabled={probando}
               onClick={probar}
             >
-              <Search className="h-4 w-4 mr-1.5" aria-hidden="true" />
-              Probar
-            </Button>
+              <Search className="h-4 w-4 mr-1.5" aria-hidden="true" />{tr("probar")}</Button>
           </div>
           {resultado && (
             <p className="text-xs" role="status">
@@ -703,16 +688,12 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editando.id ? "Editar tarifa" : "Nueva tarifa de domicilio"}
+                {editando.id ? tr("editarTarifa") : tr("nuevaTarifaDeDomicilio")}
               </DialogTitle>
-              <DialogDescription>
-                Si la dirección del cliente contiene el nombre de la zona, se
-                usa esa tarifa; si no, la tarifa plana. Las tarifas de una sede
-                ganan sobre las de todas las sedes.
-              </DialogDescription>
+              <DialogDescription>{tr("siLaDireccionDelClienteContiene")}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
-              <Campo id="td-sede" label="Sede que despacha">
+              <Campo id="td-sede" label={tr("sedeQueDespacha")}>
                 <SelectorSede
                   id="td-sede"
                   sedes={sedes}
@@ -722,8 +703,8 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
               </Campo>
               <Campo
                 id="td-zona"
-                label="Zona o barrio"
-                ayuda="Déjalo vacío para una tarifa plana (cualquier dirección)."
+                label={tr("zonaOBarrio")}
+                ayuda={tr("dejaloVacioParaUnaTarifaPlana")}
               >
                 <Input
                   id="td-zona"
@@ -731,10 +712,10 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
                   onChange={(e) =>
                     setEditando({ ...editando, zona: e.target.value })
                   }
-                  placeholder="Barzal"
+                  placeholder={tr("barzal")}
                 />
               </Campo>
-              <Campo id="td-valor" label="Valor (COP)">
+              <Campo id="td-valor" label={tr("valorCop")}>
                 <Input
                   id="td-valor"
                   type="number"
@@ -748,7 +729,7 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
               </Campo>
               <Interruptor
                 id="td-activa"
-                label="Activa"
+                label={tr("activa")}
                 checked={editando.activa}
                 onChange={(v) => setEditando({ ...editando, activa: v })}
               />
@@ -766,9 +747,7 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
                   }
                 />
               )}
-              <Button variant="outline" onClick={() => setEditando(null)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setEditando(null)}>{tr("cancelar")}</Button>
               <Button
                 disabled={pendiente}
                 onClick={() =>
@@ -778,9 +757,7 @@ function Domicilios({ workspaceId, ajustes, puedeEditar }: Props) {
                     () => setEditando(null),
                   )
                 }
-              >
-                Guardar
-              </Button>
+              >{tr("guardar")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -806,14 +783,15 @@ function Sedes({
   sedes: SedeAjuste[];
   puedeEditar: boolean;
 }) {
+  const t = useTranslations("ui.ajustesPedidos");
   const [editando, setEditando] = useState<SedeForm | null>(null);
   const { pendiente, ejecutar } = useGuardar();
 
   return (
     <Seccion
       icono={Store}
-      titulo="Sedes"
-      descripcion="Datos que usa el agente para cupos y entregas. Los horarios y las sedes nuevas los carga el equipo de Felrick."
+      titulo={t("sedes")}
+      descripcion={t("datosQueUsaElAgentePara")}
     >
       <ul className="divide-y divide-border/50 rounded-md border border-border/50">
         {sedes.map((s) => (
@@ -827,8 +805,8 @@ function Sedes({
                         ? `, hasta ${s.cupo_maximo} con revisión`
                         : ""
                     }`
-                  : "Sin límite de cupo"}
-                {s.acepta_personalizados ? " · hace personalizados" : ""}
+                  : t("sinLimiteDeCupo")}
+                {s.acepta_personalizados ? t("hacePersonalizados") : ""}
               </p>
             </div>
             {!s.activa && <Inactiva />}
@@ -858,13 +836,12 @@ function Sedes({
         <Dialog open onOpenChange={(o) => !o && setEditando(null)}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Editar sede</DialogTitle>
-              <DialogDescription>
-                Código interno: {editando.codigo}
+              <DialogTitle>{t("editarSede")}</DialogTitle>
+              <DialogDescription>{t("codigoInterno")}{" "}{editando.codigo}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
-              <Campo id="se-nombre" label="Nombre">
+              <Campo id="se-nombre" label={t("nombre")}>
                 <Input
                   id="se-nombre"
                   value={editando.nombre}
@@ -875,8 +852,8 @@ function Sedes({
               </Campo>
               <Campo
                 id="se-dir"
-                label="Dirección"
-                ayuda="Escríbela como se la dirías a un cliente: es lo que envía el agente."
+                label={t("direccion")}
+                ayuda={t("escribelaComoSeLaDiriasA")}
               >
                 <Input
                   id="se-dir"
@@ -884,11 +861,11 @@ function Sedes({
                   onChange={(e) =>
                     setEditando({ ...editando, direccion: e.target.value })
                   }
-                  placeholder="Calle 45 # 31-08, casa esquinera rosada"
+                  placeholder={t("calle453108CasaEsquinera")}
                 />
               </Campo>
               <div className="grid gap-1.5">
-                <Label>Ubicación en el mapa (opcional)</Label>
+                <Label>{t("ubicacionEnElMapaOpcional")}</Label>
                 <MapaUbicacion
                   valor={
                     editando.latitud !== null && editando.longitud !== null
@@ -911,13 +888,10 @@ function Sedes({
                   }
                   direccion={editando.direccion}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Con el pin, por WhatsApp le llega al cliente la ubicación para
-                  abrirla en Google Maps o Waze.
-                </p>
+                <p className="text-xs text-muted-foreground">{t("conElPinPorWhatsappLe")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Campo id="se-tel" label="Teléfono">
+                <Campo id="se-tel" label={t("telefono")}>
                   <Input
                     id="se-tel"
                     value={editando.telefono}
@@ -928,8 +902,8 @@ function Sedes({
                 </Campo>
                 <Campo
                   id="se-cupo"
-                  label="Cupo automático por día"
-                  ayuda="Personalizados que el agente agenda solo. 0 = sin límite"
+                  label={t("cupoAutomaticoPorDia")}
+                  ayuda={t("personalizadosQueElAgenteAgendaSolo")}
                 >
                   <Input
                     id="se-cupo"
@@ -947,8 +921,8 @@ function Sedes({
               </div>
               <Campo
                 id="se-cupo-max"
-                label="Tope del día (con revisión)"
-                ayuda="Entre el cupo automático y este número, el agente pasa el pedido a una persona para que decida. Vacío = sin revisión."
+                label={t("topeDelDiaConRevision")}
+                ayuda={t("entreElCupoAutomaticoYEste")}
               >
                 <Input
                   id="se-cupo-max"
@@ -962,7 +936,7 @@ function Sedes({
               </Campo>
               <Interruptor
                 id="se-pers"
-                label="Hace pedidos personalizados"
+                label={t("hacePedidosPersonalizados")}
                 checked={editando.acepta_personalizados}
                 onChange={(v) =>
                   setEditando({ ...editando, acepta_personalizados: v })
@@ -970,15 +944,13 @@ function Sedes({
               />
               <Interruptor
                 id="se-activa"
-                label="Activa"
+                label={t("activa")}
                 checked={editando.activa}
                 onChange={(v) => setEditando({ ...editando, activa: v })}
               />
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setEditando(null)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setEditando(null)}>{t("cancelar")}</Button>
               <Button
                 disabled={pendiente}
                 onClick={() =>
@@ -988,9 +960,7 @@ function Sedes({
                     () => setEditando(null),
                   )
                 }
-              >
-                Guardar
-              </Button>
+              >{t("guardar")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

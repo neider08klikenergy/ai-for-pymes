@@ -11,7 +11,6 @@ import {
   primerError,
   CANAL_LABEL,
   MENSAJES_DIA,
-  MENSAJES_LABEL,
   SolicitudSchema,
   notasParaCalcom,
   type SolicitudDatos,
@@ -19,6 +18,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Cal from "@calcom/embed-react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
@@ -77,13 +77,14 @@ function Campo({
   children: React.ReactNode;
   opcional?: boolean;
 }) {
+  const t = useTranslations("demo");
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>
         {label}
         {opcional && (
           <span className="ml-1 font-normal text-muted-foreground">
-            (opcional)
+            {t("opcional")}
           </span>
         )}
       </Label>
@@ -98,6 +99,12 @@ export function SolicitudDemo({ calLink }: Props) {
   const [enviada, setEnviada] = useState<SolicitudDatos | null>(null);
   const [pendiente, startTransition] = useTransition();
   const set = (c: Partial<Form>) => setForm((f) => ({ ...f, ...c }));
+  const t = useTranslations("demo");
+  // Los errores llegan como clave (demo.errores.*) desde el esquema o el servidor
+  const textoError = (clave: string) =>
+    t.has(`errores.${clave}`)
+      ? t(`errores.${clave}` as "errores.generico")
+      : t("errores.generico");
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -108,14 +115,14 @@ export function SolicitudDemo({ calLink }: Props) {
     // Se valida aquí también para mostrar el error sin ir al servidor
     const local = SolicitudSchema.safeParse(entrada);
     if (!local.success) {
-      setError(primerError(local.error));
+      setError(textoError(primerError(local.error)));
       return;
     }
     setError(null);
     startTransition(async () => {
       const r = await crearSolicitudDemo(entrada);
       if (!r.ok) {
-        setError(r.error);
+        setError(textoError(r.error));
         return;
       }
       setEnviada(local.data);
@@ -132,12 +139,12 @@ export function SolicitudDemo({ calLink }: Props) {
           />
           <div className="space-y-1">
             <p className="font-medium">
-              ¡Gracias, {enviada.nombre.split(" ")[0]}! Recibimos tus datos.
+              {t("gracias", { nombre: enviada.nombre.split(" ")[0] })}
             </p>
             <p className="text-sm text-muted-foreground">
               {calLink
-                ? "Ahora elige el día y la hora de tu demo."
-                : `Te escribiremos al WhatsApp ${enviada.whatsapp} para acordar el día y la hora de tu demo.`}
+                ? t("eligeHora")
+                : t("teEscribimos", { whatsapp: enviada.whatsapp })}
             </p>
           </div>
         </div>
@@ -173,16 +180,13 @@ export function SolicitudDemo({ calLink }: Props) {
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight flex items-center gap-2">
           <CalendarCheck className="h-6 w-6 text-primary" aria-hidden="true" />
-          Agenda una demo
+          {t("titulo")}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Cuéntanos de tu negocio y te mostramos cómo el agente atiende a tus
-          clientes. Toma 1 minuto.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("subtitulo")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo id="d-nombre" label="Tu nombre">
+        <Campo id="d-nombre" label={t("nombre")}>
           <Input
             id="d-nombre"
             autoComplete="name"
@@ -190,7 +194,7 @@ export function SolicitudDemo({ calLink }: Props) {
             onChange={(e) => set({ nombre: e.target.value })}
           />
         </Campo>
-        <Campo id="d-empresa" label="Negocio">
+        <Campo id="d-empresa" label={t("empresa")}>
           <Input
             id="d-empresa"
             autoComplete="organization"
@@ -198,7 +202,7 @@ export function SolicitudDemo({ calLink }: Props) {
             onChange={(e) => set({ empresa: e.target.value })}
           />
         </Campo>
-        <Campo id="d-correo" label="Correo">
+        <Campo id="d-correo" label={t("correo")}>
           <Input
             id="d-correo"
             type="email"
@@ -207,7 +211,7 @@ export function SolicitudDemo({ calLink }: Props) {
             onChange={(e) => set({ correo: e.target.value })}
           />
         </Campo>
-        <Campo id="d-wa" label="WhatsApp">
+        <Campo id="d-wa" label={t("whatsapp")}>
           <Input
             id="d-wa"
             type="tel"
@@ -217,22 +221,22 @@ export function SolicitudDemo({ calLink }: Props) {
             onChange={(e) => set({ whatsapp: e.target.value })}
           />
         </Campo>
-        <Campo id="d-sector" label="Sector" opcional>
+        <Campo id="d-sector" label={t("sector")} opcional>
           <Input
             id="d-sector"
-            placeholder="Pastelería, restaurante, hotel…"
+            placeholder={t("sectorPlaceholder")}
             value={form.sector}
             onChange={(e) => set({ sector: e.target.value })}
           />
         </Campo>
-        <Campo id="d-ciudad" label="Ciudad" opcional>
+        <Campo id="d-ciudad" label={t("ciudad")} opcional>
           <Input
             id="d-ciudad"
             value={form.ciudad}
             onChange={(e) => set({ ciudad: e.target.value })}
           />
         </Campo>
-        <Campo id="d-sedes" label="Número de sedes" opcional>
+        <Campo id="d-sedes" label={t("sedes")} opcional>
           <Input
             id="d-sedes"
             type="number"
@@ -242,17 +246,17 @@ export function SolicitudDemo({ calLink }: Props) {
             onChange={(e) => set({ sedes: e.target.value })}
           />
         </Campo>
-        <Campo id="d-mensajes" label="Mensajes al día" opcional>
+        <Campo id="d-mensajes" label={t("mensajesDia")} opcional>
           <select
             id="d-mensajes"
             className={SELECT_CLASS}
             value={form.mensajes_dia}
             onChange={(e) => set({ mensajes_dia: e.target.value })}
           >
-            <option value="">Selecciona</option>
+            <option value="">{t("selecciona")}</option>
             {MENSAJES_DIA.map((m) => (
               <option key={m} value={m}>
-                {MENSAJES_LABEL[m]}
+                {t(`mensajes.${m}`)}
               </option>
             ))}
           </select>
@@ -260,9 +264,7 @@ export function SolicitudDemo({ calLink }: Props) {
       </div>
 
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">
-          ¿Por dónde te escriben tus clientes?
-        </legend>
+        <legend className="text-sm font-medium">{t("canales")}</legend>
         <div className="flex flex-wrap gap-4">
           {CANALES.map((c) => (
             <label
@@ -286,12 +288,12 @@ export function SolicitudDemo({ calLink }: Props) {
       </fieldset>
 
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">¿Vendes en Shopify?</legend>
+        <legend className="text-sm font-medium">{t("shopify")}</legend>
         <div className="flex gap-2" role="radiogroup">
           {(
             [
-              ["si", "Sí"],
-              ["no", "No"],
+              ["si", t("si")],
+              ["no", t("no")],
             ] as const
           ).map(([v, label]) => (
             <Button
@@ -311,7 +313,7 @@ export function SolicitudDemo({ calLink }: Props) {
         </div>
       </fieldset>
 
-      <Campo id="d-comentario" label="¿Algo más que debamos saber?" opcional>
+      <Campo id="d-comentario" label={t("comentario")} opcional>
         <Textarea
           id="d-comentario"
           rows={3}
@@ -345,16 +347,16 @@ export function SolicitudDemo({ calLink }: Props) {
         {pendiente && (
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         )}
-        {calLink ? "Continuar y elegir la hora" : "Solicitar demo"}
+        {calLink ? t("continuar") : t("solicitar")}
       </Button>
 
       <p className={cn("text-center text-sm text-muted-foreground")}>
-        ¿Ya eres cliente?{" "}
+        {t("yaCliente")}{" "}
         <Link
           href="/login"
           className="text-primary underline-offset-4 hover:underline"
         >
-          Inicia sesión
+          {t("iniciaSesion")}
         </Link>
       </p>
     </form>

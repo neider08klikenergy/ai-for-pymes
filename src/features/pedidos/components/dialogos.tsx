@@ -21,6 +21,7 @@ import {
   cambiarEstadoPedido,
 } from "../services/pedidos-actions";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
@@ -70,6 +71,7 @@ export function RevisionDialog({
   // null = el texto sigue la propuesta automática; string = la persona lo editó.
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
   const [pendiente, startTransition] = useTransition();
+  const t = useTranslations("pedidos.dialogos");
 
   const montoNum = Number(monto.replace(/[^\d]/g, ""));
   const propuesta = datos
@@ -87,13 +89,13 @@ export function RevisionDialog({
     if (aprobar && (!Number.isFinite(montoNum) || montoNum <= 0)) {
       return void toastResultado({
         ok: false,
-        error: "Escribe el monto recibido",
+        error: t("escribeMonto"),
       });
     }
     if (!aprobar && !motivo.trim()) {
       return void toastResultado({
         ok: false,
-        error: "Escribe el motivo del rechazo",
+        error: t("escribeMotivo"),
       });
     }
     startTransition(async () => {
@@ -113,18 +115,18 @@ export function RevisionDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {aprobar ? "Confirmar pago" : "Rechazar pago"} · {ped?.numero}
+            {aprobar ? t("confirmarPago") : t("rechazarPago")} · {ped?.numero}
           </DialogTitle>
           <DialogDescription>
             {aprobar
-              ? "Confírmalo solo si ya viste el dinero en la cuenta. El pedido queda agendado."
-              : "El pedido vuelve a 'Sin anticipo' hasta que el cliente envíe un pago válido."}
+              ? t("confirmarAyuda")
+              : t("rechazarAyuda")}
           </DialogDescription>
         </DialogHeader>
 
         {aprobar ? (
           <div className="grid gap-2">
-            <Label htmlFor="monto-recibido">Monto recibido (COP)</Label>
+            <Label htmlFor="monto-recibido">{t("montoRecibido")}</Label>
             <Input
               id="monto-recibido"
               inputMode="numeric"
@@ -132,15 +134,15 @@ export function RevisionDialog({
               onChange={(e) => setMonto(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Esperado: {pesos(pago.monto_esperado)}
+              {t("esperado", { monto: pesos(pago.monto_esperado) })}
             </p>
           </div>
         ) : (
           <div className="grid gap-2">
-            <Label htmlFor="motivo-rechazo">Motivo</Label>
+            <Label htmlFor="motivo-rechazo">{t("motivo")}</Label>
             <Textarea
               id="motivo-rechazo"
-              placeholder="Ej: la transferencia no aparece en la cuenta"
+              placeholder={t("motivoRechazoEjemplo")}
               value={motivo}
               maxLength={300}
               onChange={(e) => setMotivo(e.target.value)}
@@ -160,7 +162,7 @@ export function RevisionDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={pendiente}>
-            Volver
+            {t("volver")}
           </Button>
           <Button
             variant={aprobar ? "default" : "destructive"}
@@ -168,10 +170,10 @@ export function RevisionDialog({
             disabled={pendiente}
           >
             {pendiente
-              ? "Guardando…"
+              ? t("guardando")
               : aprobar
-                ? "Confirmar pago"
-                : "Rechazar pago"}
+                ? t("confirmarPago")
+                : t("rechazarPago")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -208,6 +210,7 @@ export function ListoDialog({
   const [avisar, setAvisar] = useState(true);
   const [texto, setTexto] = useState(() => mensajePedidoListo(datosDe(pedido)));
   const [pendiente, startTransition] = useTransition();
+  const t = useTranslations("pedidos.dialogos");
 
   function enviar() {
     startTransition(async () => {
@@ -224,9 +227,9 @@ export function ListoDialog({
     <Dialog open onOpenChange={(o) => !o && !pendiente && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Marcar listo · {pedido.numero}</DialogTitle>
+          <DialogTitle>{t("marcarListo")} · {pedido.numero}</DialogTitle>
           <DialogDescription>
-            El pedido pasa a &quot;Listo&quot; para entregar.
+            {t("listoAyuda")}
           </DialogDescription>
         </DialogHeader>
         <CampoAviso
@@ -240,10 +243,10 @@ export function ListoDialog({
         />
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={pendiente}>
-            Volver
+            {t("volver")}
           </Button>
           <Button onClick={enviar} disabled={pendiente}>
-            {pendiente ? "Guardando…" : "Marcar listo"}
+            {pendiente ? t("guardando") : t("marcarListo")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -276,6 +279,7 @@ export function CancelarDialog({
   const [avisar, setAvisar] = useState(true);
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
   const [pendiente, startTransition] = useTransition();
+  const t = useTranslations("pedidos.dialogos");
 
   const texto =
     textoEditado ??
@@ -300,10 +304,9 @@ export function CancelarDialog({
     <Dialog open onOpenChange={(o) => !o && !pendiente && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cancelar · {pedido.numero}</DialogTitle>
+          <DialogTitle>{t("cancelar")} · {pedido.numero}</DialogTitle>
           <DialogDescription>
-            Entrega en {diasAntes} {diasAntes === 1 ? "día" : "días"}. El cupo
-            del día se libera.
+            {t("entregaEnDias", { dias: diasAntes })}
           </DialogDescription>
         </DialogHeader>
 
@@ -313,9 +316,7 @@ export function CancelarDialog({
               className="h-3.5 w-3.5 mt-0.5 shrink-0"
               aria-hidden="true"
             />
-            Fuera de plazo: la política pide cancelar con{" "}
-            {reglas.cancelacionDias} días calendario de anticipación. Decide con
-            el negocio si igual se deja saldo a favor.
+            {t("fueraDePlazo", { dias: reglas.cancelacionDias })}
           </p>
         )}
 
@@ -333,26 +334,25 @@ export function CancelarDialog({
               htmlFor="generar-saldo"
               className="cursor-pointer leading-snug"
             >
-              Dejar {pesos(pedido.pagado)} como saldo a favor del cliente
+              {t("dejarSaldo", { monto: pesos(pedido.pagado) })}
               <span className="block text-xs font-normal text-muted-foreground">
-                Vigente {reglas.saldoFavorMeses} meses. No hay devolución en
-                efectivo.
+                {t("vigenteMeses", { meses: reglas.saldoFavorMeses })}
               </span>
             </Label>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
-            El pedido no tiene pagos confirmados.
+            {t("sinPagos")}
           </p>
         )}
 
         <div className="grid gap-2">
-          <Label htmlFor="motivo-cancelacion">Motivo (opcional)</Label>
+          <Label htmlFor="motivo-cancelacion">{t("motivoOpcional")}</Label>
           <Input
             id="motivo-cancelacion"
             value={motivo}
             maxLength={300}
-            placeholder="Ej: el cliente cambió la fecha del evento"
+            placeholder={t("motivoCancelarEjemplo")}
             onChange={(e) => setMotivo(e.target.value)}
           />
         </div>
@@ -369,10 +369,10 @@ export function CancelarDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={pendiente}>
-            Volver
+            {t("volver")}
           </Button>
           <Button variant="destructive" onClick={enviar} disabled={pendiente}>
-            {pendiente ? "Cancelando…" : "Cancelar pedido"}
+            {pendiente ? t("cancelando") : t("cancelarPedido")}
           </Button>
         </DialogFooter>
       </DialogContent>
