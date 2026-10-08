@@ -4,6 +4,7 @@ import type {
 } from "@/features/inbox/types";
 import { cn } from "@/lib/utils";
 import { StateBadge } from "./state-badge";
+import { useTranslations } from "next-intl";
 import { useZonaHoraria } from "@/shared/lib/zona-horaria-context";
 import { ChannelBadge, contactSubtitle, isSocialKey } from "./channel-badge";
 
@@ -51,6 +52,7 @@ export function ConversationItem({
   isActive,
   onClick,
 }: ConversationItemProps) {
+  const t = useTranslations("inbox.lista");
   const { contact, last_message, unread_count, last_message_at } = conversation;
   const subtitle = contactSubtitle(contact.phone, conversation.channel);
   const displayName = contact.name ?? subtitle;
@@ -109,7 +111,7 @@ export function ConversationItem({
                 "shrink-0 h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold",
                 "bg-primary text-primary-foreground flex items-center justify-center",
               )}
-              aria-label={`${unread_count} mensajes sin leer`}
+              aria-label={t("sinLeer", { n: unread_count })}
             >
               {unread_count > 99 ? "99+" : unread_count}
             </span>

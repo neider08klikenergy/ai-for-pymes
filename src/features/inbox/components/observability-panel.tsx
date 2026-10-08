@@ -1,4 +1,6 @@
 "use client";
+
+import { useTranslations } from "next-intl";
 // F8-D2: Observability panel — shows KPI tiles + event log for a conversation.
 
 import type {
@@ -103,6 +105,7 @@ interface ApiResponse {
 export function ObservabilityPanel({
   conversationId,
 }: ObservabilityPanelProps) {
+  const t = useTranslations("inbox.observabilidad");
   const zona = useZonaHoraria();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,11 +123,11 @@ export function ObservabilityPanel({
       const json = (await res.json()) as ApiResponse;
       setData(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar métricas");
+      setError(err instanceof Error ? err.message : t("errorCargar"));
     } finally {
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetchData resets loading/error before each (re)fetch
@@ -139,7 +142,7 @@ export function ObservabilityPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm font-semibold text-foreground">
-          Observabilidad
+          {t("titulo")}
         </h3>
         <Button
           size="sm"
@@ -148,7 +151,7 @@ export function ObservabilityPanel({
           onClick={() => void fetchData()}
           disabled={loading}
         >
-          {loading ? "Cargando…" : "Actualizar"}
+          {loading ? t("cargando") : t("actualizar")}
         </Button>
       </div>
 
@@ -186,7 +189,7 @@ export function ObservabilityPanel({
           loading={loading}
         />
         <KpiTile
-          label="Costo est."
+          label={t("costoEstimado")}
           value={metrics ? formatCost(metrics.estimatedCostUsd) : "—"}
           loading={loading}
         />
@@ -200,11 +203,11 @@ export function ObservabilityPanel({
         <ScrollArea className="max-h-96 rounded-lg border border-border bg-background/40">
           {loading && events.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-              Cargando eventos…
+              {t("cargandoEventos")}
             </div>
           ) : events.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-              Sin eventos registrados
+              {t("sinEventos")}
             </div>
           ) : (
             <div className="divide-y divide-border">

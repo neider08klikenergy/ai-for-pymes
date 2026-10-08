@@ -1,14 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 // F3-T5: Visual badge for conversation state.
 
 import {
   Bot,
   User,
-  AlertCircle,
   Clock,
-  PauseCircle,
   XCircle,
+  AlertCircle,
+  PauseCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConversationState } from "@/features/inbox/types";
@@ -26,32 +27,32 @@ const STATE_CONFIG: Record<
   }
 > = {
   ai_active: {
-    label: "IA activa",
+    label: "ai_active",
     className: "text-[hsl(var(--electric-lime))]",
     Icon: Bot,
   },
   human_active: {
-    label: "Humano",
+    label: "human_active",
     className: "text-blue-400",
     Icon: User,
   },
   handoff_pending: {
-    label: "Handoff pendiente",
+    label: "handoff_pending",
     className: "text-amber-400",
     Icon: AlertCircle,
   },
   waiting_reply: {
-    label: "Esperando",
+    label: "waiting",
     className: "text-muted-foreground",
     Icon: Clock,
   },
   paused: {
-    label: "Pausado",
+    label: "paused",
     className: "text-muted-foreground",
     Icon: PauseCircle,
   },
   closed: {
-    label: "Cerrado",
+    label: "closed",
     className: "text-muted-foreground/50",
     Icon: XCircle,
   },
@@ -59,10 +60,13 @@ const STATE_CONFIG: Record<
 
 export function StateBadge({ state }: StateBadgeProps) {
   const config = STATE_CONFIG[state];
+  const t = useTranslations("inbox.estados");
 
   if (!config) return null;
 
-  const { label, className, Icon } = config;
+  const { className, Icon } = config;
+  // config.label es la clave del estado (inbox.estados.*)
+  const label = t(config.label as "ai_active");
 
   return (
     <span

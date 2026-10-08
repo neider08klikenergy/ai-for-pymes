@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Bot, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Trash2, Loader2, Bot, AlertCircle } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ function QuestionRow({
   onChange: (updated: SetterQuestion) => void;
   onDelete: () => void;
 }) {
+  const tr = useTranslations("ui.setterAdvancedConfig");
   return (
     <li className="grid gap-3 rounded-lg border border-border/60 bg-card p-4">
       <div className="flex items-start justify-between gap-2">
@@ -133,18 +135,18 @@ function QuestionRow({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`q-text-${question.id}`}>Pregunta</Label>
+        <Label htmlFor={`q-text-${question.id}`}>{tr("pregunta")}</Label>
         <Input
           id={`q-text-${question.id}`}
           value={question.text}
-          placeholder="¿Cuál es tu presupuesto mensual?"
+          placeholder={tr("cualEsTuPresupuestoMensual")}
           onChange={(e) => onChange({ ...question, text: e.target.value })}
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor={`q-type-${question.id}`}>Tipo</Label>
+          <Label htmlFor={`q-type-${question.id}`}>{tr("tipo")}</Label>
           <select
             id={`q-type-${question.id}`}
             value={question.type}
@@ -163,7 +165,7 @@ function QuestionRow({
 
         <div className="space-y-1.5">
           <Label htmlFor={`q-weight-${question.id}`}>
-            Peso: {question.weight}
+            {tr("peso")} {question.weight}
           </Label>
           <input
             id={`q-weight-${question.id}`}
@@ -197,11 +199,13 @@ function KnockoutRuleRow({
   onChange: (updated: KnockoutRule) => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("ui.setterAdvancedConfig");
   return (
     <li className="grid gap-3 rounded-lg border border-border/60 bg-card p-4">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-muted-foreground">
-          Regla #{index + 1}
+          {t("regla")}
+          {index + 1}
         </span>
         <button
           type="button"
@@ -214,34 +218,34 @@ function KnockoutRuleRow({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`kr-question-${index}`}>Pregunta</Label>
+        <Label htmlFor={`kr-question-${index}`}>{t("pregunta")}</Label>
         <select
           id={`kr-question-${index}`}
           value={rule.question_id}
           onChange={(e) => onChange({ ...rule, question_id: e.target.value })}
           className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <option value="">Seleccionar pregunta…</option>
+          <option value="">{t("seleccionarPregunta")}</option>
           {questions.map((q, qi) => (
             <option key={q.id} value={q.id}>
-              #{qi + 1} {q.text.slice(0, 60) || "(sin texto)"}
+              #{qi + 1} {q.text.slice(0, 60) || t("sinTexto")}
             </option>
           ))}
         </select>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`kr-condition-${index}`}>Condición</Label>
+        <Label htmlFor={`kr-condition-${index}`}>{t("condicion")}</Label>
         <Input
           id={`kr-condition-${index}`}
           value={rule.condition}
-          placeholder='responde "No", presupuesto &lt; 1000…'
+          placeholder={t("respondeNoPresupuesto1000")}
           onChange={(e) => onChange({ ...rule, condition: e.target.value })}
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`kr-action-${index}`}>Acción</Label>
+        <Label htmlFor={`kr-action-${index}`}>{t("accion")}</Label>
         <select
           id={`kr-action-${index}`}
           value={rule.action}
@@ -270,6 +274,7 @@ interface Props {
 }
 
 export function SetterAdvancedConfig({ workspaceId }: Props) {
+  const tr = useTranslations("ui.setterAdvancedConfig");
   const [config, setConfig] = useState<SetterConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -336,9 +341,9 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
         scoring: cfg.scoring,
         post_action: cfg.post_action as PostAction,
       });
-      toast.success("Configuración de setter creada");
+      toast.success(tr("configuracionDeSetterCreada"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al crear");
+      toast.error(err instanceof Error ? err.message : tr("errorAlCrear"));
     } finally {
       setIsCreating(false);
     }
@@ -359,9 +364,9 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       };
       if (!res.ok) throw new Error(json.error ?? "Error al guardar");
       setConfig(json.data!);
-      toast.success("Configuración guardada");
+      toast.success(tr("configuracionGuardada"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlGuardar"));
     } finally {
       setIsSaving(false);
     }
@@ -447,12 +452,12 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
         <AlertCircle className="h-10 w-10 text-destructive" aria-hidden />
         <div>
           <p className="text-sm font-medium text-foreground">
-            No pudimos cargar la configuración
+            {tr("noPudimosCargarLaConfiguracion")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{error}</p>
         </div>
         <Button variant="outline" size="sm" onClick={load}>
-          Reintentar
+          {tr("reintentar")}
         </Button>
       </div>
     );
@@ -468,11 +473,10 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
         </div>
         <div>
           <p className="text-sm font-medium text-foreground">
-            Sin configuración de setter
+            {tr("sinConfiguracionDeSetter")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-            El modo setter califica prospectos con preguntas estructuradas antes
-            de pasarlos al equipo de ventas.
+            {tr("elModoSetterCalificaProspectosCon")}
           </p>
         </div>
         <Button
@@ -484,7 +488,7 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
           {isCreating && (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
           )}
-          Crear configuración
+          {tr("crearConfiguracion")}
         </Button>
       </div>
     );
@@ -497,32 +501,32 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       {/* Section 1 — Toggle + nombre */}
       <div className="space-y-4">
         <SectionHeading
-          title="General"
-          description="Activa el modo setter y asigna un nombre a esta configuración."
+          title={tr("general")}
+          description={tr("activaElModoSetterYAsigna")}
         />
 
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card p-4">
           <div>
             <p className="text-sm font-medium text-foreground">
-              Activar modo setter
+              {tr("activarModoSetter")}
             </p>
             <p className="text-xs text-muted-foreground">
-              El agente calificará prospectos antes de hacer handoff.
+              {tr("elAgenteCalificaraProspectosAntesDe")}
             </p>
           </div>
           <Switch
             checked={draft?.enabled ?? false}
             onCheckedChange={(v) => draft && setDraft({ ...draft, enabled: v })}
-            aria-label="Activar modo setter"
+            aria-label={tr("activarModoSetter")}
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="setter-name">Nombre de la configuración</Label>
+          <Label htmlFor="setter-name">{tr("nombreDeLaConfiguracion")}</Label>
           <Input
             id="setter-name"
             value={draft?.name ?? ""}
-            placeholder="Setter Ventas"
+            placeholder={tr("setterVentas")}
             onChange={(e) =>
               draft && setDraft({ ...draft, name: e.target.value })
             }
@@ -536,8 +540,8 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <SectionHeading
-            title="Preguntas de calificación"
-            description="Define las preguntas que el agente hará al prospecto."
+            title={tr("preguntasDeCalificacion")}
+            description={tr("defineLasPreguntasQueElAgente")}
           />
           <Button
             type="button"
@@ -546,13 +550,13 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
             onClick={addQuestion}
           >
             <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-            Agregar pregunta
+            {tr("agregarPregunta")}
           </Button>
         </div>
 
         {draft && draft.questions.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
-            Sin preguntas. Agrega al menos una para que el setter funcione.
+            {tr("sinPreguntasAgregaAlMenosUna")}
           </p>
         ) : (
           <ul className="space-y-3" role="list">
@@ -575,8 +579,8 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <SectionHeading
-            title="Reglas de knockout"
-            description="Si se cumple una condición, aplica la acción definida."
+            title={tr("reglasDeKnockout")}
+            description={tr("siSeCumpleUnaCondicionAplica")}
           />
           <Button
             type="button"
@@ -586,13 +590,13 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
             disabled={!draft || draft.questions.length === 0}
           >
             <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-            Agregar regla
+            {tr("agregarRegla")}
           </Button>
         </div>
 
         {draft && draft.knockout_rules.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
-            Sin reglas de knockout. El scoring determinará la calificación.
+            {tr("sinReglasDeKnockoutElScoring")}
           </p>
         ) : (
           <ul className="space-y-3" role="list">
@@ -615,14 +619,15 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       {/* Section 4 — Puntuación */}
       <div className="space-y-4">
         <SectionHeading
-          title="Puntuación"
+          title={tr("puntuacion")}
           description={`Calificado si score ≥ ${draft?.scoring.threshold ?? 50}`}
         />
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="scoring-threshold">
-              Umbral de calificación ({draft?.scoring.threshold ?? 50})
+              {tr("umbralDeCalificacion")}
+              {draft?.scoring.threshold ?? 50})
             </Label>
             <input
               id="scoring-threshold"
@@ -642,12 +647,12 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
                 })
               }
               className="w-full h-9 cursor-pointer accent-primary"
-              aria-label="Umbral de calificación"
+              aria-label={tr("umbralDeCalificacion2")}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="scoring-max">Score máximo</Label>
+            <Label htmlFor="scoring-max">{tr("scoreMaximo")}</Label>
             <Input
               id="scoring-max"
               type="number"
@@ -669,9 +674,9 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Un prospecto es{" "}
-          <span className="font-medium text-foreground">calificado</span> si su
-          score alcanza{" "}
+          {tr("unProspectoEs")}{" "}
+          <span className="font-medium text-foreground">calificado</span>{" "}
+          {tr("siSuScoreAlcanza")}{" "}
           <span className={cn("font-mono font-semibold", "text-primary")}>
             {draft?.scoring.threshold ?? 50} / {draft?.scoring.max_score ?? 100}
           </span>
@@ -684,12 +689,12 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
       {/* Section 5 — Post-action */}
       <div className="space-y-4">
         <SectionHeading
-          title="Acción post-calificación"
-          description="Qué hacer cuando un prospecto es calificado exitosamente."
+          title={tr("accionPostCalificacion")}
+          description={tr("queHacerCuandoUnProspectoEs")}
         />
 
         <div className="space-y-1.5">
-          <Label htmlFor="post-action-type">Acción</Label>
+          <Label htmlFor="post-action-type">{tr("accion")}</Label>
           <select
             id="post-action-type"
             value={draft?.post_action.type ?? "handoff"}
@@ -714,7 +719,7 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
 
         {draft?.post_action.type === "add_tag" && (
           <div className="space-y-1.5">
-            <Label htmlFor="post-action-tag">Etiqueta</Label>
+            <Label htmlFor="post-action-tag">{tr("etiqueta")}</Label>
             <Input
               id="post-action-tag"
               value={draft.post_action.tag ?? ""}
@@ -731,7 +736,9 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
 
         {draft?.post_action.type === "send_template" && (
           <div className="space-y-1.5">
-            <Label htmlFor="post-action-template">Nombre del template</Label>
+            <Label htmlFor="post-action-template">
+              {tr("nombreDelTemplate")}
+            </Label>
             <Input
               id="post-action-template"
               value={draft.post_action.template_name ?? ""}
@@ -761,7 +768,7 @@ export function SetterAdvancedConfig({ workspaceId }: Props) {
           {isSaving && (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
           )}
-          Guardar configuración
+          {tr("guardarConfiguracion")}
         </Button>
       </div>
     </div>

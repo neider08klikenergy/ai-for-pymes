@@ -1,10 +1,11 @@
+import {
+  type ParamsProductos,
+  cargarPantallaProductos,
+} from "@/features/productos/services/productos-queries";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ProductosBoard } from "@/features/productos/components/productos-board";
-import {
-  cargarPantallaProductos,
-  type ParamsProductos,
-} from "@/features/productos/services/productos-queries";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function ProductosPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
-          No tienes un workspace activo.
+          {(await getTranslations("common"))("sinWorkspace")}
         </p>
       </div>
     );
@@ -41,7 +42,9 @@ export default async function ProductosPage({
     <ProductosBoard
       workspaceId={membership.workspace_id}
       pantalla={pantalla}
-      puedeEditarCatalogo={membership.role === "admin" || membership.role === "manager"}
+      puedeEditarCatalogo={
+        membership.role === "admin" || membership.role === "manager"
+      }
       puedeEditarMenu={membership.role !== "viewer"}
     />
   );

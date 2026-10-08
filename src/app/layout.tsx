@@ -4,8 +4,10 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Space_Grotesk } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { NextIntlClientProvider } from "next-intl";
 import { ThemeProvider } from "@/components/theme-provider";
-import { APP_DESCRIPTION, APP_NAME, brandStyleOverride } from "@/lib/branding";
+import { getLocale, getTranslations } from "next-intl/server";
+import { APP_NAME, brandStyleOverride } from "@/lib/branding";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -14,21 +16,25 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  // Cada página pone su título y queda "Iniciar sesión — Felrick"
-  title: { default: APP_NAME, template: `%s — ${APP_NAME}` },
-  description: APP_DESCRIPTION,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common");
+  return {
+    // Cada página pone su título y queda "Iniciar sesión — Felrick"
+    title: { default: APP_NAME, template: `%s — ${APP_NAME}` },
+    description: t("descripcionApp"),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const brand = brandStyleOverride();
+  const locale = await getLocale();
 
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       {brand && (
         <head>
           {/* Inline so the brand tint lands on first paint, before hydration. */}
@@ -44,7 +50,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          {/* Sin props: toma el idioma y los textos de src/i18n/request.ts */}
+          <NextIntlClientProvider>{children}</NextIntlClientProvider>
           <Toaster />
           {process.env.NODE_ENV === "development" && <Agentation />}
         </ThemeProvider>

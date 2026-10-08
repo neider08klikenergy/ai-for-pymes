@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Pin opcional de una sede en el mapa (OpenStreetMap + Leaflet: gratis y sin
 // API key). Se marca tocando el mapa, arrastrando el pin o buscando la
 // dirección. La dirección en texto sigue siendo la principal: esto solo
@@ -48,6 +50,7 @@ export function MapaUbicacion({
   direccion,
   disabled,
 }: Props) {
+  const t = useTranslations("ui.mapaUbicacion");
   const contenedor = useRef<HTMLDivElement>(null);
   const mapa = useRef<LeafletMap | null>(null);
   const pin = useRef<Marker | null>(null);
@@ -224,9 +227,9 @@ export function MapaUbicacion({
                 void buscar();
               }
             }}
-            placeholder="Buscar dirección o lugar en el mapa"
+            placeholder={t("buscarDireccionOLugarEnEl")}
             className="h-8 text-xs"
-            aria-label="Buscar en el mapa"
+            aria-label={t("buscarEnElMapa")}
           />
           <Button
             type="button"
@@ -239,19 +242,14 @@ export function MapaUbicacion({
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
               <Search className="h-4 w-4" aria-hidden="true" />
-            )}
-            Buscar
-          </Button>
+            )}{t("buscar")}</Button>
         </div>
       )}
 
       {resultados && (
         <ul className="max-h-36 overflow-y-auto rounded-md border text-xs">
           {resultados.length === 0 ? (
-            <li className="px-3 py-2 text-muted-foreground">
-              No se encontró. Prueba con el barrio o la ciudad, o toca el mapa
-              para marcar.
-            </li>
+            <li className="px-3 py-2 text-muted-foreground">{t("noSeEncontroPruebaConEl")}</li>
           ) : (
             resultados.map((r) => (
               <li key={`${r.lat},${r.lon}`}>
@@ -272,14 +270,12 @@ export function MapaUbicacion({
         ref={contenedor}
         className="h-56 w-full overflow-hidden rounded-md border bg-muted"
         role="application"
-        aria-label="Mapa: toca para marcar la ubicación de la sede"
+        aria-label={t("mapaTocaParaMarcarLaUbicacion")}
       />
 
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1">
-          <Label htmlFor="mapa-lat" className="text-xs">
-            Latitud
-          </Label>
+          <Label htmlFor="mapa-lat" className="text-xs">{t("latitud")}</Label>
           <Input
             id="mapa-lat"
             inputMode="decimal"
@@ -295,9 +291,7 @@ export function MapaUbicacion({
           />
         </div>
         <div className="grid gap-1">
-          <Label htmlFor="mapa-lng" className="text-xs">
-            Longitud
-          </Label>
+          <Label htmlFor="mapa-lng" className="text-xs">{t("longitud")}</Label>
           <Input
             id="mapa-lng"
             inputMode="decimal"
@@ -323,8 +317,8 @@ export function MapaUbicacion({
           <span className="flex items-center gap-1 text-muted-foreground">
             <MapPin className="h-3 w-3" aria-hidden="true" />
             {valor
-              ? "Puedes pegar en Latitud el par que copias de Google Maps."
-              : "Sin ubicación: el agente enviará solo la dirección en texto"}
+              ? t("puedesPegarEnLatitudElPar")
+              : t("sinUbicacionElAgenteEnviaraSolo")}
           </span>
         )}
         {valor && !disabled && (
@@ -339,9 +333,7 @@ export function MapaUbicacion({
               onCambiar(null);
             }}
           >
-            <X className="h-3 w-3" aria-hidden="true" />
-            Quitar
-          </Button>
+            <X className="h-3 w-3" aria-hidden="true" />{t("quitar")}</Button>
         )}
       </div>
     </div>

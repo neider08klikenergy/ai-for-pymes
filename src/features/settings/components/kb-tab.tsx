@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
 import {
   Plus,
   Trash2,
@@ -11,13 +9,16 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { useState, useEffect, useCallback } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ function DocumentRow({
   doc: KbDocument;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const t = useTranslations("ui.kbTab");
   const [expanded, setExpanded] = useState(false);
   const [chunks, setChunks] = useState<KbChunk[] | null>(null);
   const [loadingChunks, setLoadingChunks] = useState(false);
@@ -185,8 +187,7 @@ function DocumentRow({
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Los chunks se almacenan internamente en la base de datos
-              vectorial.
+              {t("losChunksSeAlmacenanInternamenteEn")}
               {chunkCount !== null &&
                 ` Este documento tiene ${chunkCount} chunk(s).`}
             </p>
@@ -204,6 +205,7 @@ interface Props {
 }
 
 export function KbTab({ workspaceId }: Props) {
+  const tr = useTranslations("ui.kbTab");
   const [documents, setDocuments] = useState<KbDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +242,7 @@ export function KbTab({ workspaceId }: Props) {
 
   async function handleAdd() {
     if (!title.trim()) {
-      toast.error("El título es obligatorio");
+      toast.error(tr("elTituloEsObligatorio"));
       return;
     }
     const body =
@@ -251,8 +253,8 @@ export function KbTab({ workspaceId }: Props) {
     if (!body.content) {
       toast.error(
         sourceType === "url"
-          ? "Ingresa una URL"
-          : "El contenido es obligatorio",
+          ? tr("ingresaUnaUrl")
+          : tr("elContenidoEsObligatorio"),
       );
       return;
     }
@@ -283,7 +285,7 @@ export function KbTab({ workspaceId }: Props) {
       // Reload list
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al agregar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlAgregar"));
     } finally {
       setIsAdding(false);
     }
@@ -298,10 +300,10 @@ export function KbTab({ workspaceId }: Props) {
       });
       const json = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al eliminar");
-      toast.success("Documento eliminado");
+      toast.success(tr("documentoEliminado"));
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlEliminar"));
     }
   }
 
@@ -333,12 +335,12 @@ export function KbTab({ workspaceId }: Props) {
         <AlertCircle className="h-10 w-10 text-destructive" aria-hidden />
         <div>
           <p className="text-sm font-medium text-foreground">
-            No pudimos cargar los documentos
+            {tr("noPudimosCargarLosDocumentos")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{error}</p>
         </div>
         <Button variant="outline" size="sm" onClick={load}>
-          Reintentar
+          {tr("reintentar")}
         </Button>
       </div>
     );
@@ -352,27 +354,26 @@ export function KbTab({ workspaceId }: Props) {
       <div className="space-y-4">
         <div>
           <h3 className="font-display text-sm font-medium text-foreground">
-            Agregar documento
+            {tr("agregarDocumento")}
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            El contenido se divide en chunks y se embebe para búsqueda
-            semántica.
+            {tr("elContenidoSeDivideEnChunks")}
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="kb-title">Título</Label>
+          <Label htmlFor="kb-title">{tr("titulo")}</Label>
           <Input
             id="kb-title"
             value={title}
-            placeholder="Preguntas frecuentes de precios"
+            placeholder={tr("preguntasFrecuentesDePrecios")}
             onChange={(e) => setTitle(e.target.value)}
             aria-required="true"
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="kb-source-type">Tipo de fuente</Label>
+          <Label htmlFor="kb-source-type">{tr("tipoDeFuente")}</Label>
           <select
             id="kb-source-type"
             value={sourceType}
@@ -399,22 +400,21 @@ export function KbTab({ workspaceId }: Props) {
               aria-required="true"
             />
             <p className="text-xs text-muted-foreground">
-              Descargamos la página y extraemos su texto automáticamente para
-              indexarlo. Funciona mejor con páginas públicas de contenido.
+              {tr("descargamosLaPaginaYExtraemosSu")}
             </p>
           </div>
         ) : (
           <div className="space-y-1.5">
             <Label htmlFor="kb-content">
-              Contenido{" "}
+              {tr("contenido")}{" "}
               <span className="text-muted-foreground font-normal">
-                (máx. 10,000 caracteres)
+                {tr("max10000Caracteres")}
               </span>
             </Label>
             <Textarea
               id="kb-content"
               value={content}
-              placeholder="Pega el texto del documento aquí…"
+              placeholder={tr("pegaElTextoDelDocumentoAqui")}
               onChange={(e) => setContent(e.target.value)}
               maxLength={10_000}
               rows={6}
@@ -438,18 +438,18 @@ export function KbTab({ workspaceId }: Props) {
             {isAdding ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
-                Procesando…
+                {tr("procesando")}
               </>
             ) : (
               <>
                 <Plus className="h-4 w-4 mr-1.5" aria-hidden />
-                Agregar documento
+                {tr("agregarDocumento")}
               </>
             )}
           </Button>
           {isAdding && (
             <p className="text-xs text-muted-foreground">
-              Dividiendo en chunks y generando embeddings…
+              {tr("dividiendoEnChunksYGenerandoEmbeddings")}
             </p>
           )}
         </div>
@@ -461,7 +461,7 @@ export function KbTab({ workspaceId }: Props) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-display text-sm font-medium text-foreground">
-            Documentos
+            {tr("documentos")}
             {documents.length > 0 && (
               <span className="ml-2 font-mono text-xs text-muted-foreground font-normal">
                 ({documents.length})
@@ -478,11 +478,10 @@ export function KbTab({ workspaceId }: Props) {
             />
             <div>
               <p className="text-sm font-medium text-foreground">
-                Sin documentos
+                {tr("sinDocumentos")}
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-                La IA usará este knowledge base para responder preguntas. Agrega
-                el primer documento arriba.
+                {tr("laIaUsaraEsteKnowledgeBase")}
               </p>
             </div>
           </div>

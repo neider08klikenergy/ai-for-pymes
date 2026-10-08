@@ -1,32 +1,33 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
 import {
-  RefreshCw,
   Plus,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  PauseCircle,
-  FileText,
   Copy,
+  Send,
+  Clock,
   Pencil,
   Trash2,
-  Send,
+  XCircle,
+  FileText,
+  RefreshCw,
   BookOpen,
   ArrowRight,
+  PauseCircle,
+  CheckCircle2,
 } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { TemplateRow } from "@/features/inbox/services/templates";
 import {
   sanitizeTemplateName,
   type TemplateButton,
   type TemplateVariable,
 } from "@/features/settings/lib/template-form";
-import { TemplateFormSheet, type TemplatePrefill } from "./template-form-sheet";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { CostCalculator } from "./cost-calculator";
+import { useState, useCallback, useEffect } from "react";
+import type { TemplateRow } from "@/features/inbox/services/templates";
+import { TemplateFormSheet, type TemplatePrefill } from "./template-form-sheet";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -37,27 +38,27 @@ const STATUS_CONFIG: Record<
   { label: string; className: string; Icon: React.ElementType }
 > = {
   approved: {
-    label: "Aprobado",
+    label: "aprobado",
     className: "text-emerald-400 bg-emerald-400/10",
     Icon: CheckCircle2,
   },
   submitted: {
-    label: "Pendiente",
+    label: "pendiente",
     className: "text-amber-400 bg-amber-400/10",
     Icon: Clock,
   },
   draft: {
-    label: "Borrador",
+    label: "borrador",
     className: "text-muted-foreground bg-muted",
     Icon: FileText,
   },
   rejected: {
-    label: "Rechazado",
+    label: "rechazado",
     className: "text-destructive bg-destructive/10",
     Icon: XCircle,
   },
   paused: {
-    label: "Pausado",
+    label: "pausado",
     className: "text-orange-400 bg-orange-400/10",
     Icon: PauseCircle,
   },
@@ -68,10 +69,10 @@ const STATUS_CONFIG: Record<
 type FilterKey = "all" | StatusKey;
 
 const FILTERS: { value: FilterKey; label: string }[] = [
-  { value: "all", label: "Todos" },
-  { value: "approved", label: "Aprobados" },
-  { value: "submitted", label: "Pendientes" },
-  { value: "rejected", label: "Rechazados" },
+  { value: "all", label: "todos" },
+  { value: "approved", label: "aprobados" },
+  { value: "submitted", label: "pendientes" },
+  { value: "rejected", label: "rechazados" },
 ];
 
 // ── Library types ─────────────────────────────────────────────────────────────
@@ -112,8 +113,9 @@ function libraryToPrefill(item: LibraryItem): TemplatePrefill {
 // ── Skeleton / empty ──────────────────────────────────────────────────────────
 
 function TemplatesSkeleton() {
+  const t = useTranslations("ui.templatesTab");
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="Cargando…">
+    <div className="space-y-2" aria-busy="true" aria-label={t("cargando")}>
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
@@ -131,23 +133,24 @@ function EmptyState({
   filtered: boolean;
   onNew: () => void;
 }) {
+  const t = useTranslations("ui.templatesTab");
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-14 text-center">
       <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
       <div>
         <p className="text-sm font-medium text-foreground">
-          {filtered ? "Sin resultados" : "Sin plantillas"}
+          {filtered ? t("sinResultados") : t("sinPlantillas")}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           {filtered
-            ? "Prueba con otro filtro."
-            : "Crea una nueva, usa la biblioteca o sincroniza desde tu proveedor de WhatsApp."}
+            ? t("pruebaConOtroFiltro")
+            : t("creaUnaNuevaUsaLaBiblioteca")}
         </p>
       </div>
       {!filtered && (
         <Button size="sm" onClick={onNew}>
           <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          Nueva plantilla
+          {t("nuevaPlantilla")}
         </Button>
       )}
     </div>
@@ -169,6 +172,8 @@ function TemplateItem({
   onSubmit: (t: TemplateRow) => void;
   submitting: boolean;
 }) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.templatesTab");
   const cfg = STATUS_CONFIG[template.status] ?? STATUS_CONFIG.draft;
   const { Icon } = cfg;
   const canSubmit =
@@ -184,7 +189,7 @@ function TemplateItem({
 
   function handleCopy() {
     navigator.clipboard.writeText(template.body_template ?? "");
-    toast.success("Cuerpo copiado al portapapeles");
+    toast.success(tr("cuerpoCopiadoAlPortapapeles"));
   }
 
   return (
@@ -210,7 +215,7 @@ function TemplateItem({
             )}
           >
             <Icon className="h-3 w-3" aria-hidden="true" />
-            {cfg.label}
+            {tc(cfg.label)}
           </span>
 
           <button
@@ -257,7 +262,7 @@ function TemplateItem({
           )}
           {template.rejection_reason && (
             <span className="text-xs text-destructive">
-              Motivo: {template.rejection_reason}
+              {tr("motivo")} {template.rejection_reason}
             </span>
           )}
         </div>
@@ -271,7 +276,7 @@ function TemplateItem({
             className="h-7"
           >
             <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {submitting ? "Enviando…" : "Enviar a aprobación"}
+            {submitting ? tr("enviando") : tr("enviarAAprobacion")}
           </Button>
         )}
       </div>
@@ -288,6 +293,8 @@ function LibraryCard({
   item: LibraryItem;
   onUse: (item: LibraryItem) => void;
 }) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.templatesTab");
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
@@ -302,11 +309,11 @@ function LibraryCard({
               : "bg-amber-400/10 text-amber-400",
           )}
         >
-          {item.category === "utility" ? "Utilidad" : "Marketing"}
+          {item.category === "utility" ? t("utilidad") : t("marketing")}
         </span>
       </div>
       {item.description && (
-        <p className="text-xs text-muted-foreground">{item.description}</p>
+        <p className="text-xs text-muted-foreground">{tc(item.description)}</p>
       )}
       <p className="line-clamp-3 whitespace-pre-line rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         {item.body_template}
@@ -317,7 +324,7 @@ function LibraryCard({
         onClick={() => onUse(item)}
         className="mt-1 self-start"
       >
-        Usar esta plantilla
+        {t("usarEstaPlantilla")}
         <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
       </Button>
     </div>
@@ -334,6 +341,8 @@ interface Props {
 }
 
 export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const tr = useTranslations("ui.templatesTab");
   const [view, setView] = useState<View>("mine");
   const [templates, setTemplates] = useState<TemplateRow[]>(
     (initialTemplates ?? []) as TemplateRow[],
@@ -399,12 +408,12 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       setLibraryLoaded(true);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Error al cargar biblioteca",
+        err instanceof Error ? err.message : tr("errorAlCargarBiblioteca"),
       );
     } finally {
       setLibraryLoading(false);
     }
-  }, [workspaceId, libraryLoaded]);
+  }, [workspaceId, libraryLoaded, tr]);
 
   function switchView(next: View) {
     setView(next);
@@ -430,7 +439,9 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       );
       await fetchTemplates();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al sincronizar");
+      toast.error(
+        err instanceof Error ? err.message : tr("errorAlSincronizar"),
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -450,11 +461,11 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       );
       const json = (await res.json()) as { warning?: string; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al enviar");
-      toast.success("Plantilla enviada a aprobación");
+      toast.success(tr("plantillaEnviadaAAprobacion"));
       if (json.warning) toast(json.warning);
       await fetchTemplates();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al enviar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlEnviar"));
     } finally {
       setSubmittingId(null);
     }
@@ -476,10 +487,10 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al eliminar");
-      toast.success("Plantilla eliminada");
+      toast.success(tr("plantillaEliminada"));
       setTemplates((prev) => prev.filter((x) => x.id !== t.id));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+      toast.error(err instanceof Error ? err.message : tr("errorAlEliminar"));
     }
   }
 
@@ -516,7 +527,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-base font-medium text-foreground">
-              Plantillas de WhatsApp
+              {tr("plantillasDeWhatsapp")}
             </h2>
             {view === "mine" && !isLoadingTemplates && !loadError && (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -543,11 +554,11 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
                   className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")}
                   aria-hidden="true"
                 />
-                {isSyncing ? "Sincronizando…" : "Sincronizar plantillas"}
+                {isSyncing ? tr("sincronizando") : tr("sincronizarPlantillas")}
               </Button>
               <Button size="sm" onClick={openNew}>
                 <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-                Nueva plantilla
+                {tr("nuevaPlantilla")}
               </Button>
             </div>
           )}
@@ -574,7 +585,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
               aria-pressed={view === v.value}
             >
               <v.Icon className="h-3.5 w-3.5" aria-hidden="true" />
-              {v.label}
+              {tc(v.label)}
             </button>
           ))}
         </div>
@@ -596,7 +607,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
                   )}
                   aria-pressed={filter === f.value}
                 >
-                  {f.label}
+                  {tc(f.label)}
                 </button>
               ))}
             </div>
@@ -612,7 +623,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
                   onClick={fetchTemplates}
                   className="shrink-0"
                 >
-                  Reintentar
+                  {tr("reintentar")}
                 </Button>
               </div>
             ) : filtered.length === 0 ? (
@@ -641,7 +652,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
               <TemplatesSkeleton />
             ) : library.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-                La biblioteca está vacía.
+                {tr("laBibliotecaEstaVacia")}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

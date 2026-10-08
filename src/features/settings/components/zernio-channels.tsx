@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Canales del workspace en Zernio: WhatsApp, Instagram y Facebook Messenger.
 // Cada botón "Conectar" abre la página oficial de Meta (vía Zernio); el
 // cliente inicia sesión ahí y nunca nos da su contraseña.
@@ -41,6 +43,7 @@ export function ZernioChannels({
   initialAccounts: ZernioAccountView[];
   onAccountsChange: (accounts: ZernioAccountView[]) => void;
 }) {
+  const tr = useTranslations("ui.zernioChannels");
   const [accounts, setAccounts] =
     useState<ZernioAccountView[]>(initialAccounts);
   const [busy, setBusy] = useState<string | null>(null);
@@ -69,13 +72,13 @@ export function ZernioChannels({
       };
       if (json.env) setEnv(json.env);
       if (!res.ok) {
-        if (!silent) toast.error(json.error ?? "No se pudo leer Zernio");
+        if (!silent) toast.error(json.error ?? tr("noSePudoLeerZernio"));
         return;
       }
       update(json.accounts ?? []);
-      if (!silent) toast.success("Canales actualizados");
+      if (!silent) toast.success(tr("canalesActualizados"));
     } catch {
-      if (!silent) toast.error("Error de red al leer Zernio");
+      if (!silent) toast.error(tr("errorDeRedAlLeerZernio"));
     } finally {
       setBusy(null);
     }
@@ -98,14 +101,14 @@ export function ZernioChannels({
       });
       const json = (await res.json()) as { authUrl?: string; error?: string };
       if (!res.ok || !json.authUrl) {
-        toast.error(json.error ?? "No se pudo iniciar la conexión");
+        toast.error(json.error ?? tr("noSePudoIniciarLaConexion"));
         setBusy(null);
         return;
       }
       // Se va a la página de Meta; al volver, /settings muestra el resultado.
       window.location.assign(json.authUrl);
     } catch {
-      toast.error("Error de red al iniciar la conexión");
+      toast.error(tr("errorDeRedAlIniciarLa"));
       setBusy(null);
     }
   }
@@ -122,13 +125,13 @@ export function ZernioChannels({
         error?: string;
       };
       if (!res.ok) {
-        toast.error(json.error ?? "No se pudo desconectar");
+        toast.error(json.error ?? tr("noSePudoDesconectar"));
         return;
       }
       update(json.accounts ?? accounts.filter((a) => a.id !== account.id));
-      toast.success("Canal desconectado");
+      toast.success(tr("canalDesconectado"));
     } catch {
-      toast.error("Error de red al desconectar");
+      toast.error(tr("errorDeRedAlDesconectar"));
     } finally {
       setBusy(null);
     }
@@ -137,16 +140,13 @@ export function ZernioChannels({
   return (
     <div className="grid gap-3">
       {env && (!env.apiKey || !env.webhookSecret) && (
-        <p className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
-          Falta configurar en Vercel{" "}
+        <p className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">{tr("faltaConfigurarEnVercel")}{" "}
           {[
             !env.apiKey && "ZERNIO_API_KEY",
             !env.webhookSecret && "ZERNIO_WEBHOOK_SECRET",
           ]
             .filter(Boolean)
-            .join(" y ")}
-          . Sin eso no se puede conectar ni recibir mensajes.
-        </p>
+            .join(" y ")}{tr("sinEsoNoSePuedeConectar")}</p>
       )}
       <ul className="divide-y divide-border/50 rounded-md border border-border/50">
         {CHANNELS.map((channel) => {
@@ -173,8 +173,7 @@ export function ZernioChannels({
                   ))
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {AYUDA[channel]} Sin conectar.
-                  </p>
+                    {AYUDA[channel]}{" "}{tr("sinConectar")}</p>
                 )}
               </div>
               {conectadas.length > 0 ? (
@@ -193,7 +192,7 @@ export function ZernioChannels({
                     ) : (
                       <Unlink className="h-4 w-4" aria-hidden />
                     )}
-                    <span className="ml-1.5">Desconectar</span>
+                    <span className="ml-1.5">{tr("desconectar")}</span>
                   </Button>
                 ))
               ) : (
@@ -209,7 +208,7 @@ export function ZernioChannels({
                   ) : (
                     <Link2 className="h-4 w-4" aria-hidden />
                   )}
-                  <span className="ml-1.5">Conectar</span>
+                  <span className="ml-1.5">{tr("conectar")}</span>
                 </Button>
               )}
             </li>
@@ -236,12 +235,9 @@ export function ZernioChannels({
             className={busy === "refresh" ? "h-4 w-4 animate-spin" : "h-4 w-4"}
             aria-hidden
           />
-          <span className="ml-1.5">Actualizar</span>
+          <span className="ml-1.5">{tr("actualizar")}</span>
         </Button>
-        <p className="text-xs text-muted-foreground">
-          Al conectar se abre la página oficial de Meta: el dueño de la cuenta
-          inicia sesión ahí.
-        </p>
+        <p className="text-xs text-muted-foreground">{tr("alConectarSeAbreLaPagina")}</p>
       </div>
     </div>
   );

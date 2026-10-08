@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 /**
  * crm-panel.tsx — Collapsible CRM side panel for contact details.
  * Shows contact info, stage, tags, opt-in status with inline editing.
@@ -30,13 +31,8 @@ import { updateContact, syncContactHL } from "../services/contact-actions";
 
 type Stage = "new" | "engaged" | "qualified" | "customer" | "lost";
 
-const STAGE_LABELS: Record<Stage, string> = {
-  new: "Nuevo",
-  engaged: "Interesado",
-  qualified: "Calificado",
-  customer: "Cliente",
-  lost: "Perdido",
-};
+// Etapas del CRM; el nombre visible sale de inbox.crm.etapas.*
+const STAGES: Stage[] = ["new", "engaged", "qualified", "customer", "lost"];
 
 interface CrmPanelProps {
   contact: ContactRow;
@@ -75,6 +71,7 @@ export function CrmPanel({
   conversationId: _conversationId,
 }: CrmPanelProps) {
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("inbox.crm");
 
   // Local editable state
   const [name, setName] = useState(contact.name ?? "");
@@ -124,9 +121,9 @@ export function CrmPanel({
       });
 
       if (result.ok) {
-        toast.success("Contacto actualizado");
+        toast.success(t("actualizado"));
       } else {
-        toast.error(result.error ?? "Error al guardar");
+        toast.error(result.error ?? t("errorGuardar"));
       }
     });
   }
@@ -138,9 +135,9 @@ export function CrmPanel({
       const result = await syncContactHL(contact.id, contact.workspace_id);
 
       if (result.ok) {
-        toast.success(`Sincronizado con HighLevel (ID: ${result.data.hl_id})`);
+        toast.success(t("sincronizado", { id: result.data.hl_id }));
       } else {
-        toast.error(result.error ?? "Error al sincronizar");
+        toast.error(result.error ?? t("errorSincronizar"));
       }
     });
   }
@@ -157,7 +154,7 @@ export function CrmPanel({
           className="w-full flex items-center justify-between px-4 py-2.5 border-b border-border/40 hover:bg-muted/20 transition-colors"
         >
           <span className="text-xs font-semibold text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-            Contacto
+            {t("contacto")}
           </span>
           {contactOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -181,12 +178,12 @@ export function CrmPanel({
             {/* Name */}
             <div className="space-y-1">
               <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                Nombre
+                {t("nombre")}
               </Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Sin nombre"
+                placeholder={t("sinNombre")}
                 className="h-7 text-xs"
               />
             </div>
@@ -194,12 +191,12 @@ export function CrmPanel({
             {/* Email */}
             <div className="space-y-1">
               <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                Email
+                {t("email")}
               </Label>
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@ejemplo.com"
+                placeholder={t("emailPlaceholder")}
                 type="email"
                 className="h-7 text-xs"
               />
@@ -242,16 +239,16 @@ export function CrmPanel({
             {/* Stage */}
             <div className="space-y-1">
               <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                Etapa
+                {t("etapa")}
               </Label>
               <Select value={stage} onValueChange={(v) => setStage(v as Stage)}>
                 <SelectTrigger className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(STAGE_LABELS) as Stage[]).map((s) => (
+                  {STAGES.map((s) => (
                     <SelectItem key={s} value={s} className="text-xs">
-                      {STAGE_LABELS[s]}
+                      {t(`etapas.${s}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -261,7 +258,7 @@ export function CrmPanel({
             {/* Tags */}
             <div className="space-y-1.5">
               <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                Etiquetas
+                {t("etiquetas")}
               </Label>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
@@ -275,7 +272,7 @@ export function CrmPanel({
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        aria-label={`Eliminar etiqueta ${tag}`}
+                        aria-label={t("eliminarEtiqueta", { tag })}
                         className="hover:text-destructive transition-colors"
                       >
                         <X className="h-2.5 w-2.5" />
@@ -289,7 +286,7 @@ export function CrmPanel({
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 onBlur={addTag}
-                placeholder="Agregar etiqueta..."
+                placeholder={t("agregarEtiqueta")}
                 className="h-7 text-xs"
               />
             </div>
@@ -306,7 +303,7 @@ export function CrmPanel({
           className="w-full h-7 text-xs gap-1.5"
         >
           <Save className="h-3.5 w-3.5" />
-          {isPending ? "Guardando..." : "Guardar cambios"}
+          {isPending ? t("guardando") : t("guardarCambios")}
         </Button>
         <Button
           size="sm"
@@ -324,8 +321,7 @@ export function CrmPanel({
       {!optIn && (
         <div className="mx-4 mb-3 px-3 py-2 rounded-md bg-destructive/10 border border-destructive/30">
           <p className="text-[10px] text-destructive leading-snug">
-            <strong>Opt-out activo.</strong> No se enviarán mensajes a este
-            contacto.
+            {t.rich("optOut", { fuerte: (c) => <strong>{c}</strong> })}
           </p>
         </div>
       )}

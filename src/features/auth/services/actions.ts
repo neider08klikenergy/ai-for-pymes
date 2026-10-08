@@ -1,34 +1,51 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { z } from "zod";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSignupOpen, markAsSuperAdmin } from "./signup-gate";
 
-// Map Supabase auth error messages (English) to Spanish for the UI.
-// Falls back to the original message when there is no known translation.
-function localizeAuthError(msg: string): string {
-  const map: Record<string, string> = {
-    "Invalid login credentials": "Correo o contraseña incorrectos",
-    "Email not confirmed": "Email no confirmado",
-    "User already registered": "Este correo ya está registrado",
-    // /signup only renders while there is no user yet, i.e. on a fresh
-    // install — where the first account comes from scripts/seed-admin.mjs.
-    "Signups not allowed for this instance":
-      "El registro público está cerrado. Si estás instalando la plataforma, crea tu super admin con scripts/seed-admin.mjs (INSTALAR.md, paso 8).",
-  };
-  return map[msg] ?? msg;
+// Los mensajes de validación son claves de messages/<idioma>.json
+// (auth.errores.*); errorDe() los traduce al idioma del usuario.
+type ClaveError =
+  | "emailInvalido"
+  | "contrasenaCorta"
+  | "credenciales"
+  | "emailNoConfirmado"
+  | "yaRegistrado"
+  | "registroCerrado"
+  | "registroInstalacion";
+
+// Errores de Supabase Auth (en inglés) → clave de traducción. Un error que no
+// está aquí se muestra tal cual.
+const ERRORES_SUPABASE: Record<string, ClaveError> = {
+  "Invalid login credentials": "credenciales",
+  "Email not confirmed": "emailNoConfirmado",
+  "User already registered": "yaRegistrado",
+  // /signup only renders while there is no user yet, i.e. on a fresh
+  // install — where the first account comes from scripts/seed-admin.mjs.
+  "Signups not allowed for this instance": "registroInstalacion",
+};
+
+async function errorDe(claveOMensaje: string): Promise<string> {
+  const t = await getTranslations("auth.errores");
+  return t.has(claveOMensaje) ? t(claveOMensaje as ClaveError) : claveOMensaje;
+}
+
+async function localizeAuthError(msg: string): Promise<string> {
+  return errorDe(ERRORES_SUPABASE[msg] ?? msg);
 }
 
 const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  email: z.string().email("emailInvalido"),
+  password: z.string().min(6, "contrasenaCorta"),
 });
 
 const signupSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  email: z.string().email("emailInvalido"),
+  password: z.string().min(6, "contrasenaCorta"),
 });
 
 export async function login(
@@ -41,7 +58,7 @@ export async function login(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message };
+    return { error: await errorDe(parsed.error.issues[0].message) };
   }
 
   const supabase = await createClient();
@@ -51,7 +68,7 @@ export async function login(
   });
 
   if (error) {
-    return { error: localizeAuthError(error.message) };
+    return { error: await localizeAuthError(error.message) };
   }
 
   redirect("/inbox");
@@ -67,15 +84,12 @@ export async function signup(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message };
+    return { error: await errorDe(parsed.error.issues[0].message) };
   }
 
   // Invite-only: only the first user (agency super admin) may self-register.
   if (!(await isSignupOpen())) {
-    return {
-      error:
-        "El registro está cerrado. Pide al administrador que te invite a tu cuenta.",
-    };
+    return { error: await errorDe("registroCerrado") };
   }
 
   const supabase = await createClient();
@@ -85,7 +99,7 @@ export async function signup(
   });
 
   if (error) {
-    return { error: localizeAuthError(error.message) };
+    return { error: await localizeAuthError(error.message) };
   }
 
   // First registration becomes the agency super admin.
@@ -93,7 +107,8 @@ export async function signup(
     await markAsSuperAdmin(data.user.id);
   }
 
-  redirect("/login?message=Revisa%20tu%20email");
+  // El login traduce el código del aviso
+  redirect("/login?message=revisaEmail");
 }
 
 export async function logout(): Promise<void> {
@@ -103,7 +118,7 @@ export async function logout(): Promise<void> {
 }
 
 const emailSchema = z.object({
-  email: z.string().email("Email inválido"),
+  email: z.string().email("emailInvalido"),
 });
 
 export async function requestPasswordReset(
@@ -112,7 +127,7 @@ export async function requestPasswordReset(
 ): Promise<{ error?: string; message?: string }> {
   const parsed = emailSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message };
+    return { error: await errorDe(parsed.error.issues[0].message) };
   }
 
   const supabase = await createClient();
@@ -125,18 +140,16 @@ export async function requestPasswordReset(
   );
 
   if (error) {
-    return { error: localizeAuthError(error.message) };
+    return { error: await localizeAuthError(error.message) };
   }
 
   // Neutral message — never reveal whether the email exists.
-  return {
-    message:
-      "Si el email existe, te enviamos un enlace para restablecer tu contraseña.",
-  };
+  const t = await getTranslations("auth.forgot");
+  return { message: t("enviado") };
 }
 
 const passwordSchema = z.object({
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  password: z.string().min(6, "contrasenaCorta"),
 });
 
 export async function updatePassword(
@@ -147,7 +160,7 @@ export async function updatePassword(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message };
+    return { error: await errorDe(parsed.error.issues[0].message) };
   }
 
   const supabase = await createClient();
@@ -156,8 +169,8 @@ export async function updatePassword(
   });
 
   if (error) {
-    return { error: localizeAuthError(error.message) };
+    return { error: await localizeAuthError(error.message) };
   }
 
-  redirect("/login?message=Contraseña%20actualizada.%20Inicia%20sesión.");
+  redirect("/login?message=contrasenaActualizada");
 }

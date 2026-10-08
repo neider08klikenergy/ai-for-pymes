@@ -4,6 +4,7 @@ import { APP_NAME } from "@/lib/branding";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/features/auth/services/actions";
 import { Building2, CalendarCheck, LogOut, Settings } from "lucide-react";
@@ -13,6 +14,7 @@ export default async function AgencyLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = await getTranslations("common.nav");
   const supabase = await createClient();
 
   const {
@@ -46,7 +48,7 @@ export default async function AgencyLayout({
             variant="outline"
             className="border-primary/30 bg-primary/10 text-primary text-xs font-mono px-1.5 py-0"
           >
-            Agency
+            {t("agencia")}
           </Badge>
         </div>
 
@@ -58,7 +60,7 @@ export default async function AgencyLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">App</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">{t("app")}</span>
             </Button>
           </Link>
 
@@ -70,7 +72,9 @@ export default async function AgencyLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Salir</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("salir")}
+              </span>
             </Button>
           </form>
         </div>
@@ -79,7 +83,7 @@ export default async function AgencyLayout({
       {/* Agency sub-nav */}
       <nav
         className="border-b border-border/50 bg-background/60 px-3 sm:px-6"
-        aria-label="Navegación de agencia"
+        aria-label={t("navegacionAgencia")}
       >
         <div className="flex items-center gap-0.5 h-10">
           <Link
@@ -92,7 +96,7 @@ export default async function AgencyLayout({
             )}
           >
             <Building2 className="h-4 w-4" aria-hidden="true" />
-            Workspaces
+            {t("workspaces")}
           </Link>
           <Link
             href="/solicitudes"
@@ -104,7 +108,7 @@ export default async function AgencyLayout({
             )}
           >
             <CalendarCheck className="h-4 w-4" aria-hidden="true" />
-            Solicitudes
+            {t("solicitudes")}
           </Link>
         </div>
       </nav>

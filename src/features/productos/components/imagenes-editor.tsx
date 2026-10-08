@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Fotos de un producto: se suben al bucket propio o se pega un enlace
 // (https). La primera es la principal. Las fotos se suben al elegirlas, para
 // mostrarlas al instante; las que no se guardan las limpia quien abre el
@@ -24,6 +26,7 @@ interface Props {
 }
 
 export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: Props) {
+  const t = useTranslations("ui.imagenesEditor");
   const inputRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(0);
   const [enlace, setEnlace] = useState("");
@@ -67,11 +70,11 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
     const url = enlace.trim();
     if (!url) return;
     if (!/^https:\/\/\S+$/.test(url)) {
-      toast.error("El enlace debe empezar por https://");
+      toast.error(t("elEnlaceDebeEmpezarPorHttps"));
       return;
     }
     if (imagenes.includes(url)) {
-      toast.error("Ese enlace ya está");
+      toast.error(t("eseEnlaceYaEsta"));
       return;
     }
     onCambiar([...imagenes, url]);
@@ -93,22 +96,20 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
           {imagenes.map((url, i) => (
             <li key={url} className="group relative h-20 w-20 overflow-hidden rounded-lg border bg-muted">
               {rotas.has(url) ? (
-                <span className="flex h-full w-full items-center justify-center" title="No se pudo cargar">
+                <span className="flex h-full w-full items-center justify-center" title={t("noSePudoCargar")}>
                   <ImageOff className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                 </span>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={url}
-                  alt={i === 0 ? "Foto principal" : `Foto ${i + 1}`}
+                  alt={i === 0 ? t("fotoPrincipal") : `Foto ${i + 1}`}
                   className="h-full w-full object-cover"
                   onError={() => setRotas((s) => new Set(s).add(url))}
                 />
               )}
               {i === 0 && (
-                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-medium">
-                  Principal
-                </span>
+                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-medium">{t("principal")}</span>
               )}
               <div className="absolute right-1 top-1 flex gap-1">
                 {i > 0 && (
@@ -117,7 +118,7 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
                     onClick={() => hacerPrincipal(url)}
                     className="rounded-full bg-background/90 p-1 shadow-sm hover:bg-background"
                     aria-label={`Usar la foto ${i + 1} como principal`}
-                    title="Usar como principal"
+                    title={t("usarComoPrincipal")}
                   >
                     <Star className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -127,7 +128,7 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
                   onClick={() => quitar(url)}
                   className="rounded-full bg-background/90 p-1 shadow-sm hover:bg-background"
                   aria-label={`Quitar la foto ${i + 1}`}
-                  title="Quitar"
+                  title={t("quitar")}
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
                 </button>
@@ -158,7 +159,7 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
           ) : (
             <ImagePlus className="h-4 w-4" aria-hidden="true" />
           )}
-          {subiendo > 0 ? `Subiendo ${subiendo}…` : "Subir fotos"}
+          {subiendo > 0 ? `Subiendo ${subiendo}…` : t("subirFotos")}
         </Button>
         <div className={cn("flex min-w-[220px] flex-1 items-center gap-1", lleno && "opacity-50")}>
           <Input
@@ -171,18 +172,15 @@ export function ImagenesEditor({ workspaceId, imagenes, onCambiar, onSubida }: P
                 agregarEnlace();
               }
             }}
-            placeholder="o pega un enlace https://…"
+            placeholder={t("oPegaUnEnlaceHttps")}
             className="h-8 text-xs"
-            aria-label="Enlace de una imagen"
+            aria-label={t("enlaceDeUnaImagen")}
           />
           <Button type="button" variant="ghost" size="sm" disabled={lleno || !enlace.trim()} onClick={agregarEnlace}>
-            <Link2 className="h-4 w-4" aria-hidden="true" />
-            Agregar
-          </Button>
+            <Link2 className="h-4 w-4" aria-hidden="true" />{t("agregar")}</Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        La primera es la principal. Las fotos se reducen antes de subirse. Hasta {MAX_IMAGENES}.
+      <p className="text-xs text-muted-foreground">{t("laPrimeraEsLaPrincipalLas")}{" "}{MAX_IMAGENES}.
       </p>
     </div>
   );

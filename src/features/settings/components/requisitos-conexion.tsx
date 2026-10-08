@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslations } from "next-intl";
 // Diálogo previo a "Conectar": muestra lo que Meta exige para el canal y
 // solo deja continuar cuando el usuario confirma que lo cumple.
 
@@ -52,6 +54,7 @@ function Contenido({
   onClose: () => void;
   onContinue: (channel: Channel) => void;
 }) {
+  const t = useTranslations("ui.requisitosConexion");
   const [confirmado, setConfirmado] = useState(false);
   const info = REQUISITOS_CANAL[channel];
   const checkId = `requisitos-${channel}`;
@@ -94,7 +97,7 @@ function Contenido({
       <div className="flex gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
         <div className="grid gap-1">
-          <span className="font-medium text-foreground">Si algo falla</span>
+          <span className="font-medium text-foreground">{t("siAlgoFalla")}</span>
           {info.siFalla.map((s) => (
             <span key={s}>{s}</span>
           ))}
@@ -111,20 +114,16 @@ function Contenido({
           onCheckedChange={(v) => setConfirmado(v === true)}
           className="mt-0.5"
         />
-        <span>Cumplo estos requisitos y tengo acceso a la cuenta.</span>
+        <span>{t("cumploEstosRequisitosYTengoAcceso")}</span>
       </label>
 
       <DialogFooter className="gap-2 sm:gap-0">
-        <Button type="button" variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
+        <Button type="button" variant="ghost" onClick={onClose}>{t("cancelar")}</Button>
         <Button
           type="button"
           disabled={!confirmado}
           onClick={() => onContinue(channel)}
-        >
-          Continuar a Meta
-        </Button>
+        >{t("continuarAMeta")}</Button>
       </DialogFooter>
     </DialogContent>
   );

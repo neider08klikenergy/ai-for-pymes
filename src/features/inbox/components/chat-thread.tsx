@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CrmPanel } from "./crm-panel";
 import { RoleGate } from "./role-gate";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "./chat-message";
 import { WindowBanner } from "./window-banner";
@@ -71,6 +72,7 @@ export function ChatThread({
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const router = useRouter();
+  const t = useTranslations("inbox.chat");
 
   // Mirrors the conversations UPDATE policy the server enforces for toggling
   // the AI and handing a thread back to it: admins, managers, or the member
@@ -114,9 +116,7 @@ export function ChatThread({
     if (!image || sending) return;
     const caption = draft.trim();
     if (caption.length > OUTBOUND_CAPTION_MAX) {
-      toast.error(
-        `El texto de la imagen pasa de ${OUTBOUND_CAPTION_MAX} caracteres`,
-      );
+      toast.error(t("pieMuyLargo", { max: OUTBOUND_CAPTION_MAX }));
       return;
     }
     setSending(true);
@@ -130,15 +130,13 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(
-          (data as { error?: string }).error ?? "No se pudo enviar la imagen",
-        );
+        toast.error((data as { error?: string }).error ?? t("errorImagen"));
         return;
       }
       setImage(null);
       setDraft("");
     } catch {
-      toast.error("No se pudo enviar la imagen");
+      toast.error(t("errorImagen"));
     } finally {
       setSending(false);
     }
@@ -160,12 +158,12 @@ export function ChatThread({
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { error?: string }).error ?? "Error al enviar");
+        toast.error((data as { error?: string }).error ?? t("errorEnviar"));
         return;
       }
       setDraft("");
     } catch {
-      toast.error("Error al enviar");
+      toast.error(t("errorEnviar"));
     } finally {
       setSending(false);
     }
@@ -181,13 +179,13 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al solicitar handoff");
+        toast.error(data.error ?? t("errorHandoff"));
         return;
       }
-      toast.success("Handoff solicitado");
+      toast.success(t("handoffSolicitado"));
       router.refresh();
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorConexion"));
     } finally {
       setHandoffLoading(false);
     }
@@ -203,13 +201,13 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al devolver a IA");
+        toast.error(data.error ?? t("errorDevolver"));
         return;
       }
-      toast.success("Conversación devuelta a la IA");
+      toast.success(t("devuelta"));
       router.refresh();
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorConexion"));
     } finally {
       setHandoffLoading(false);
     }
@@ -227,16 +225,14 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(
-          (data as { error?: string }).error ?? "Error al guardar nota",
-        );
+        toast.error((data as { error?: string }).error ?? t("errorNota"));
         return;
       }
       setNote("");
       setNoteMode(false);
-      toast.success("Nota guardada");
+      toast.success(t("notaGuardada"));
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorConexion"));
     } finally {
       setSavingNote(false);
     }
@@ -250,13 +246,13 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al tomar la conversación");
+        toast.error(data.error ?? t("errorTomar"));
         return;
       }
-      toast.success("Conversación tomada");
+      toast.success(t("tomada"));
       router.refresh();
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorConexion"));
     } finally {
       setHandoffLoading(false);
     }
@@ -298,11 +294,11 @@ export function ChatThread({
                   variant="outline"
                   onClick={handleHandoffRequest}
                   disabled={handoffLoading}
-                  aria-label="Solicitar handoff a humano"
+                  aria-label={t("solicitarHandoff")}
                   className="h-8 gap-1.5 text-xs text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
                 >
                   <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                  Handoff
+                  {t("handoff")}
                 </Button>
               </RoleGate>
             )}
@@ -316,11 +312,11 @@ export function ChatThread({
                   variant="default"
                   onClick={handleTakeConversation}
                   disabled={handoffLoading}
-                  aria-label="Tomar conversación"
+                  aria-label={t("tomarConversacion")}
                   className="h-8 gap-1.5 text-xs"
                 >
                   <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                  Tomar
+                  {t("tomar")}
                 </Button>
               </RoleGate>
             )}
@@ -334,11 +330,11 @@ export function ChatThread({
                   variant="outline"
                   onClick={handleReturnToAi}
                   disabled={handoffLoading}
-                  aria-label="Devolver conversación a la IA"
+                  aria-label={t("devolverConversacion")}
                   className="h-8 gap-1.5 text-xs"
                 >
                   <Bot className="h-3.5 w-3.5" aria-hidden="true" />
-                  Devolver a IA
+                  {t("devolver")}
                 </Button>
               </RoleGate>
             )}
@@ -350,7 +346,7 @@ export function ChatThread({
                 size="icon"
                 variant="ghost"
                 onClick={() => setShowObservability((v) => !v)}
-                aria-label="Ver observabilidad"
+                aria-label={t("verObservabilidad")}
                 aria-pressed={showObservability}
                 className={cn(
                   "h-8 w-8",
@@ -367,7 +363,7 @@ export function ChatThread({
               size="icon"
               variant="ghost"
               onClick={() => setShowCrm((v) => !v)}
-              aria-label="Ver contacto"
+              aria-label={t("verContacto")}
               aria-pressed={showCrm}
               className={cn(
                 "h-8 w-8",
@@ -396,10 +392,10 @@ export function ChatThread({
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No hay mensajes aún
+                  {t("sinMensajes")}
                 </p>
                 <p className="text-xs text-muted-foreground/60 mt-1">
-                  Los mensajes entrantes aparecerán aquí en tiempo real
+                  {t("sinMensajesAyuda")}
                 </p>
               </div>
             ) : (
@@ -422,7 +418,7 @@ export function ChatThread({
               see "read only", not a template picker offering to send. */}
           {!canSendMessages(role) ? (
             <p className="py-2 text-center text-xs text-muted-foreground/60 select-none">
-              Solo lectura — sin permisos para enviar mensajes
+              {t("soloLectura")}
             </p>
           ) : isWindowExpired ? (
             <TemplatePicker conversationId={conversation.id} />
@@ -433,7 +429,7 @@ export function ChatThread({
                 <div className="flex items-center gap-1.5 text-warning">
                   <StickyNote className="h-3.5 w-3.5" aria-hidden="true" />
                   <span className="text-[11px] font-medium">
-                    Nota interna — no visible para el contacto
+                    {t("notaInternaAviso")}
                   </span>
                 </div>
                 <Button
@@ -445,19 +441,19 @@ export function ChatThread({
                     setNote("");
                   }}
                   className="h-6 px-2 text-[11px] text-muted-foreground"
-                  aria-label="Cancelar nota interna"
+                  aria-label={t("cancelarNota")}
                 >
-                  Cancelar
+                  {t("cancelar")}
                 </Button>
               </div>
               <div className="flex items-end gap-2">
                 <Textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Nota interna (no visible para el contacto)..."
+                  placeholder={t("notaPlaceholder")}
                   className="min-h-[40px] max-h-32 resize-none flex-1 text-sm border-warning/30 focus-visible:ring-warning/40"
                   rows={2}
-                  aria-label="Nota interna"
+                  aria-label={t("notaInterna")}
                   disabled={savingNote}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -472,11 +468,11 @@ export function ChatThread({
                   variant="outline"
                   onClick={() => void handleSaveNote()}
                   disabled={savingNote || note.trim().length === 0}
-                  aria-label="Guardar nota interna"
+                  aria-label={t("guardarNotaInterna")}
                   aria-busy={savingNote}
                   className="shrink-0 h-10 border-warning/30 text-warning hover:bg-warning/10"
                 >
-                  {savingNote ? "Guardando..." : "Guardar nota"}
+                  {savingNote ? t("guardando") : t("guardarNota")}
                 </Button>
               </div>
             </div>
@@ -488,7 +484,7 @@ export function ChatThread({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.preview}
-                    alt="Imagen a enviar"
+                    alt={t("imagenAEnviar")}
                     className="h-14 w-14 shrink-0 rounded object-cover"
                   />
                   <div className="min-w-0 flex-1">
@@ -506,7 +502,7 @@ export function ChatThread({
                     variant="ghost"
                     onClick={() => setImage(null)}
                     disabled={sending}
-                    aria-label="Quitar imagen"
+                    aria-label={t("quitarImagen")}
                     className="h-8 w-8 shrink-0"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -519,7 +515,7 @@ export function ChatThread({
                   size="icon"
                   variant="ghost"
                   onClick={() => setNoteMode(true)}
-                  aria-label="Agregar nota interna"
+                  aria-label={t("agregarNota")}
                   aria-pressed={noteMode}
                   className="shrink-0 h-10 w-10 text-muted-foreground hover:text-warning hover:bg-warning/10"
                 >
@@ -538,7 +534,7 @@ export function ChatThread({
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={sending || preparing}
-                  aria-label="Adjuntar imagen"
+                  aria-label={t("adjuntarImagen")}
                   aria-busy={preparing}
                   className="shrink-0 h-10 w-10 text-muted-foreground"
                 >
@@ -557,13 +553,11 @@ export function ChatThread({
                     }
                   }}
                   placeholder={
-                    image
-                      ? "Pie de foto (opcional)..."
-                      : "Escribe un mensaje..."
+                    image ? t("piePlaceholder") : t("mensajePlaceholder")
                   }
                   className="min-h-[40px] max-h-32 resize-none flex-1 text-sm"
                   rows={2}
-                  aria-label="Mensaje"
+                  aria-label={t("mensaje")}
                   disabled={sending}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -582,7 +576,7 @@ export function ChatThread({
                     preparing ||
                     (!image && draft.trim().length === 0)
                   }
-                  aria-label={image ? "Enviar imagen" : "Enviar mensaje"}
+                  aria-label={image ? t("enviarImagen") : t("enviarMensaje")}
                   aria-busy={sending}
                   className="shrink-0 h-10 w-10"
                 >

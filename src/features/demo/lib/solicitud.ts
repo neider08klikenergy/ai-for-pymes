@@ -24,12 +24,12 @@ export const MENSAJES_LABEL: Record<(typeof MENSAJES_DIA)[number], string> = {
 export const ESTADOS = ["nueva", "contactada", "agendada", "demo_hecha", "cliente", "descartada"] as const;
 export type EstadoSolicitud = (typeof ESTADOS)[number];
 export const ESTADO_LABEL: Record<EstadoSolicitud, string> = {
-  nueva: "Nueva",
-  contactada: "Contactada",
-  agendada: "Demo agendada",
-  demo_hecha: "Demo hecha",
-  cliente: "Cliente",
-  descartada: "Descartada",
+  nueva: "nueva",
+  contactada: "contactada",
+  agendada: "demoAgendada",
+  demo_hecha: "demoHecha",
+  cliente: "cliente",
+  descartada: "descartada",
 };
 
 const textoOpcional = (max: number) =>
@@ -42,18 +42,19 @@ const textoOpcional = (max: number) =>
     .optional()
     .transform((v) => v ?? null);
 
+// Los mensajes de error son claves de messages/<idioma>.json → demo.errores.*
 export const SolicitudSchema = z.object({
-  nombre: z.string().trim().min(2, "Escribe tu nombre").max(120),
-  empresa: z.string().trim().min(2, "Escribe el nombre de tu negocio").max(120),
-  correo: z.string().trim().toLowerCase().email("Escribe un correo válido").max(200),
+  nombre: z.string().trim().min(2, "nombre").max(120, "nombre"),
+  empresa: z.string().trim().min(2, "empresa").max(120, "empresa"),
+  correo: z.string().trim().toLowerCase().email("correo").max(200, "correo"),
   whatsapp: z
     .string()
     .trim()
-    .regex(/^\+?[\d\s()-]{7,20}$/, "Escribe un número de WhatsApp válido"),
+    .regex(/^\+?[\d\s()-]{7,20}$/, "whatsapp"),
   sector: textoOpcional(80),
   ciudad: textoOpcional(80),
   sedes: z
-    .union([z.literal(""), z.null(), z.coerce.number().int().min(1, "Mínimo 1 sede").max(1000)])
+    .union([z.literal(""), z.null(), z.coerce.number({ message: "sedes" }).int("sedes").min(1, "sedes").max(1000, "sedes")])
     .optional()
     .transform((v) => (v === "" || v === undefined ? null : v)),
   canales: z.array(z.enum(CANALES)).max(3).default([]),
@@ -70,8 +71,9 @@ export const SolicitudSchema = z.object({
 export type SolicitudInput = z.input<typeof SolicitudSchema>;
 export type SolicitudDatos = z.output<typeof SolicitudSchema>;
 
+/** Clave del primer error (demo.errores.*), o "generico". */
 export function primerError(error: z.ZodError): string {
-  return error.issues[0]?.message ?? "Datos no válidos";
+  return error.issues[0]?.message ?? "generico";
 }
 
 /**

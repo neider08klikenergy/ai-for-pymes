@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { KbTab } from "./kb-tab";
 import { useEffect } from "react";
 import { TeamTab } from "./team-tab";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ToolsCatalog } from "./tools-catalog";
 import { TemplatesTab } from "./templates-tab";
@@ -64,6 +65,7 @@ export function SettingsShell({
   initialTab = "agentes",
   avisoZernio = null,
 }: Props) {
+  const tr = useTranslations("ui.settingsShell");
   const router = useRouter();
   useEffect(() => {
     if (!avisoZernio) return;
@@ -96,7 +98,7 @@ export function SettingsShell({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-display text-xl font-semibold text-foreground mb-6">
-        Configuración del Workspace
+        {tr("configuracionDelWorkspace")}
       </h1>
 
       <Tabs defaultValue={initialTab}>
@@ -104,14 +106,20 @@ export function SettingsShell({
             push horizontal overflow onto the whole page. */}
         <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">
           <TabsList className="w-max">
-            <TabsTrigger value="agentes">Agentes</TabsTrigger>
-            <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
-            <TabsTrigger value="negocio">Negocio</TabsTrigger>
-            <TabsTrigger value="tools">Tools</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
-            <TabsTrigger value="equipo">Equipo</TabsTrigger>
-            <TabsTrigger value="automatizaciones">Automatizaciones</TabsTrigger>
+            <TabsTrigger value="agentes">{tr("agentes")}</TabsTrigger>
+            <TabsTrigger value="integraciones">
+              {tr("integraciones")}
+            </TabsTrigger>
+            <TabsTrigger value="negocio">{tr("negocio")}</TabsTrigger>
+            <TabsTrigger value="tools">{tr("tools")}</TabsTrigger>
+            <TabsTrigger value="templates">{tr("templates")}</TabsTrigger>
+            <TabsTrigger value="knowledge-base">
+              {tr("knowledgeBase")}
+            </TabsTrigger>
+            <TabsTrigger value="equipo">{tr("equipo")}</TabsTrigger>
+            <TabsTrigger value="automatizaciones">
+              {tr("automatizaciones")}
+            </TabsTrigger>
           </TabsList>
         </div>
 

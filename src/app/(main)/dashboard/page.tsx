@@ -1,10 +1,11 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import {
   getWorkspaceMetrics,
   getRecentConversations,
 } from "@/features/dashboard/services/metrics";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { createClient } from "@/lib/supabase/server";
+import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { DashboardMetrics } from "@/features/dashboard/components/dashboard-metrics";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
-          No tienes un workspace activo.
+          {(await getTranslations("common"))("sinWorkspace")}
         </p>
       </div>
     );

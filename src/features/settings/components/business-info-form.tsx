@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
   SelectItem,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 const COUNTRY_CODES: { code: string; label: string }[] = [
   { code: "52", label: "México (+52)" },
@@ -53,6 +54,7 @@ interface Props {
 }
 
 export function BusinessInfoForm({ workspaceId, initial }: Props) {
+  const t = useTranslations("ui.businessInfoForm");
   const structured = initial?.structured ?? {};
 
   const [freeText, setFreeText] = useState(initial?.free_text ?? "");
@@ -96,11 +98,11 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
         throw new Error(data.error ?? "Error al guardar");
       }
 
-      toast.success("Información guardada");
+      toast.success(t("informacionGuardada"));
       // Refresh the server data so the (re-mounting) tab shows what was saved.
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      toast.error(err instanceof Error ? err.message : t("errorAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -110,12 +112,12 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
     <div className="space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="bi-free-text" className="text-sm font-medium">
-          Información libre del negocio
+          {t("informacionLibreDelNegocio")}
         </Label>
         <Textarea
           id="bi-free-text"
           rows={4}
-          placeholder="Describe tu negocio, servicios, precios, horarios..."
+          placeholder={t("describeTuNegocioServiciosPreciosHorario")}
           value={freeText}
           onChange={(e) => setFreeText(e.target.value)}
           className="resize-none"
@@ -125,48 +127,48 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="bi-name" className="text-sm font-medium">
-            Nombre del negocio
+            {t("nombreDelNegocio")}
           </Label>
           <Input
             id="bi-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ej: Clínica Dental Norte"
+            placeholder={t("ejClinicaDentalNorte")}
           />
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="bi-industria" className="text-sm font-medium">
-            Industria
+            {t("industria")}
           </Label>
           <Input
             id="bi-industria"
             value={industria}
             onChange={(e) => setIndustria(e.target.value)}
-            placeholder="Ej: Salud, Educación, Retail..."
+            placeholder={t("ejSaludEducacionRetail")}
           />
         </div>
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="bi-horarios" className="text-sm font-medium">
-          Horarios
+          {t("horarios")}
         </Label>
         <Input
           id="bi-horarios"
           value={horarios}
           onChange={(e) => setHorarios(e.target.value)}
-          placeholder="Ej: Lun–Vie 9:00–18:00, Sáb 10:00–14:00"
+          placeholder={t("ejLunVie90018")}
         />
       </div>
 
       <div className="space-y-1.5 sm:max-w-xs">
         <Label htmlFor="bi-country" className="text-sm font-medium">
-          País por defecto
+          {t("paisPorDefecto")}
         </Label>
         <Select value={countryCode} onValueChange={setCountryCode}>
           <SelectTrigger id="bi-country">
-            <SelectValue placeholder="Elige un país" />
+            <SelectValue placeholder={t("eligeUnPais")} />
           </SelectTrigger>
           <SelectContent>
             {COUNTRY_CODES.map((c) => (
@@ -177,17 +179,17 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
           </SelectContent>
         </Select>
         <p className="text-[11px] text-muted-foreground">
-          Se usa para números de WhatsApp que llegan sin código de país.
+          {t("seUsaParaNumerosDeWhatsapp")}
         </p>
       </div>
 
       <div className="space-y-1.5 sm:max-w-xs">
         <Label htmlFor="bi-timezone" className="text-sm font-medium">
-          Zona horaria
+          {t("zonaHoraria")}
         </Label>
         <Select value={timezone} onValueChange={setTimezone}>
           <SelectTrigger id="bi-timezone">
-            <SelectValue placeholder="Elige zona horaria" />
+            <SelectValue placeholder={t("eligeZonaHoraria")} />
           </SelectTrigger>
           <SelectContent>
             {TIMEZONES.map((tz) => (
@@ -198,8 +200,7 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
           </SelectContent>
         </Select>
         <p className="text-[11px] text-muted-foreground">
-          El agente la usa para interpretar &ldquo;hoy/mañana&rdquo; y agendar a
-          la hora correcta. Cancún es UTC-5; CDMX es UTC-6.
+          {t("elAgenteLaUsaParaInterpretar")}
         </p>
       </div>
 
@@ -212,7 +213,7 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
         {saving && (
           <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
         )}
-        {saving ? "Guardando..." : "Guardar información"}
+        {saving ? t("guardando") : t("guardarInformacion")}
       </Button>
     </div>
   );

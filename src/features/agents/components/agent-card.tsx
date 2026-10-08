@@ -1,15 +1,16 @@
 "use client";
 
-import { Settings2, CheckCircle2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { Card } from "@/components/ui/card";
 import { AgentAvatar } from "./agent-avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { PROVIDER_LOGOS } from "./provider-logos";
+import { Settings2, CheckCircle2 } from "lucide-react";
+import type { AgentDto } from "@/features/agents/types";
 import { AGENT_TYPE_META } from "@/features/agents/lib/agent-meta";
 import { findCatalogModel } from "@/features/agents/lib/model-catalog";
-import { PROVIDER_LOGOS } from "./provider-logos";
-import type { AgentDto } from "@/features/agents/types";
 
 interface Props {
   agent: AgentDto;
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.agentCard");
   const meta = AGENT_TYPE_META[agent.type];
   const cat = findCatalogModel(agent.model);
   const Logo = cat ? PROVIDER_LOGOS[cat.provider] : null;
@@ -48,12 +51,12 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
             </h3>
             {agent.isActive && (
               <Badge className="shrink-0" variant="default">
-                Activo
+                {t("activo")}
               </Badge>
             )}
           </div>
           <Badge variant="secondary" className="font-normal">
-            {meta.label}
+            {tc(meta.label)}
           </Badge>
         </div>
       </div>
@@ -74,7 +77,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
         {agent.isActive ? (
           <span className="flex flex-1 items-center gap-1.5 text-xs font-medium text-primary">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Agente activo
+            {t("agenteActivo")}
           </span>
         ) : (
           <Button
@@ -84,7 +87,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
             disabled={busy}
             onClick={() => onActivate(agent.id)}
           >
-            Activar
+            {t("activar")}
           </Button>
         )}
         <Button
@@ -94,7 +97,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
           onClick={() => onConfigure(agent)}
         >
           <Settings2 className="h-4 w-4" aria-hidden="true" />
-          Configurar
+          {t("configurar")}
         </Button>
       </div>
     </Card>

@@ -1,18 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import {
-  MessageCircle,
-  Users,
-  AlertCircle,
-  DollarSign,
   Send,
+  Users,
+  DollarSign,
+  AlertCircle,
+  MessageCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type {
   WorkspaceMetrics,
   RecentConversation,
 } from "@/features/dashboard/services/metrics";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { ConversationState } from "@/features/inbox/types";
 
 interface DashboardMetricsProps {
@@ -109,45 +110,46 @@ export function DashboardMetrics({
   metrics,
   recentConversations,
 }: DashboardMetricsProps) {
+  const t = useTranslations("ui.dashboardMetrics");
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto">
       {/* Page heading */}
       <div>
         <h1 className="font-display text-xl font-semibold text-foreground">
-          Dashboard
+          {t("dashboard")}
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Actividad del workspace hoy
+          {t("actividadDelWorkspaceHoy")}
         </p>
       </div>
 
       {/* KPI grid — 2x2 on mobile, 1x4 on lg */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Mensajes hoy"
+          label={t("mensajesHoy")}
           value={metrics.messagesToday.toLocaleString("es")}
           icon={<MessageCircle className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
-          label="Conversaciones activas"
+          label={t("conversacionesActivas")}
           value={metrics.activeConversations.toLocaleString("es")}
           icon={<Users className="h-4 w-4" aria-hidden="true" />}
           accent
         />
         <KpiCard
-          label="Handoffs pendientes"
+          label={t("handoffsPendientes")}
           value={metrics.handoffPending.toLocaleString("es")}
           icon={<AlertCircle className="h-4 w-4" aria-hidden="true" />}
         />
         {metrics.llmCostWeekUsd !== null && (
           <KpiCard
-            label="Costo LLM esta semana"
+            label={t("costoLlmEstaSemana")}
             value={formatCost(metrics.llmCostWeekUsd)}
             icon={<DollarSign className="h-4 w-4" aria-hidden="true" />}
           />
         )}
         <KpiCard
-          label="Templates enviados (semana)"
+          label={t("templatesEnviadosSemana")}
           value={metrics.templatesSentWeek.toLocaleString("es")}
           icon={<Send className="h-4 w-4" aria-hidden="true" />}
         />
@@ -156,13 +158,13 @@ export function DashboardMetrics({
       {/* Recent conversations */}
       <div className="space-y-3">
         <h2 className="font-display text-sm font-semibold text-foreground">
-          Actividad reciente hoy
+          {t("actividadRecienteHoy")}
         </h2>
 
         {recentConversations.length === 0 ? (
           <div className="rounded-xl border border-border/50 bg-card px-5 py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              Sin actividad registrada hoy
+              {t("sinActividadRegistradaHoy")}
             </p>
           </div>
         ) : (

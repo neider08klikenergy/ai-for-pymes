@@ -17,6 +17,7 @@ import {
   type WhatsAppProviderId,
 } from "./whatsapp-provider-picker";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,7 @@ function WhatsAppSection({
   canEdit: boolean;
   onSaved: () => void;
 }) {
+  const t = useTranslations("ui.integrationsTab");
   // The provider this workspace talks through today (at most one is enabled).
   const active: WhatsAppProviderId | null = zernio?.enabled
     ? "zernio"
@@ -330,10 +332,10 @@ function WhatsAppSection({
             setKapsoChoices(numbers);
           }
         }
-        toast.error(json.error ?? "Error al probar la conexión");
+        toast.error(json.error ?? t("errorAlProbarLaConexion"));
       }
     } catch {
-      toast.error("Error de red al probar la conexión");
+      toast.error(t("errorDeRedAlProbarLa"));
     } finally {
       setTesting(false);
     }
@@ -397,10 +399,10 @@ function WhatsAppSection({
         if (json.warning) toast.warning(json.warning);
         onSaved();
       } else {
-        toast.error(json.error ?? "Error al guardar");
+        toast.error(json.error ?? t("errorAlGuardar"));
       }
     } catch {
-      toast.error("Error de red al guardar");
+      toast.error(t("errorDeRedAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -408,13 +410,13 @@ function WhatsAppSection({
 
   return (
     <Section
-      title="WhatsApp"
-      description="Canales de mensajería del workspace. Zernio conecta WhatsApp, Instagram y Facebook; YCloud y Kapso solo WhatsApp."
+      title={t("whatsapp")}
+      description={t("canalesDeMensajeriaDelWorkspaceZernio")}
       defaultOpen
     >
       <div className="grid gap-4">
         <div className="space-y-2">
-          <Label id="whatsapp-provider-label">Proveedor</Label>
+          <Label id="whatsapp-provider-label">{t("proveedor")}</Label>
           <WhatsAppProviderPicker
             value={selected}
             onChange={setSelected}
@@ -423,12 +425,11 @@ function WhatsAppSection({
           />
           {switching && (
             <p className="text-xs text-amber-500">
-              Al guardar, este workspace deja de usar {WHATSAPP_LABEL[active]} y
-              pasa a {label}. La configuración de {WHATSAPP_LABEL[active]} queda
-              guardada por si vuelves, y sus webhooks dejan de aceptarse: los
-              mensajes que ya envió dejan de actualizar su estado (entregado,
-              leído), y una respuesta que la IA esté preparando en ese momento
-              sale por {label}. Prueba la conexión antes de guardar.
+              {t("alGuardarEsteWorkspaceDejaDe")} {WHATSAPP_LABEL[active]}{" "}
+              {t("yPasaA")} {label}
+              {t("laConfiguracionDe")} {WHATSAPP_LABEL[active]}{" "}
+              {t("quedaGuardadaPorSiVuelvesY")} {label}
+              {t("pruebaLaConexionAntesDeGuardar")}
             </p>
           )}
         </div>
@@ -443,7 +444,7 @@ function WhatsAppSection({
         ) : selected === "ycloud" ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor="ycloud-api-key">API Key</Label>
+              <Label htmlFor="ycloud-api-key">{t("apiKey")}</Label>
               <Input
                 id="ycloud-api-key"
                 type="password"
@@ -454,7 +455,7 @@ function WhatsAppSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ycloud-phone">Número de WhatsApp (E.164)</Label>
+              <Label htmlFor="ycloud-phone">{t("numeroDeWhatsappE164")}</Label>
               <Input
                 id="ycloud-phone"
                 type="tel"
@@ -464,7 +465,7 @@ function WhatsAppSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ycloud-secret">Webhook Signing Secret</Label>
+              <Label htmlFor="ycloud-secret">{t("webhookSigningSecret")}</Label>
               <Input
                 id="ycloud-secret"
                 type="password"
@@ -478,7 +479,7 @@ function WhatsAppSection({
         ) : (
           <>
             <div className="space-y-2">
-              <Label htmlFor="kapso-api-key">API Key</Label>
+              <Label htmlFor="kapso-api-key">{t("apiKey")}</Label>
               <Input
                 id="kapso-api-key"
                 type="password"
@@ -492,7 +493,7 @@ function WhatsAppSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kapso-phone">Número de WhatsApp (E.164)</Label>
+              <Label htmlFor="kapso-phone">{t("numeroDeWhatsappE164")}</Label>
               <Input
                 id="kapso-phone"
                 type="tel"
@@ -503,7 +504,7 @@ function WhatsAppSection({
             </div>
             <div className="space-y-2">
               <Label htmlFor="kapso-phone-number-id">
-                Phone Number ID (Meta)
+                {t("phoneNumberIdMeta")}
               </Label>
               <Input
                 id="kapso-phone-number-id"
@@ -513,10 +514,7 @@ function WhatsAppSection({
                 onChange={(e) => setKpPhoneNumberId(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                El ID numérico del número en Meta, no el número en sí. Sin esto
-                no se puede enviar ningún mensaje. Lo encuentras en el dashboard
-                de Kapso, o escribe la API Key y prueba la conexión para
-                elegirlo.
+                {t("elIdNumericoDelNumeroEn")}
               </p>
             </div>
             {kapsoChoices.length > 0 && (
@@ -528,7 +526,7 @@ function WhatsAppSection({
               />
             )}
             <div className="space-y-2">
-              <Label htmlFor="kapso-waba-id">WABA ID</Label>
+              <Label htmlFor="kapso-waba-id">{t("wabaId")}</Label>
               <Input
                 id="kapso-waba-id"
                 inputMode="numeric"
@@ -537,12 +535,11 @@ function WhatsAppSection({
                 onChange={(e) => setKpWabaId(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                ID de la cuenta de WhatsApp Business. Necesario para las
-                plantillas.
+                {t("idDeLaCuentaDeWhatsapp")}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kapso-secret">Webhook Signing Secret</Label>
+              <Label htmlFor="kapso-secret">{t("webhookSigningSecret")}</Label>
               <Input
                 id="kapso-secret"
                 type="password"
@@ -557,20 +554,20 @@ function WhatsAppSection({
 
         {selected !== "zernio" && (
           <div className="space-y-2">
-            <Label>Webhook URL</Label>
+            <Label>{t("webhookUrl")}</Label>
             <div className="flex items-center gap-2">
               <Input
                 readOnly
                 value={webhookUrl}
                 className="font-mono text-xs text-muted-foreground"
-                aria-label="Webhook URL (solo lectura)"
+                aria-label={t("webhookUrlSoloLectura")}
               />
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleCopy}
-                aria-label="Copiar URL del webhook"
+                aria-label={t("copiarUrlDelWebhook")}
               >
                 {copied ? (
                   <CheckCircle2
@@ -583,14 +580,14 @@ function WhatsAppSection({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Pega esta URL en la configuración de webhooks de {label}.
+              {t("pegaEstaUrlEnLaConfiguracion")} {label}.
             </p>
           </div>
         )}
 
         <div className="space-y-2">
           <Label htmlFor="whatsapp-buffer">
-            Tiempo de espera del buffer (segundos)
+            {t("tiempoDeEsperaDelBufferSegundos")}
           </Label>
           <Input
             id="whatsapp-buffer"
@@ -606,13 +603,14 @@ function WhatsAppSection({
             }
           />
           <p className="text-xs text-muted-foreground">
-            La IA espera este tiempo de silencio tras el último mensaje antes de
-            responder, para agrupar mensajes seguidos. Por defecto 30s.
+            {t("laIaEsperaEsteTiempoDe")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-memory">Mensajes en memoria de la IA</Label>
+          <Label htmlFor="whatsapp-memory">
+            {t("mensajesEnMemoriaDeLaIa")}
+          </Label>
           <Input
             id="whatsapp-memory"
             type="number"
@@ -627,15 +625,14 @@ function WhatsAppSection({
             }
           />
           <p className="text-xs text-muted-foreground">
-            Cuántos mensajes recientes recuerda la IA al responder (entre 5 y
-            50). Por defecto 10.
+            {t("cuantosMensajesRecientesRecuerdaLaIa")}
           </p>
         </div>
 
         <div className="space-y-2 border-t border-border/60 pt-4">
           <div className="flex items-center justify-between gap-4">
             <Label htmlFor="whatsapp-handoff-ack">
-              Avisar al contacto cuando pasa a un humano
+              {t("avisarAlContactoCuandoPasaA")}
             </Label>
             <Switch
               id="whatsapp-handoff-ack"
@@ -651,19 +648,18 @@ function WhatsAppSection({
             placeholder={DEFAULT_HANDOFF_ACK}
             value={handoffAckMessage}
             onChange={(e) => setHandoffAckMessage(e.target.value)}
-            aria-label="Mensaje de aviso al contacto"
+            aria-label={t("mensajeDeAvisoAlContacto")}
           />
           <p className="text-xs text-muted-foreground">
-            Se envía en cuanto la conversación queda en espera de un asesor,
-            para que el contacto no se quede sin respuesta. Si lo dejas vacío se
-            usa: “{DEFAULT_HANDOFF_ACK}”
+            {t("seEnviaEnCuantoLaConversacion")}
+            {DEFAULT_HANDOFF_ACK}”
           </p>
         </div>
 
         <div className="space-y-2 border-t border-border/60 pt-4">
           <div className="flex items-center justify-between gap-4">
             <Label htmlFor="whatsapp-cost-cut-handoff">
-              Pasar a una persona si se acaba el presupuesto diario de IA
+              {t("pasarAUnaPersonaSiSe")}
             </Label>
             <Switch
               id="whatsapp-cost-cut-handoff"
@@ -672,11 +668,7 @@ function WhatsAppSection({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Cuando el workspace llega a su tope diario de IA, el agente deja de
-            responder hasta el día siguiente. Con esto activado, cada
-            conversación que escriba en ese lapso queda en espera de un asesor
-            (y recibe el aviso de arriba). Esas conversaciones no regresan solas
-            a la IA: devuélvelas desde el inbox.
+            {t("cuandoElWorkspaceLlegaASu")}
           </p>
         </div>
 
@@ -692,7 +684,7 @@ function WhatsAppSection({
             {testing && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Probar conexión
+            {t("probarConexion")}
           </Button>
 
           <Button
@@ -712,7 +704,7 @@ function WhatsAppSection({
             {saving && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            {switching ? `Guardar y cambiar a ${label}` : "Guardar"}
+            {switching ? `Guardar y cambiar a ${label}` : t("guardar")}
           </Button>
         </div>
         {!canEdit ? (
@@ -720,7 +712,7 @@ function WhatsAppSection({
         ) : (
           missing.length > 0 && (
             <p id="whatsapp-missing" className="text-xs text-muted-foreground">
-              Para guardar {label} falta {missing.join(", ")}.
+              {t("paraGuardar")} {label} falta {missing.join(", ")}.
             </p>
           )
         )}
@@ -742,6 +734,7 @@ function OpenRouterSection({
   canEdit: boolean;
   onSaved: () => void;
 }) {
+  const t = useTranslations("ui.integrationsTab");
   const [apiKey, setApiKey] = useState(
     initial?.credentials?.openrouter_api_key ?? "",
   );
@@ -775,13 +768,13 @@ function OpenRouterSection({
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (json.ok) {
-        toast.success("Configuración de OpenRouter guardada");
+        toast.success(t("configuracionDeOpenrouterGuardada"));
         onSaved();
       } else {
-        toast.error(json.error ?? "Error al guardar");
+        toast.error(json.error ?? t("errorAlGuardar"));
       }
     } catch {
-      toast.error("Error de red al guardar");
+      toast.error(t("errorDeRedAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -789,12 +782,12 @@ function OpenRouterSection({
 
   return (
     <Section
-      title="OpenRouter"
-      description="Gateway de modelos de lenguaje. Requerido para el agente de IA."
+      title={t("openrouter")}
+      description={t("gatewayDeModelosDeLenguajeRequerido")}
     >
       <div className="grid gap-4">
         <div className="space-y-2">
-          <Label htmlFor="or-api-key">API Key</Label>
+          <Label htmlFor="or-api-key">{t("apiKey")}</Label>
           <Input
             id="or-api-key"
             type="password"
@@ -806,25 +799,25 @@ function OpenRouterSection({
         </div>
 
         <div className="space-y-2">
-          <Label>Modelo por defecto (fallback del workspace)</Label>
+          <Label>{t("modeloPorDefectoFallbackDelWorkspace")}</Label>
           <ModelPicker
             value={model}
             onChange={setModel}
-            emptyHint="Modelo que se usa cuando un agente no define el suyo."
+            emptyHint={t("modeloQueSeUsaCuandoUn")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Modelo de respaldo</Label>
+          <Label>{t("modeloDeRespaldo")}</Label>
           <ModelPicker
             value={fallbackModel || null}
             onChange={setFallbackModel}
-            emptyHint="Opcional. Se usa si el modelo principal falla."
+            emptyHint={t("opcionalSeUsaSiElModelo")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="or-budget">Budget diario (tokens)</Label>
+          <Label htmlFor="or-budget">{t("budgetDiarioTokens")}</Label>
           <Input
             id="or-budget"
             type="number"
@@ -834,7 +827,7 @@ function OpenRouterSection({
             onChange={(e) => setDailyBudget(Number(e.target.value))}
           />
           <p className="text-xs text-muted-foreground">
-            El agente se detendrá cuando alcance este límite diario de tokens.
+            {t("elAgenteSeDetendraCuandoAlcance")}
           </p>
         </div>
 
@@ -850,7 +843,7 @@ function OpenRouterSection({
             {saving && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Guardar
+            {t("guardar")}
           </Button>
           {!canEdit && <AdminOnlyNote id="openrouter-admin-only" />}
         </div>
@@ -872,6 +865,7 @@ function HighLevelSection({
   canEdit: boolean;
   onSaved: () => void;
 }) {
+  const t = useTranslations("ui.integrationsTab");
   const [pit, setPit] = useState(initial?.credentials?.highlevel_pit ?? "");
   const [locationId, setLocationId] = useState(
     (initial?.config?.location_id as string | undefined) ?? "",
@@ -959,15 +953,15 @@ function HighLevelSection({
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (json.ok) {
-        toast.success("Configuración de HighLevel guardada");
+        toast.success(t("configuracionDeHighlevelGuardada"));
         onSaved();
         // Refresh pipelines in case the PIT/Location just changed.
         void loadPipelines();
       } else {
-        toast.error(json.error ?? "Error al guardar");
+        toast.error(json.error ?? t("errorAlGuardar"));
       }
     } catch {
-      toast.error("Error de red al guardar");
+      toast.error(t("errorDeRedAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -991,23 +985,20 @@ function HighLevelSection({
         const cal = json.hasCalendar ? "" : " (falta Calendar ID para agendar)";
         toast.success(`HighLevel conectado${loc}${cal}`);
       } else {
-        toast.error(json.error ?? "Error al probar la conexión");
+        toast.error(json.error ?? t("errorAlProbarLaConexion"));
       }
     } catch {
-      toast.error("Error de red al probar la conexión");
+      toast.error(t("errorDeRedAlProbarLa"));
     } finally {
       setTesting(false);
     }
   }
 
   return (
-    <Section
-      title="HighLevel"
-      description="Conecta tu CRM con un Private Integration Token (PIT). Requerido para sincronizar contactos y agendar en el calendario."
-    >
+    <Section title={t("highlevel")} description={t("conectaTuCrmConUnPrivate")}>
       <div className="grid gap-4">
         <div className="space-y-2">
-          <Label htmlFor="hl-pit">Private Integration Token (PIT)</Label>
+          <Label htmlFor="hl-pit">{t("privateIntegrationTokenPit")}</Label>
           <Input
             id="hl-pit"
             type="password"
@@ -1017,16 +1008,15 @@ function HighLevelSection({
             autoComplete="off"
           />
           <p className="text-xs text-muted-foreground">
-            GHL → Settings → Private Integrations → crea un token con permisos
-            de contactos y calendarios.
+            {t("ghlSettingsPrivateIntegrationsCreaUn")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="hl-location">Location ID</Label>
+          <Label htmlFor="hl-location">{t("locationId")}</Label>
           <Input
             id="hl-location"
-            placeholder="bfilCH1kUaWjdh22WREh"
+            placeholder={t("bfilch1kuawjdh22wreh")}
             value={locationId}
             onChange={(e) => setLocationId(e.target.value)}
             className="font-mono text-sm"
@@ -1034,17 +1024,16 @@ function HighLevelSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="hl-calendar">Calendar ID</Label>
+          <Label htmlFor="hl-calendar">{t("calendarId")}</Label>
           <Input
             id="hl-calendar"
-            placeholder="ID del calendario donde se agendan las citas"
+            placeholder={t("idDelCalendarioDondeSeAgendan")}
             value={calendarId}
             onChange={(e) => setCalendarId(e.target.value)}
             className="font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
-            GHL → Calendars → el calendario → Settings. Necesario para que el
-            agente reserve citas.
+            {t("ghlCalendarsElCalendarioSettingsNecesari")}
           </p>
         </div>
 
@@ -1052,17 +1041,16 @@ function HighLevelSection({
 
         <div className="space-y-3">
           <div>
-            <Label>Pipeline de oportunidades (modo setter)</Label>
+            <Label>{t("pipelineDeOportunidadesModoSetter")}</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Cuando un lead califica con la acción “Crear oportunidad en HL”,
-              se crea en este pipeline y etapa.
+              {t("cuandoUnLeadCalificaConLa")}
             </p>
           </div>
 
           {loadingPipelines ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Cargando pipelines…
+              {t("cargandoPipelines")}
             </div>
           ) : pipelinesError ? (
             <div className="space-y-2">
@@ -1073,14 +1061,13 @@ function HighLevelSection({
                 size="sm"
                 onClick={() => void loadPipelines()}
               >
-                Reintentar
+                {t("reintentar")}
               </Button>
             </div>
           ) : pipelines.length === 0 ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Guarda tu PIT y Location ID, luego carga los pipelines de tu
-                cuenta de HighLevel.
+                {t("guardaTuPitYLocationId")}
               </p>
               <Button
                 type="button"
@@ -1088,20 +1075,20 @@ function HighLevelSection({
                 size="sm"
                 onClick={() => void loadPipelines()}
               >
-                Cargar pipelines
+                {t("cargarPipelines")}
               </Button>
             </div>
           ) : (
             <div className="grid gap-4">
               <div className="space-y-2">
-                <Label htmlFor="hl-pipeline">Pipeline</Label>
+                <Label htmlFor="hl-pipeline">{t("pipeline")}</Label>
                 <select
                   id="hl-pipeline"
                   value={pipelineId}
                   onChange={(e) => handlePipelineChange(e.target.value)}
                   className={SELECT_CLASS}
                 >
-                  <option value="">— Selecciona un pipeline —</option>
+                  <option value="">{t("seleccionaUnPipeline")}</option>
                   {pipelines.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -1111,7 +1098,7 @@ function HighLevelSection({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="hl-stage">Etapa</Label>
+                <Label htmlFor="hl-stage">{t("etapa")}</Label>
                 <select
                   id="hl-stage"
                   value={stageId}
@@ -1119,7 +1106,7 @@ function HighLevelSection({
                   disabled={!selectedPipeline}
                   className={SELECT_CLASS}
                 >
-                  <option value="">— Selecciona una etapa —</option>
+                  <option value="">{t("seleccionaUnaEtapa")}</option>
                   {stages.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -1143,7 +1130,7 @@ function HighLevelSection({
             {testing && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Probar conexión
+            {t("probarConexion")}
           </Button>
           <Button
             type="button"
@@ -1156,7 +1143,7 @@ function HighLevelSection({
             {saving && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Guardar
+            {t("guardar")}
           </Button>
         </div>
         {!canEdit && <AdminOnlyNote id="highlevel-admin-only" />}
@@ -1181,6 +1168,7 @@ function ShopifySection({
   canEdit: boolean;
   onSaved: () => void;
 }) {
+  const t = useTranslations("ui.integrationsTab");
   const [shop, setShop] = useState(
     (initial?.config?.shop_domain as string | undefined) ?? "",
   );
@@ -1212,13 +1200,13 @@ function ShopifySection({
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (json.ok) {
-        toast.success("Shopify guardado");
+        toast.success(t("shopifyGuardado"));
         onSaved();
       } else {
-        toast.error(json.error ?? "Error al guardar");
+        toast.error(json.error ?? t("errorAlGuardar"));
       }
     } catch {
-      toast.error("Error de red al guardar");
+      toast.error(t("errorDeRedAlGuardar"));
     } finally {
       setSaving(false);
     }
@@ -1239,10 +1227,10 @@ function ShopifySection({
       if (json.ok) {
         toast.success(`Shopify conectado — ${json.shopName ?? shop}`);
       } else {
-        toast.error(json.error ?? "Error al probar la conexión");
+        toast.error(json.error ?? t("errorAlProbarLaConexion"));
       }
     } catch {
-      toast.error("Error de red al probar la conexión");
+      toast.error(t("errorDeRedAlProbarLa"));
     } finally {
       setTesting(false);
     }
@@ -1250,17 +1238,17 @@ function ShopifySection({
 
   return (
     <Section
-      title="Shopify"
-      description="Importa los productos y precios de la tienda al catálogo (Productos → Importar desde Shopify)."
+      title={t("shopify")}
+      description={t("importaLosProductosYPreciosDe")}
     >
       <div className="grid gap-4">
         <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
           <p className="text-xs font-medium text-foreground">
-            Lo hace el dueño de la tienda (una sola vez, unos 10 minutos)
+            {t("loHaceElDuenoDeLa")}
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
             <li>
-              Entra a{" "}
+              {t("entraA")}{" "}
               <a
                 href="https://dev.shopify.com/dashboard"
                 target="_blank"
@@ -1269,37 +1257,33 @@ function ShopifySection({
               >
                 dev.shopify.com
               </a>{" "}
-              con la <strong>misma cuenta dueña de la tienda</strong> y crea una
-              app (por ejemplo, &quot;Catálogo para el asistente&quot;).
+              {t("conLa")} <strong>{t("mismaCuentaDuenaDeLaTienda")}</strong>{" "}
+              {t("yCreaUnaAppPorEjemplo")}
             </li>
             <li>
-              En <strong>Versions</strong>, crea una versión con el permiso{" "}
-              <code className="font-mono">read_products</code> y publícala
-              (Release).
+              {t("en")} <strong>{t("versions")}</strong>
+              {t("creaUnaVersionConElPermiso")}{" "}
+              <code className="font-mono">read_products</code>{" "}
+              {t("yPublicalaRelease")}
             </li>
             <li>
-              En <strong>Home</strong>, instala la app en la tienda.
+              {t("en")} <strong>{t("home")}</strong>
+              {t("instalaLaAppEnLaTienda")}
             </li>
             <li>
-              En <strong>Settings</strong> de la app, copia el{" "}
-              <strong>Client ID</strong> y el <strong>Client Secret</strong> y
-              pégalos aquí abajo.
+              {t("en")} <strong>{t("settings")}</strong> {t("deLaAppCopiaEl")}{" "}
+              <strong>{t("clientId")}</strong> {t("yEl")}{" "}
+              <strong>{t("clientSecret")}</strong> {t("yPegalosAquiAbajo")}
             </li>
-            <li>
-              Guarda, usa &quot;Probar conexión&quot; y luego ve a Productos →
-              Importar desde Shopify.
-            </li>
+            <li>{t("guardaUsaProbarConexionYLuego")}</li>
           </ol>
           <p className="text-xs text-muted-foreground">
-            El permiso es solo de lectura de productos: no podemos ver pedidos,
-            clientes ni pagos, ni cambiar nada en la tienda. La app debe ser de
-            la misma organización que la tienda; si la crea otra persona en su
-            propia cuenta, Shopify no da acceso.
+            {t("elPermisoEsSoloDeLectura")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sh-shop">Tienda</Label>
+          <Label htmlFor="sh-shop">{t("tienda")}</Label>
           <Input
             id="sh-shop"
             placeholder="golosita.myshopify.com"
@@ -1308,13 +1292,13 @@ function ShopifySection({
             autoComplete="off"
           />
           <p className="text-xs text-muted-foreground">
-            El dominio .myshopify.com (no el dominio propio de la web).
+            {t("elDominioMyshopifyComNoEl")}
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="sh-client-id">Client ID</Label>
+            <Label htmlFor="sh-client-id">{t("clientId")}</Label>
             <Input
               id="sh-client-id"
               type="password"
@@ -1324,7 +1308,7 @@ function ShopifySection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sh-client-secret">Client Secret</Label>
+            <Label htmlFor="sh-client-secret">{t("clientSecret")}</Label>
             <Input
               id="sh-client-secret"
               type="password"
@@ -1342,7 +1326,7 @@ function ShopifySection({
             onCheckedChange={setEnabled}
           />
           <Label htmlFor="sh-enabled" className="cursor-pointer">
-            Activa
+            {t("activa")}
           </Label>
         </div>
 
@@ -1358,7 +1342,7 @@ function ShopifySection({
             {testing && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Probar conexión
+            {t("probarConexion")}
           </Button>
           <Button
             type="button"
@@ -1371,7 +1355,7 @@ function ShopifySection({
             {saving && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
             )}
-            Guardar
+            {t("guardar")}
           </Button>
         </div>
         {!canEdit && <AdminOnlyNote id="shopify-admin-only" />}
@@ -1394,6 +1378,7 @@ export function IntegrationsTab({
   role,
   initialIntegrations,
 }: Props) {
+  const t = useTranslations("ui.integrationsTab");
   const [integrations, setIntegrations] = useState<IntegrationData[]>(
     initialIntegrations as IntegrationData[],
   );
@@ -1421,8 +1406,7 @@ export function IntegrationsTab({
   if (!canRead) {
     return (
       <p className="text-sm text-muted-foreground">
-        Solo los administradores y managers del workspace pueden ver las
-        integraciones.
+        {t("soloLosAdministradoresYManagersDel")}
       </p>
     );
   }

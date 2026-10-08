@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 // Campana de avisos del panel: contador, sonido y alerta del navegador.
 // Consulta /api/notificaciones cada 30 s y al volver a la pestaña.
 
@@ -61,13 +62,15 @@ const URGENTES = new Set<Notificacion["tipo"]>([
   "pago_por_verificar",
 ]);
 
-function haceCuanto(iso: string): string {
+type T = ReturnType<typeof useTranslations<"notificaciones">>;
+
+function haceCuanto(iso: string, t: T): string {
   const min = Math.floor((Date.now() - Date.parse(iso)) / 60_000);
-  if (min < 1) return "ahora";
-  if (min < 60) return `hace ${min} min`;
+  if (min < 1) return t("ahora");
+  if (min < 60) return t("haceMin", { n: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `hace ${h} h`;
-  return `hace ${Math.floor(h / 24)} d`;
+  if (h < 24) return t("haceHoras", { n: h });
+  return t("haceDias", { n: Math.floor(h / 24) });
 }
 
 /** Dos tonos cortos con Web Audio (sin archivos de sonido). */
@@ -103,6 +106,7 @@ function sonar() {
 
 export function CampanaNotificaciones() {
   const router = useRouter();
+  const t = useTranslations("notificaciones");
   const [items, setItems] = useState<Notificacion[]>([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [abierta, setAbierta] = useState(false);
@@ -141,7 +145,7 @@ export function CampanaNotificaciones() {
       toast(n.titulo, {
         description: n.cuerpo ?? undefined,
         action: n.enlace
-          ? { label: "Abrir", onClick: () => router.push(n.enlace!) }
+          ? { label: t("abrir"), onClick: () => router.push(n.enlace!) }
           : undefined,
       });
       if (
@@ -162,7 +166,7 @@ export function CampanaNotificaciones() {
     } catch {
       // Sin red: se reintenta en el siguiente intervalo.
     }
-  }, [router]);
+  }, [router, t]);
 
   useEffect(() => {
     // Primera carga en un callback (no síncrona dentro del efecto).
@@ -191,7 +195,7 @@ export function CampanaNotificaciones() {
     if (typeof Notification === "undefined") return;
     const r = await Notification.requestPermission();
     setPermiso(r);
-    if (r === "granted") toast.success("Alertas del navegador activadas");
+    if (r === "granted") toast.success(t("alertasActivadas"));
   }
 
   return (
@@ -215,7 +219,7 @@ export function CampanaNotificaciones() {
           variant="ghost"
           size="sm"
           className="relative text-muted-foreground hover:text-foreground"
-          aria-label={noLeidas > 0 ? `Avisos: ${noLeidas} sin leer` : "Avisos"}
+          aria-label={noLeidas > 0 ? t("avisosSinLeer", { n: noLeidas }) : t("avisos")}
         >
           {noLeidas > 0 ? (
             <BellRing className="h-4 w-4 text-warning" aria-hidden="true" />
@@ -234,25 +238,25 @@ export function CampanaNotificaciones() {
         className="w-[340px] max-w-[calc(100vw-24px)] p-0"
       >
         <div className="flex items-center justify-between border-b border-border/50 px-3 py-2">
-          <p className="text-sm font-semibold">Avisos</p>
+          <p className="text-sm font-semibold">{t("avisos")}</p>
           {permiso === "default" && (
             <button
               type="button"
               onClick={() => void activarAlertas()}
               className="text-xs text-primary hover:underline"
             >
-              Activar alertas del navegador
+              {t("activarAlertas")}
             </button>
           )}
           {permiso === "denied" && (
             <span className="text-[11px] text-muted-foreground">
-              Alertas bloqueadas en el navegador
+              {t("alertasBloqueadas")}
             </span>
           )}
         </div>
         {items.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-            Sin avisos por ahora.
+            {t("sinAvisos")}
           </p>
         ) : (
           <ul className="max-h-[420px] overflow-y-auto">
@@ -278,7 +282,7 @@ export function CampanaNotificaciones() {
                       </span>
                     )}
                     <span className="block text-[11px] text-muted-foreground/80 mt-0.5">
-                      {haceCuanto(n.created_at)}
+                      {haceCuanto(n.created_at, t)}
                     </span>
                   </span>
                 </div>

@@ -1,20 +1,21 @@
 "use client";
 
 import {
+  TIER_LABEL,
+  MODEL_CATALOG,
+  findCatalogModel,
+} from "@/features/agents/lib/model-catalog";
+import {
   Select,
+  SelectItem,
   SelectGroup,
+  SelectLabel,
   SelectValue,
   SelectTrigger,
   SelectContent,
-  SelectLabel,
-  SelectItem,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import {
-  MODEL_CATALOG,
-  findCatalogModel,
-  TIER_LABEL,
-} from "@/features/agents/lib/model-catalog";
 import { PROVIDER_LOGOS } from "./provider-logos";
 
 export function ModelPicker({
@@ -27,13 +28,14 @@ export function ModelPicker({
   /** Hint shown when no model is selected. */
   emptyHint?: string;
 }) {
+  const t = useTranslations("ui.modelPicker");
   const selected = findCatalogModel(value);
 
   return (
     <div className="space-y-2">
       <Select value={value ?? undefined} onValueChange={onChange}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Elige un modelo" />
+          <SelectValue placeholder={t("eligeUnModelo")} />
         </SelectTrigger>
         <SelectContent>
           {MODEL_CATALOG.map((p) => {
@@ -69,7 +71,7 @@ export function ModelPicker({
         </div>
       ) : value ? (
         <p className="text-xs text-muted-foreground px-1">
-          Modelo personalizado: <span className="font-mono">{value}</span>
+          {t("modeloPersonalizado")} <span className="font-mono">{value}</span>
         </p>
       ) : (
         <p className="text-xs text-muted-foreground px-1">{emptyHint}</p>

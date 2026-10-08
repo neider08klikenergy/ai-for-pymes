@@ -1,11 +1,6 @@
 "use client";
 
 import {
-  ESTADO_LABEL,
-  ESTADOS_PEDIDO,
-  type EstadoPedido,
-} from "../lib/estados";
-import {
   horaLocal,
   nombreMes,
   sumarMeses,
@@ -20,10 +15,13 @@ import { CupoDelDia } from "./cupo-dia";
 import { Button } from "@/components/ui/button";
 import type { CupoDia, PedidoFila } from "../types";
 import type { FiltrosPedidos } from "../lib/filtros";
+import { useLocale, useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TablaPedidos, type AccionesFila } from "./pedidos-tabla";
+import { ESTADOS_PEDIDO, type EstadoPedido } from "../lib/estados";
 
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+// Encabezado de la semana (lunes a domingo): pedidos.calendario.dias.*
+const DIAS = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"] as const;
 const MAX_EN_CELDA = 3;
 
 export function CalendarioPedidos({
@@ -49,6 +47,9 @@ export function CalendarioPedidos({
   onCambiar: (cambios: Partial<FiltrosPedidos>) => void;
 }) {
   const semanas = useMemo(() => semanasDelMes(filtros.mes), [filtros.mes]);
+  const t = useTranslations("pedidos.calendario");
+  const tt = useTranslations("pedidos.tabla");
+  const idioma = useLocale();
 
   const porDia = useMemo(() => {
     const m = new Map<string, PedidoFila[]>();
@@ -75,7 +76,7 @@ export function CalendarioPedidos({
           <Button
             variant="outline"
             size="icon"
-            aria-label="Mes anterior"
+            aria-label={t("mesAnterior")}
             onClick={() =>
               onCambiar({ mes: sumarMeses(filtros.mes, -1), dia: null })
             }
@@ -83,12 +84,12 @@ export function CalendarioPedidos({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="min-w-[160px] text-center font-display text-base font-semibold">
-            {nombreMes(filtros.mes)}
+            {nombreMes(filtros.mes, idioma)}
           </h2>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Mes siguiente"
+            aria-label={t("mesSiguiente")}
             onClick={() =>
               onCambiar({ mes: sumarMeses(filtros.mes, 1), dia: null })
             }
@@ -101,7 +102,7 @@ export function CalendarioPedidos({
               size="sm"
               onClick={() => onCambiar({ mes: hoy.slice(0, 7), dia: hoy })}
             >
-              Hoy
+              {tt("hoy")}
             </Button>
           )}
         </div>
@@ -118,7 +119,7 @@ export function CalendarioPedidos({
               key={d}
               className="px-1 py-1.5 text-center text-[11px] font-medium text-muted-foreground"
             >
-              {d}
+              {t(`dias.${d}`)}
             </div>
           ))}
         </div>
@@ -138,7 +139,10 @@ export function CalendarioPedidos({
                   type="button"
                   onClick={() => onCambiar({ dia: sel ? null : dia })}
                   aria-pressed={sel}
-                  aria-label={`${fechaCorta(`${dia}T12:00:00Z`, "UTC")}: ${lista.length} pedidos`}
+                  aria-label={t("celda", {
+                    fecha: fechaCorta(`${dia}T12:00:00Z`, "UTC", idioma),
+                    n: lista.length,
+                  })}
                   className={cn(
                     "flex min-h-[64px] md:min-h-[104px] min-w-0 flex-col justify-start border-r border-border/30 last:border-r-0 p-1 md:p-1.5 text-left transition-colors",
                     "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
@@ -190,8 +194,8 @@ export function CalendarioPedidos({
                           )}
                         />
                         <span className="tabular-nums text-muted-foreground">
-                          {horaLocal(p.fecha_entrega, zona).replace(
-                            /\s?[ap]\.\s?m\./i,
+                          {horaLocal(p.fecha_entrega, zona, idioma).replace(
+                            /\s?([ap]\.\s?m\.|[AP]M)/i,
                             "",
                           )}
                         </span>
@@ -202,7 +206,7 @@ export function CalendarioPedidos({
                     ))}
                     {lista.length > MAX_EN_CELDA && (
                       <li className="text-[11px] text-muted-foreground">
-                        +{lista.length - MAX_EN_CELDA} más
+                        {t("mas", { n: lista.length - MAX_EN_CELDA })}
                       </li>
                     )}
                   </ul>
@@ -218,7 +222,9 @@ export function CalendarioPedidos({
       {diaSel && (
         <section className="flex flex-col gap-2" aria-labelledby="dia-titulo">
           <h3 id="dia-titulo" className="text-sm font-semibold">
-            Entregas del {fechaCorta(`${diaSel}T12:00:00Z`, "UTC")}{" "}
+            {t("entregasDel", {
+              fecha: fechaCorta(`${diaSel}T12:00:00Z`, "UTC", idioma),
+            })}{" "}
             <span className="font-normal text-muted-foreground">
               ({delDia.length})
             </span>
@@ -238,20 +244,19 @@ export function CalendarioPedidos({
             mostrarFecha={false}
             mostrarSede={mostrarSede}
             acciones={acciones}
-            vacio="No hay entregas este día."
+            vacio={t("vacioDia")}
           />
         </section>
       )}
       {!diaSel && (
-        <p className="text-xs text-muted-foreground">
-          Toca un día para ver sus pedidos.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("tocaDia")}</p>
       )}
     </div>
   );
 }
 
 function Leyenda() {
+  const te = useTranslations("pedidos.estados");
   const estados = ESTADOS_PEDIDO.filter(
     (e): e is Exclude<EstadoPedido, "cancelado"> => e !== "cancelado",
   );
@@ -263,7 +268,7 @@ function Leyenda() {
           className="flex items-center gap-1.5 text-xs text-muted-foreground"
         >
           <span className={cn("h-2 w-2 rounded-full", ESTADO_PUNTO[e])} />
-          {ESTADO_LABEL[e]}
+          {te(e)}
         </span>
       ))}
     </div>

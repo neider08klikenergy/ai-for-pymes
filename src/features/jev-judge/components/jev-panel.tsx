@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useState, type ReactNode } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ruleCopy, type WithoutJevPreview } from "@/features/jev-judge/preview";
-import { SAMPLE_MESSAGES } from "@/features/jev-judge/samples";
 import type { JudgeView } from "@/features/jev-judge/schema";
+import { SAMPLE_MESSAGES } from "@/features/jev-judge/samples";
 import { JEV_USES_ON, type JevUses } from "@/features/jev-judge/uses";
+import { ruleCopy, type WithoutJevPreview } from "@/features/jev-judge/preview";
 
 interface JevPanelProps {
   workspaceId: string;
@@ -31,18 +32,18 @@ export interface JevSettings {
 const USES: Array<{ key: keyof JevUses; label: string; hint: string }> = [
   {
     key: "stage",
-    label: "Etapa",
-    hint: "El score mueve el contacto: interesado, calificado o perdido.",
+    label: "etapa",
+    hint: "elScoreMueveElContactoInteresado",
   },
   {
     key: "reply",
-    label: "Quién contesta",
-    hint: "Noul decide si redacta la IA o pasa a una persona.",
+    label: "quienContesta",
+    hint: "noulDecideSiRedactaLaIa",
   },
   {
     key: "optOut",
-    label: "Baja",
-    hint: "Si pide que dejen de escribirle, no se contesta y queda en perdido.",
+    label: "baja",
+    hint: "siPideQueDejenDeEscribirle",
   },
 ];
 
@@ -60,6 +61,8 @@ export function JevPanel({
   judgmentsToday,
   canManage,
 }: JevPanelProps) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.jevPanel");
   const [enabled, setEnabled] = useState(initialEnabled);
   const [uses, setUses] = useState<JevUses>(initialUses);
   const [saving, setSaving] = useState(false);
@@ -80,13 +83,13 @@ export function JevPanel({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        toast.error(json.error ?? "No se pudo guardar");
+        toast.error(json.error ?? t("noSePudoGuardar"));
         return;
       }
       setEnabled(next);
-      toast.success(next ? "Jev prendido para este workspace" : "Jev apagado");
+      toast.success(next ? t("jevPrendidoParaEsteWorkspace") : t("jevApagado"));
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorDeConexion"));
     } finally {
       setSaving(false);
     }
@@ -106,12 +109,12 @@ export function JevPanel({
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
         setUses(previous);
-        toast.error(json.error ?? "No se pudo guardar");
+        toast.error(json.error ?? t("noSePudoGuardar"));
         return;
       }
     } catch {
       setUses(previous);
-      toast.error("Error de conexión");
+      toast.error(t("errorDeConexion"));
     } finally {
       setSaving(false);
     }
@@ -134,9 +137,10 @@ export function JevPanel({
       if (json.without) setWithout(json.without);
       setWithJev(json.with ?? null);
       setError(json.error ?? null);
-      if (!res.ok && !json.without) toast.error(json.error ?? "No se pudo comparar");
+      if (!res.ok && !json.without)
+        toast.error(json.error ?? t("noSePudoComparar"));
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorDeConexion"));
     } finally {
       setBusy(false);
     }
@@ -146,41 +150,45 @@ export function JevPanel({
     <section className="space-y-5 rounded-lg border border-border/60 bg-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-base font-semibold">Jev</h2>
+          <h2 className="text-base font-semibold">{t("jev")}</h2>
           <p className="text-sm text-muted-foreground">
-            {enabled
-              ? "Jev juzga el texto. El código aplica solo los usos que dejaste prendidos."
-              : "El CRM usa las reglas de hoy: keywords, rate limit y el redactor."}
+            {enabled ? t("jevJuzgaElTextoElCodigo") : t("elCrmUsaLasReglasDe")}
           </p>
         </div>
         <Switch
           checked={enabled}
           onCheckedChange={toggle}
           disabled={!canManage || saving}
-          aria-label="Prender o apagar Jev"
+          aria-label={t("prenderOApagarJev")}
         />
       </div>
 
       <div className="flex flex-wrap gap-2 text-xs">
-        <StatusPill ok={keyReady} label={keyReady ? "Jev listo" : "Falta TYPESAFE_API_KEY"} />
-        <StatusPill ok={enabled} label={enabled ? "Prendido en WhatsApp" : "Apagado en WhatsApp"} />
+        <StatusPill
+          ok={keyReady}
+          label={keyReady ? t("jevListo") : t("faltaTypesafeApiKey")}
+        />
+        <StatusPill
+          ok={enabled}
+          label={enabled ? t("prendidoEnWhatsapp") : t("apagadoEnWhatsapp")}
+        />
         <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
-          Hoy: {judgmentsToday} juicios
+          {t("hoy")} {judgmentsToday} juicios
         </span>
       </div>
 
       <div className="space-y-3 border-t border-border/60 pt-4">
         <div className="space-y-1">
-          <p className="text-sm font-medium">Para qué usar Jev</p>
+          <p className="text-sm font-medium">{t("paraQueUsarJev")}</p>
           <p className="text-xs text-muted-foreground">
-            Jev siempre clasifica igual. Estos switches dicen qué escribe el código.
+            {t("jevSiempreClasificaIgualEstosSwitches")}
           </p>
         </div>
         {USES.map((use) => (
           <UseSwitch
             key={use.key}
-            label={use.label}
-            hint={use.hint}
+            label={tc(use.label)}
+            hint={tc(use.hint)}
             checked={uses[use.key]}
             disabled={!canManage || saving}
             onCheckedChange={(next) => void saveUse(use.key, next)}
@@ -190,12 +198,12 @@ export function JevPanel({
 
       {!canManage && (
         <p className="text-xs text-muted-foreground">
-          Solo un admin o manager puede prender Jev o comparar mensajes.
+          {t("soloUnAdminOManagerPuede")}
         </p>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="jev-bench-text">Probar un mensaje</Label>
+        <Label htmlFor="jev-bench-text">{t("probarUnMensaje")}</Label>
         <div className="flex flex-wrap gap-2">
           {SAMPLE_MESSAGES.map((sample) => (
             <Button
@@ -205,7 +213,7 @@ export function JevPanel({
               variant={text === sample.text ? "default" : "outline"}
               onClick={() => setText(sample.text)}
             >
-              {sample.label}
+              {tc(sample.label)}
             </Button>
           ))}
         </div>
@@ -217,22 +225,40 @@ export function JevPanel({
           onChange={(event) => setText(event.target.value)}
         />
         <p className="text-xs text-muted-foreground">
-          La comparación no escribe el CRM ni manda WhatsApp. En un mensaje real,
-          si pide un humano por keyword, Jev no llega a correr.
+          {t("laComparacionNoEscribeElCrm")}
         </p>
-        <Button type="button" size="sm" onClick={compare} disabled={!canManage || busy || !text.trim()}>
-          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
-          {busy ? "Comparando" : "Comparar"}
+        <Button
+          type="button"
+          size="sm"
+          onClick={compare}
+          disabled={!canManage || busy || !text.trim()}
+        >
+          {busy && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          )}
+          {busy ? t("comparando") : t("comparar")}
         </Button>
       </div>
 
       {(without || withJev || error) && (
         <div className="grid gap-3 md:grid-cols-2">
-          <ResultCard title="Sin Jev">
-            {without ? <WithoutBody result={without} /> : <p className="text-sm text-muted-foreground">Sin resultado.</p>}
+          <ResultCard title={t("sinJev")}>
+            {without ? (
+              <WithoutBody result={without} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("sinResultado")}
+              </p>
+            )}
           </ResultCard>
-          <ResultCard title="Con Jev">
-            {withJev ? <WithBody result={withJev} /> : <p className="text-sm text-muted-foreground">{error ?? "Sin resultado."}</p>}
+          <ResultCard title={t("conJev")}>
+            {withJev ? (
+              <WithBody result={withJev} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {error ?? t("sinResultado")}
+              </p>
+            )}
           </ResultCard>
         </div>
       )}
@@ -283,40 +309,55 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function ResultCard({ title, children }: { title: string; children: ReactNode }) {
+function ResultCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-2 rounded-md border border-border/60 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
       {children}
     </div>
   );
 }
 
 function WithoutBody({ result }: { result: WithoutJevPreview }) {
+  const t = useTranslations("ui.jevPanel");
   return (
     <>
       <p className="text-sm font-medium">{DECISION_LABEL[result.decision]}</p>
       <p className="text-xs text-muted-foreground">
         {result.reason === "keyword"
-          ? "Una frase de humano dispara el handoff antes de cualquier modelo."
-          : "No hay keyword. El redactor contestaría."}
+          ? t("unaFraseDeHumanoDisparaEl")
+          : t("noHayKeywordElRedactorContestaria")}
       </p>
     </>
   );
 }
 
 function WithBody({ result }: { result: JudgeView }) {
+  const t = useTranslations("ui.jevPanel");
   return (
     <>
       <p className="text-sm font-medium">{DECISION_LABEL[result.decision]}</p>
       <p className="text-xs text-muted-foreground">{ruleCopy(result.rule)}</p>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-        <Stat label="Choice" value={`${result.action} · ${pct(result.actionConfidence)}`} />
-        <Stat label="Score" value={result.intentScore.toFixed(2)} />
-        <Stat label="Auto-reply" value={pct(result.autoReplyProbability)} />
-        <Stat label="Opt-out" value={pct(result.optOutProbability)} />
+        <Stat
+          label={t("choice")}
+          value={`${result.action} · ${pct(result.actionConfidence)}`}
+        />
+        <Stat label={t("score")} value={result.intentScore.toFixed(2)} />
+        <Stat label={t("autoReply")} value={pct(result.autoReplyProbability)} />
+        <Stat label={t("optOut")} value={pct(result.optOutProbability)} />
       </dl>
-      <p className="text-[11px] text-muted-foreground">Modelo {result.model}</p>
+      <p className="text-[11px] text-muted-foreground">
+        {t("modelo")} {result.model}
+      </p>
     </>
   );
 }

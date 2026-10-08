@@ -7,11 +7,11 @@ export const TIPOS_CUENTA = ["ahorros", "corriente", "llave", "billetera", "otro
 export type TipoCuenta = (typeof TIPOS_CUENTA)[number];
 
 export const TIPO_CUENTA_LABEL: Record<TipoCuenta, string> = {
-  ahorros: "Cuenta de ahorros",
-  corriente: "Cuenta corriente",
-  llave: "Llave (Bre-B)",
-  billetera: "Billetera (Nequi, Daviplata…)",
-  otro: "Otro",
+  ahorros: "cuentaDeAhorros",
+  corriente: "cuentaCorriente",
+  llave: "llaveBreB",
+  billetera: "billeteraNequiDaviplata",
+  otro: "otro",
 };
 
 export interface SedeAjuste {

@@ -1,36 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import {
   Sheet,
-  SheetContent,
-  SheetHeader,
   SheetTitle,
+  SheetHeader,
+  SheetContent,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { ModelPicker } from "./model-picker";
+import { AgentAvatar } from "./agent-avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { AvatarGalleryPicker } from "./avatar-gallery-picker";
-import { ModelPicker } from "./model-picker";
-import { AgentAvatar } from "./agent-avatar";
-import { GuidedPromptEditor } from "./guided-prompt-editor";
+import { Button } from "@/components/ui/button";
 import { TestChatPanel } from "./test-chat-panel";
+import type { AgentDto } from "@/features/agents/types";
+import { GuidedPromptEditor } from "./guided-prompt-editor";
+import { AvatarGalleryPicker } from "./avatar-gallery-picker";
 import { SetterAdvancedConfig } from "./setter-advanced-config";
 import { AGENT_TYPE_META } from "@/features/agents/lib/agent-meta";
-import { cn } from "@/lib/utils";
-import type { AgentDto } from "@/features/agents/types";
 import type { ResponseStyle } from "@/features/inbox/services/prompt-builder";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const STYLE_OPTIONS: { value: ResponseStyle; label: string; hint: string }[] = [
-  { value: "concise", label: "Conciso", hint: "Breve y directo" },
-  { value: "balanced", label: "Equilibrado", hint: "Por defecto" },
-  { value: "detailed", label: "Detallado", hint: "Más contexto" },
+  { value: "concise", label: "conciso", hint: "breveYDirecto" },
+  { value: "balanced", label: "equilibrado", hint: "porDefecto" },
+  { value: "detailed", label: "detallado", hint: "masContexto" },
 ];
 
 interface Props {
@@ -48,6 +49,8 @@ export function AgentConfigSheet({
   onOpenChange,
   onSaved,
 }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.agentConfigSheet");
   const meta = AGENT_TYPE_META[agent.type];
   const [name, setName] = useState(agent.name);
   const [avatarKey, setAvatarKey] = useState(agent.avatarKey);
@@ -68,7 +71,7 @@ export function AgentConfigSheet({
 
   async function handleSaveIdentity() {
     if (!name.trim()) {
-      toast.error("El agente necesita un nombre");
+      toast.error(t("elAgenteNecesitaUnNombre"));
       return;
     }
     setSaving(true);
@@ -93,14 +96,14 @@ export function AgentConfigSheet({
       });
       const json = (await res.json()) as { agent?: AgentDto; error?: string };
       if (!res.ok || !json.agent) {
-        toast.error(json.error ?? "Error al guardar");
+        toast.error(json.error ?? t("errorAlGuardar"));
         return;
       }
-      toast.success("Agente guardado");
+      toast.success(t("agenteGuardado"));
       onSaved(json.agent);
       router.refresh();
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorDeConexion"));
     } finally {
       setSaving(false);
     }
@@ -117,9 +120,9 @@ export function AgentConfigSheet({
               className="h-12 w-12"
             />
             <div>
-              <SheetTitle>Configurar agente</SheetTitle>
+              <SheetTitle>{t("configurarAgente")}</SheetTitle>
               <SheetDescription>
-                {meta.label} — {meta.tagline}
+                {tc(meta.label)} — {meta.tagline}
               </SheetDescription>
             </div>
           </div>
@@ -127,33 +130,33 @@ export function AgentConfigSheet({
 
         <Tabs defaultValue="identidad" className="px-4 py-2">
           <TabsList className="mb-4">
-            <TabsTrigger value="identidad">Identidad</TabsTrigger>
-            <TabsTrigger value="prompt">Prompt</TabsTrigger>
+            <TabsTrigger value="identidad">{t("identidad")}</TabsTrigger>
+            <TabsTrigger value="prompt">{t("prompt")}</TabsTrigger>
             {agent.type === "setter" && (
-              <TabsTrigger value="avanzado">Avanzado</TabsTrigger>
+              <TabsTrigger value="avanzado">{t("avanzado")}</TabsTrigger>
             )}
-            <TabsTrigger value="prueba">Prueba</TabsTrigger>
+            <TabsTrigger value="prueba">{t("prueba")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="identidad" className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="agent-name">Nombre del agente</Label>
+              <Label htmlFor="agent-name">{t("nombreDelAgente")}</Label>
               <Input
                 id="agent-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Carlos"
+                placeholder={t("ejCarlos")}
                 maxLength={60}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Avatar</Label>
+              <Label>{t("avatar")}</Label>
               <AvatarGalleryPicker value={avatarKey} onChange={setAvatarKey} />
             </div>
 
             <div className="space-y-2">
-              <Label>Modelo de IA</Label>
+              <Label>{t("modeloDeIa")}</Label>
               <ModelPicker value={model} onChange={setModel} />
             </div>
 
@@ -161,69 +164,67 @@ export function AgentConfigSheet({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Auto-etiquetado
+                    {t("autoEtiquetado")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Etiqueta contactos por intención con IA.
+                    {t("etiquetaContactosPorIntencionConIa")}
                   </p>
                 </div>
                 <Switch
                   checked={autoTag}
                   onCheckedChange={setAutoTag}
-                  aria-label="Auto-etiquetado"
+                  aria-label={t("autoEtiquetado")}
                 />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Resúmenes automáticos
+                    {t("resumenesAutomaticos")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Genera un resumen de cada conversación.
+                    {t("generaUnResumenDeCadaConversacion")}
                   </p>
                 </div>
                 <Switch
                   checked={summarize}
                   onCheckedChange={setSummarize}
-                  aria-label="Resúmenes automáticos"
+                  aria-label={t("resumenesAutomaticos")}
                 />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Responder en el idioma del cliente
+                    {t("responderEnElIdiomaDelCliente")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Si el cliente escribe en inglés u otro idioma, el agente le
-                    contesta en ese idioma.
+                    {t("siElClienteEscribeEnIngles")}
                   </p>
                 </div>
                 <Switch
                   checked={idiomaCliente}
                   onCheckedChange={setIdiomaCliente}
-                  aria-label="Responder en el idioma del cliente"
+                  aria-label={t("responderEnElIdiomaDelCliente")}
                 />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Pausar IA con mensaje manual
+                    {t("pausarIaConMensajeManual")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Si un humano responde en el inbox, la IA deja de responder
-                    esa conversación.
+                    {t("siUnHumanoRespondeEnEl")}
                   </p>
                 </div>
                 <Switch
                   checked={sleepOnManual}
                   onCheckedChange={setSleepOnManual}
-                  aria-label="Pausar IA con mensaje manual"
+                  aria-label={t("pausarIaConMensajeManual")}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Estilo de respuesta</Label>
+              <Label>{t("estiloDeRespuesta")}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {STYLE_OPTIONS.map((opt) => (
                   <button
@@ -239,10 +240,10 @@ export function AgentConfigSheet({
                     )}
                   >
                     <span className="block text-xs font-medium text-foreground">
-                      {opt.label}
+                      {tc(opt.label)}
                     </span>
                     <span className="block text-[10px] text-muted-foreground">
-                      {opt.hint}
+                      {tc(opt.hint)}
                     </span>
                   </button>
                 ))}
@@ -260,10 +261,10 @@ export function AgentConfigSheet({
                     className="h-4 w-4 animate-spin"
                     aria-hidden="true"
                   />
-                  Guardando...
+                  {t("guardando")}
                 </>
               ) : (
-                "Guardar"
+                t("guardar")
               )}
             </Button>
           </TabsContent>
@@ -282,8 +283,7 @@ export function AgentConfigSheet({
             <TabsContent value="avanzado">
               <div className="mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Califica prospectos con preguntas estructuradas, reglas de
-                  knockout y scoring antes del handoff.
+                  {t("calificaProspectosConPreguntasEstructura")}
                 </p>
               </div>
               <SetterAdvancedConfig workspaceId={workspaceId} />

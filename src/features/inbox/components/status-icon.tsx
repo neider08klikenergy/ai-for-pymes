@@ -1,12 +1,13 @@
-import { AlertCircle, Check, CheckCheck, Clock } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { MessageStatus } from "@/features/inbox/types";
-import { GENERIC_SEND_ERROR } from "@/features/inbox/services/whatsapp-errors";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import type { MessageStatus } from "@/features/inbox/types";
+import { AlertCircle, Check, CheckCheck, Clock } from "lucide-react";
+import { GENERIC_SEND_ERROR } from "@/features/inbox/services/whatsapp-errors";
 
 interface StatusIconProps {
   status: MessageStatus | null;
@@ -19,6 +20,7 @@ interface StatusIconProps {
 }
 
 export function StatusIcon({ status, errorMessage }: StatusIconProps) {
+  const t = useTranslations("inbox.estadoMensaje");
   if (!status) return null;
 
   switch (status) {
@@ -26,28 +28,28 @@ export function StatusIcon({ status, errorMessage }: StatusIconProps) {
       return (
         <Clock
           className={cn("h-3 w-3 shrink-0 opacity-50")}
-          aria-label="En cola"
+          aria-label={t("enCola")}
         />
       );
     case "sent":
       return (
         <Check
           className={cn("h-3 w-3 shrink-0 opacity-60")}
-          aria-label="Enviado"
+          aria-label={t("enviado")}
         />
       );
     case "delivered":
       return (
         <CheckCheck
           className={cn("h-3 w-3 shrink-0 opacity-60")}
-          aria-label="Entregado"
+          aria-label={t("entregado")}
         />
       );
     case "read":
       return (
         <CheckCheck
           className={cn("h-3 w-3 shrink-0 text-primary")}
-          aria-label="Leído"
+          aria-label={t("leido")}
         />
       );
     case "failed": {
@@ -58,7 +60,7 @@ export function StatusIcon({ status, errorMessage }: StatusIconProps) {
         <Popover>
           <PopoverTrigger
             className="shrink-0 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-destructive"
-            aria-label={`Fallido: ${reason}`}
+            aria-label={t("fallido", { motivo: reason })}
           >
             <AlertCircle
               className="h-3 w-3 text-destructive"

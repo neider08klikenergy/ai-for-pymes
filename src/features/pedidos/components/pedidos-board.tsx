@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { toastResultado } from "./comun";
 import { PagosLista } from "./pagos-lista";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { siguienteEstado } from "../lib/estados";
@@ -38,17 +39,17 @@ const PESTANAS: {
   corto: string;
   Icon: React.ElementType;
 }[] = [
-  { vista: "tabla", label: "Tabla", corto: "Tabla", Icon: Table2 },
+  { vista: "tabla", label: "tabla", corto: "tabla", Icon: Table2 },
   {
     vista: "calendario",
-    label: "Calendario",
-    corto: "Calendario",
+    label: "calendario",
+    corto: "calendario",
     Icon: CalendarDays,
   },
   {
     vista: "pagos",
-    label: "Pagos por verificar",
-    corto: "Pagos",
+    label: "pagosPorVerificar",
+    corto: "pagos",
     Icon: Wallet,
   },
 ];
@@ -56,6 +57,7 @@ const PESTANAS: {
 export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
   const router = useRouter();
   const { filtros, hoy, zona } = vista;
+  const t = useTranslations("pedidos.board");
 
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [revision, setRevision] = useState<RevisionPendiente | null>(null);
@@ -111,16 +113,20 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Receipt className="h-5 w-5 text-primary" aria-hidden="true" />
-          <h1 className="font-display text-xl font-semibold">Pedidos</h1>
+          <h1 className="font-display text-xl font-semibold">{t("titulo")}</h1>
         </div>
         {vista.sedes.length > 1 && filtros.vista !== "pagos" && (
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Sede">
+          <div
+            className="flex flex-wrap gap-1"
+            role="group"
+            aria-label={t("sede")}
+          >
             <Button
               size="sm"
               variant={filtros.sede === null ? "default" : "outline"}
               onClick={() => ir({ sede: null })}
             >
-              Todas
+              {t("todas")}
             </Button>
             {vista.sedes.map((s) => (
               <Button
@@ -138,7 +144,7 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
 
       <nav
         className="flex gap-1 overflow-x-auto rounded-xl bg-muted/40 p-1 w-fit max-w-full"
-        aria-label="Vistas de pedidos"
+        aria-label={t("vistasPedidos")}
       >
         {PESTANAS.map(({ vista: v, label, corto, Icon }) => {
           const activa = filtros.vista === v;
@@ -156,8 +162,8 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
               )}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              <span className="sm:hidden">{corto}</span>
-              <span className="hidden sm:inline">{label}</span>
+              <span className="sm:hidden">{t(`vistas.${corto}`)}</span>
+              <span className="hidden sm:inline">{t(`vistas.${label}`)}</span>
               {v === "pagos" && vista.pagosPendientes > 0 && (
                 <span className="rounded-full bg-warning/20 px-1.5 text-xs font-semibold text-warning tabular-nums">
                   {vista.pagosPendientes}
@@ -170,8 +176,7 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
 
       {sinSedes && (
         <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-          Este workspace todavía no tiene sedes. Carga el seed del negocio para
-          usar pedidos.
+          {t("sinSedes")}
         </p>
       )}
 
@@ -184,12 +189,11 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
             mostrarFecha={filtros.desde !== filtros.hasta}
             mostrarSede={filtros.sede === null}
             acciones={acciones}
-            vacio="No hay pedidos con estos filtros."
+            vacio={t("vacio")}
           />
           {vista.truncado && (
             <p className="text-xs text-muted-foreground">
-              Se muestran los primeros {vista.pedidos.length}. Acorta el rango
-              de fechas para ver el resto.
+              {t("truncado", { n: vista.pedidos.length })}
             </p>
           )}
         </div>
@@ -220,7 +224,7 @@ export function PedidosBoard({ vista, puedeActuar }: PedidosBoardProps) {
 
       <p className="text-xs text-muted-foreground flex items-center gap-1">
         <Clock className="h-3 w-3" aria-hidden="true" />
-        Horas en {zona}.
+        {t("horasEn", { zona })}
       </p>
 
       <PedidoDetalle

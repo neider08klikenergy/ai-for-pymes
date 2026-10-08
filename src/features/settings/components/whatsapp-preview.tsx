@@ -1,11 +1,12 @@
 "use client";
 
-import { MessageSquare, Link as LinkIcon, Phone } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type {
   TemplateButton,
   TemplateVariable,
 } from "@/features/settings/lib/template-form";
+import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { MessageSquare, Link as LinkIcon, Phone } from "lucide-react";
 
 // Live WhatsApp bubble preview. Intentionally keeps WhatsApp's real chat colors
 // (not the app's Glass + Lime tokens) so it reads as a faithful phone mockup.
@@ -36,13 +37,14 @@ export function WhatsAppPreview({
   buttons,
   variables,
 }: Props) {
+  const t = useTranslations("ui.whatsappPreview");
   const resolvedBody = resolve(bodyText, variables);
   const resolvedHeader = resolve(headerText, variables);
 
   return (
     <div className="sticky top-0">
       <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Vista previa
+        {t("vistaPrevia")}
       </p>
 
       {/* Phone / chat mockup — WhatsApp colors on purpose */}
@@ -54,9 +56,9 @@ export function WhatsAppPreview({
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium leading-tight text-white">
-              {businessName || "Tu negocio"}
+              {businessName || t("tuNegocio")}
             </p>
-            <p className="text-[11px] text-white/70">en línea</p>
+            <p className="text-[11px] text-white/70">{t("enLinea")}</p>
           </div>
         </div>
 
@@ -77,7 +79,7 @@ export function WhatsAppPreview({
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#111B21]">
                 {resolvedBody || (
                   <span className="italic text-[#667781]">
-                    El mensaje aparecerá aquí…
+                    {t("elMensajeApareceraAqui")}
                   </span>
                 )}
               </p>
@@ -112,7 +114,7 @@ export function WhatsAppPreview({
                     {btn.type === "phone" && (
                       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                     )}
-                    {btn.text || "Botón"}
+                    {btn.text || t("boton")}
                   </div>
                 ))}
               </div>

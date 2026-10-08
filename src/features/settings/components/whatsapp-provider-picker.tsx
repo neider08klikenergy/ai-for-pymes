@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 
 // Shared by Settings → Integraciones and the onboarding wizard.
@@ -101,7 +102,8 @@ export type KapsoNumberOption = {
 
 /** "+1 555-000-0001 · Cliente A (sandbox)" — what a person recognises. */
 export function describeKapsoNumber(n: KapsoNumberOption): string {
-  const main = n.display_phone_number || n.phone_number_id || "número sin nombre";
+  const main =
+    n.display_phone_number || n.phone_number_id || "número sin nombre";
   const name = n.verified_name ? ` · ${n.verified_name}` : "";
   const sandbox = n.kind === "sandbox" ? " (sandbox)" : "";
   return `${main}${name}${sandbox}`;
@@ -131,21 +133,24 @@ export function KapsoNumberSelect({
   value: string;
   onPick: (n: KapsoNumberOption) => void;
 }) {
+  const t = useTranslations("ui.whatsappProviderPicker");
   const known = numbers.some((n) => n.phone_number_id === value);
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Números del proyecto de Kapso</Label>
+      <Label htmlFor={id}>{t("numerosDelProyectoDeKapso")}</Label>
       <select
         id={id}
         className={SELECT_CLASS}
         value={known ? value : ""}
         onChange={(e) => {
-          const picked = numbers.find((n) => n.phone_number_id === e.target.value);
+          const picked = numbers.find(
+            (n) => n.phone_number_id === e.target.value,
+          );
           if (picked) onPick(picked);
         }}
       >
         <option value="" disabled>
-          Elige el número de este workspace…
+          {t("eligeElNumeroDeEsteWorkspace")}
         </option>
         {numbers.map((n) => (
           <option key={n.phone_number_id} value={n.phone_number_id}>

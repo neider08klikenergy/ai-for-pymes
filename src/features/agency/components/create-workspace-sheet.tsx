@@ -1,27 +1,28 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
 import {
   Sheet,
+  SheetTitle,
+  SheetHeader,
   SheetContent,
   SheetDescription,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from "@/components/ui/select";
+import { toast } from "sonner";
+import type { UseCase } from "../types";
+import { useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { Copy, CheckCheck } from "lucide-react";
 import { createWorkspaceForClient } from "../services/agency-actions";
-import type { UseCase } from "../types";
 
 interface Props {
   open: boolean;
@@ -32,27 +33,29 @@ interface Props {
 const USE_CASES: { value: UseCase; label: string; description: string }[] = [
   {
     value: "setter",
-    label: "Setter",
-    description: "Calificación de leads y agendamiento",
+    label: "setter",
+    description: "calificacionDeLeadsYAgendamiento",
   },
   {
     value: "soporte",
-    label: "Soporte",
-    description: "Atención al cliente y resolución de problemas",
+    label: "soporte",
+    description: "atencionAlClienteYResolucionDe",
   },
   {
     value: "agendamiento",
-    label: "Agendamiento",
-    description: "Reservas y recordatorios",
+    label: "agendamiento",
+    description: "reservasYRecordatorios",
   },
   {
     value: "general",
-    label: "General",
-    description: "Asistente virtual multipropósito",
+    label: "general",
+    description: "asistenteVirtualMultiproposito",
   },
 ];
 
 export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
+  const tc = useTranslations("ui.constantes");
+  const t = useTranslations("ui.createWorkspaceSheet");
   const [name, setName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPassword, setClientPassword] = useState("");
@@ -115,7 +118,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
 
       setWebhookUrls(result.webhookUrls ?? null);
       setCredentials(result.clientCredentials ?? null);
-      toast.success("Workspace creado correctamente");
+      toast.success(t("workspaceCreadoCorrectamente"));
       onCreated();
     });
   }
@@ -130,12 +133,10 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="font-display text-foreground">
-            Nuevo cliente
+            {t("nuevoCliente")}
           </SheetTitle>
           <SheetDescription className="text-muted-foreground">
-            Da de alta un cliente (su propio workspace). Si pones su email, se
-            crea su cuenta al instante con una contraseña — compártela y entra
-            directo, sin correos.
+            {t("daDeAltaUnClienteSu")}
           </SheetDescription>
         </SheetHeader>
 
@@ -145,18 +146,20 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
             {credentials && (
               <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-2">
                 <p className="text-sm font-medium text-foreground">
-                  Credenciales del cliente
+                  {t("credencialesDelCliente")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Compártelas con tu cliente. No se vuelven a mostrar.
+                  {t("compartelasConTuClienteNoSe")}
                 </p>
                 <div className="space-y-1 font-mono text-xs mt-1">
                   <p className="text-foreground break-all">
-                    <span className="text-muted-foreground">Email: </span>
+                    <span className="text-muted-foreground">{t("email")} </span>
                     {credentials.email}
                   </p>
                   <p className="text-foreground break-all">
-                    <span className="text-muted-foreground">Contraseña: </span>
+                    <span className="text-muted-foreground">
+                      {t("contrasena")}{" "}
+                    </span>
                     {credentials.password}
                   </p>
                 </div>
@@ -175,23 +178,24 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                   ) : (
                     <Copy className="h-4 w-4" aria-hidden="true" />
                   )}
-                  Copiar credenciales
+                  {t("copiarCredenciales")}
                 </Button>
               </div>
             )}
 
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
               <p className="text-sm font-medium text-foreground">
-                Workspace creado
+                {t("workspaceCreado")}
               </p>
               <p className="text-xs text-muted-foreground">
-                El cliente elige su proveedor de WhatsApp en Configuración →
-                Integraciones. Comparte la URL de webhook del que vaya a usar:
+                {t("elClienteEligeSuProveedorDe")}
               </p>
               {(["ycloud", "kapso"] as const).map((provider) => (
                 <div key={provider} className="space-y-1 mt-1">
                   <p className="text-xs font-medium text-foreground">
-                    {provider === "kapso" ? "Kapso (Estados Unidos)" : "YCloud"}
+                    {provider === "kapso"
+                      ? t("kapsoEstadosUnidos")
+                      : t("ycloud")}
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-xs text-foreground break-all">
@@ -220,7 +224,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
             </div>
 
             <Button variant="outline" className="w-full" onClick={handleClose}>
-              Cerrar
+              {t("cerrar")}
             </Button>
           </div>
         ) : (
@@ -231,7 +235,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 htmlFor="ws-name"
                 className="text-sm font-medium text-foreground"
               >
-                Nombre del negocio
+                {t("nombreDelNegocio")}
                 <span className="ml-1 text-destructive" aria-hidden="true">
                   *
                 </span>
@@ -240,7 +244,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 id="ws-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Clínica Dental Norte"
+                placeholder={t("ejClinicaDentalNorte")}
                 required
                 disabled={saving}
                 aria-required="true"
@@ -252,9 +256,9 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 htmlFor="ws-email"
                 className="text-sm font-medium text-foreground"
               >
-                Email del cliente
+                {t("emailDelCliente")}
                 <span className="ml-1 text-muted-foreground text-xs">
-                  (opcional)
+                  {t("opcional")}
                 </span>
               </Label>
               <Input
@@ -262,12 +266,11 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
-                placeholder="cliente@empresa.com"
+                placeholder={t("clienteEmpresaCom")}
                 disabled={saving}
               />
               <p className="text-xs text-muted-foreground">
-                Se crea su cuenta al instante (rol admin). Sin correos: le
-                compartes las credenciales y entra directo.
+                {t("seCreaSuCuentaAlInstante")}
               </p>
             </div>
 
@@ -276,9 +279,9 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 htmlFor="ws-password"
                 className="text-sm font-medium text-foreground"
               >
-                Contraseña del cliente
+                {t("contrasenaDelCliente")}
                 <span className="ml-1 text-muted-foreground text-xs">
-                  (opcional)
+                  {t("opcional")}
                 </span>
               </Label>
               <Input
@@ -286,7 +289,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 type="text"
                 value={clientPassword}
                 onChange={(e) => setClientPassword(e.target.value)}
-                placeholder="Se genera una segura si lo dejas vacío"
+                placeholder={t("seGeneraUnaSeguraSiLo")}
                 disabled={saving}
                 autoComplete="off"
               />
@@ -297,7 +300,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 htmlFor="ws-usecase"
                 className="text-sm font-medium text-foreground"
               >
-                Caso de uso
+                {t("casoDeUso")}
               </Label>
               <Select
                 value={useCase}
@@ -310,9 +313,9 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                 <SelectContent>
                   {USE_CASES.map((uc) => (
                     <SelectItem key={uc.value} value={uc.value}>
-                      <span className="font-medium">{uc.label}</span>
+                      <span className="font-medium">{tc(uc.label)}</span>
                       <span className="ml-1.5 text-muted-foreground text-xs">
-                        — {uc.description}
+                        — {tc(uc.description)}
                       </span>
                     </SelectItem>
                   ))}
@@ -326,7 +329,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
               disabled={saving || !name.trim()}
               aria-busy={saving}
             >
-              {saving ? "Dando de alta..." : "Dar de alta cliente"}
+              {saving ? t("dandoDeAlta") : t("darDeAltaCliente")}
             </Button>
           </form>
         )}

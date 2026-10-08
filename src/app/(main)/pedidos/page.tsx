@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import type { ParamsPedidos } from "@/features/pedidos/lib/filtros";
 import { PedidosBoard } from "@/features/pedidos/components/pedidos-board";
@@ -23,7 +24,7 @@ export default async function PedidosPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
-          No tienes un workspace activo.
+          {(await getTranslations("common"))("sinWorkspace")}
         </p>
       </div>
     );

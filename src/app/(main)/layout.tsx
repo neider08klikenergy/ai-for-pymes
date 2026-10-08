@@ -16,10 +16,12 @@ import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/branding";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { resolveTimeZone } from "@/shared/lib/timezone";
 import { logout } from "@/features/auth/services/actions";
+import { SelectorIdioma } from "@/components/selector-idioma";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { CampanaNotificaciones } from "@/features/notificaciones/components/campana-notificaciones";
@@ -29,6 +31,7 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = await getTranslations("common.nav");
   const supabase = await createClient();
 
   const {
@@ -110,6 +113,7 @@ export default async function MainLayout({
         {/* Right: agency link (super admin only) + dashboard + settings + logout */}
         <div className="flex items-center gap-1 shrink-0">
           {activeId && <CampanaNotificaciones />}
+          <SelectorIdioma />
           <ThemeToggle />
 
           {isSuperAdmin && (
@@ -120,7 +124,9 @@ export default async function MainLayout({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Building2 className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Agency</span>
+                <span className="sr-only sm:not-sr-only sm:ml-2">
+                  {t("agencia")}
+                </span>
               </Button>
             </Link>
           )}
@@ -132,7 +138,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Inbox</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("inbox")}
+              </span>
             </Button>
           </Link>
 
@@ -143,7 +151,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <Receipt className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Pedidos</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("pedidos")}
+              </span>
             </Button>
           </Link>
 
@@ -154,7 +164,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <Package className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Productos</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("productos")}
+              </span>
             </Button>
           </Link>
 
@@ -165,7 +177,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Dashboard</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("dashboard")}
+              </span>
             </Button>
           </Link>
 
@@ -176,7 +190,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Settings</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("settings")}
+              </span>
             </Button>
           </Link>
 
@@ -188,7 +204,9 @@ export default async function MainLayout({
               className="text-muted-foreground hover:text-foreground"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Salir</span>
+              <span className="sr-only sm:not-sr-only sm:ml-2">
+                {t("salir")}
+              </span>
             </Button>
           </form>
         </div>
@@ -205,14 +223,14 @@ export default async function MainLayout({
           "glass-strong border-t border-border/50",
           "flex items-center justify-around px-4",
         )}
-        aria-label="Navegación móvil"
+        aria-label={t("navegacionMovil")}
       >
         <Link
           href="/inbox"
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          <span>Inbox</span>
+          <span>{t("inbox")}</span>
         </Link>
 
         <Link
@@ -220,7 +238,7 @@ export default async function MainLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Receipt className="h-5 w-5" aria-hidden="true" />
-          <span>Pedidos</span>
+          <span>{t("pedidos")}</span>
         </Link>
 
         <Link
@@ -228,7 +246,7 @@ export default async function MainLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Package className="h-5 w-5" aria-hidden="true" />
-          <span>Productos</span>
+          <span>{t("productos")}</span>
         </Link>
 
         <Link
@@ -236,7 +254,7 @@ export default async function MainLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-          <span>Dashboard</span>
+          <span>{t("dashboard")}</span>
         </Link>
 
         <Link
@@ -244,7 +262,7 @@ export default async function MainLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>Settings</span>
+          <span>{t("settings")}</span>
         </Link>
 
         {isSuperAdmin && (
@@ -253,7 +271,7 @@ export default async function MainLayout({
             className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <Building2 className="h-5 w-5" aria-hidden="true" />
-            <span>Agency</span>
+            <span>{t("agencia")}</span>
           </Link>
         )}
       </nav>

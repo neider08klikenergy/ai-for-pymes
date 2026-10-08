@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogHeader,
   DialogFooter,
+  DialogContent,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import {
+  JevPanel,
+  type JevSettings,
+} from "@/features/jev-judge/components/jev-panel";
+import { toast } from "sonner";
+import { useState } from "react";
 import { AgentCard } from "./agent-card";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { AgentConfigSheet } from "./agent-config-sheet";
-import { JevPanel, type JevSettings } from "@/features/jev-judge/components/jev-panel";
 import type { AgentDto, AgentType } from "@/features/agents/types";
 
 const ORDER: AgentType[] = ["setter", "soporte", "agendamiento"];
@@ -36,6 +40,7 @@ export function AgentsTab({
   jev: JevSettings;
   canManage: boolean;
 }) {
+  const t = useTranslations("ui.agentsTab");
   const router = useRouter();
   const [agents, setAgents] = useState<AgentDto[]>(() =>
     sortAgents(initialAgents),
@@ -63,7 +68,7 @@ export function AgentsTab({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        toast.error(json.error ?? "No se pudo activar el agente");
+        toast.error(json.error ?? t("noSePudoActivarElAgente"));
         return;
       }
       setAgents((prev) =>
@@ -72,7 +77,7 @@ export function AgentsTab({
       toast.success(`${pending.name} está activo`);
       router.refresh();
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("errorDeConexion"));
     } finally {
       setBusy(false);
       setPending(null);
@@ -98,7 +103,7 @@ export function AgentsTab({
         canManage={canManage}
       />
       <p className="text-sm text-muted-foreground">
-        Configura tus 3 agentes. Solo uno puede estar activo a la vez.
+        {t("configuraTus3AgentesSoloUno")}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -134,19 +139,21 @@ export function AgentsTab({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Activar a {pending?.name}</DialogTitle>
+            <DialogTitle>
+              {t("activarA")} {pending?.name}
+            </DialogTitle>
             <DialogDescription>
               {currentActive && currentActive.id !== pending?.id
                 ? `Esto desactivará a ${currentActive.name}. Solo un agente puede estar activo a la vez.`
-                : "¿Activar este agente?"}
+                : t("activarEsteAgente")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPending(null)}>
-              Cancelar
+              {t("cancelar")}
             </Button>
             <Button onClick={confirmActivate} disabled={busy} aria-busy={busy}>
-              Activar
+              {t("activar")}
             </Button>
           </DialogFooter>
         </DialogContent>
