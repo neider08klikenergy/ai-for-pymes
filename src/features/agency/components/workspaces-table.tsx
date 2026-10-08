@@ -27,6 +27,9 @@ interface Props {
   workspaces: WorkspaceWithStats[];
 }
 
+const GRID_COLS =
+  "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_240px]";
+
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("es-MX", {
     year: "numeric",
@@ -113,7 +116,7 @@ export function WorkspacesTable({ workspaces }: Props) {
           className={cn(
             "hidden md:grid gap-4 px-4 py-2.5",
             "border-b border-border bg-muted/40",
-            "grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]",
+            GRID_COLS,
           )}
         >
           {[
@@ -166,9 +169,10 @@ export function WorkspacesTable({ workspaces }: Props) {
             key={workspace.id}
             className={cn(
               "flex flex-col gap-3 px-4 py-4",
-              "md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:py-3",
+              "md:grid md:items-center md:gap-4 md:py-3",
               "border-b border-border last:border-0",
               "hover:bg-muted/20 transition-colors duration-150",
+              GRID_COLS,
             )}
           >
             {/* Workspace name + slug */}
@@ -240,7 +244,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Button
                 size="sm"
                 variant="ghost"
