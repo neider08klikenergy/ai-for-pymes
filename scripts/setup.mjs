@@ -34,6 +34,8 @@ const GENERATED = {
   ENCRYPTION_KEY: () => randomBytes(32).toString("base64"),
   BUFFER_PROCESS_SECRET: () => randomBytes(32).toString("hex"),
   CRON_SECRET: () => randomBytes(32).toString("hex"),
+  // Firma los enlaces de baja de los correos (src/features/email/lib/baja.ts).
+  EMAIL_UNSUBSCRIBE_SECRET: () => randomBytes(32).toString("hex"),
 };
 
 // Keys the member pastes; the agent passes them as same-named env vars.
@@ -56,9 +58,11 @@ function fail(m) {
   process.exit(1);
 }
 
-// A value is a placeholder if it is empty or still carries the example "your-" hint.
-// Generated base64/hex secrets never contain "your-", so re-runs keep them intact.
-const isPlaceholder = (v) => !v || v.trim() === "" || /your-/.test(v);
+// A value is a placeholder if it is empty or still carries an example hint:
+// "your-…" or a whole "<…>" value such as "<aleatorio>". Generated base64/hex
+// secrets never contain "your-", "<" or ">", so re-runs keep them intact.
+const isPlaceholder = (v) =>
+  !v || v.trim() === "" || /your-/.test(v) || /^<.*>$/.test(v.trim());
 
 // ── .env parsing / writing ──────────────────────────────────────────────────
 function parseEnv(text) {

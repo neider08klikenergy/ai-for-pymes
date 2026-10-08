@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createHmac } from "node:crypto";
 import { escapeHtml, renderLayout, renderText } from "./layout.ts";
 import { elegirDestinatarios } from "./destinatarios.ts";
 import { tokenBaja, urlBaja, verificarBaja } from "./baja.ts";
@@ -74,7 +75,7 @@ test("baja: el token es por usuario y workspace; sin secreto no hay enlace", () 
   assert.equal(tokenBaja("u", "w"), null);
   assert.equal(verificarBaja("u", "w", "x"), false);
 
-  process.env.EMAIL_UNSUBSCRIBE_SECRET = "k";
+  process.env.EMAIL_UNSUBSCRIBE_SECRET = "k".repeat(32);
   const t = tokenBaja("u", "w")!;
   assert.ok(verificarBaja("u", "w", t));
   assert.equal(verificarBaja("u", "otro", t), false);
@@ -82,7 +83,36 @@ test("baja: el token es por usuario y workspace; sin secreto no hay enlace", () 
   assert.match(urlBaja("https://app.test", "u", "w") ?? "", /^https:\/\/app\.test\/api\/email\/baja\?u=u&w=w&t=/);
 
   if (prev.e === undefined) delete process.env.EMAIL_UNSUBSCRIBE_SECRET; else process.env.EMAIL_UNSUBSCRIBE_SECRET = prev.e;
-  if (prev.c !== undefined) process.env.CRON_SECRET = prev.c;
+  if (prev.c === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = prev.c;
+});
+
+test("baja: una clave de ejemplo o corta no firma enlaces", () => {
+  const prev = { e: process.env.EMAIL_UNSUBSCRIBE_SECRET, c: process.env.CRON_SECRET };
+  delete process.env.CRON_SECRET;
+  for (const ejemplo of ["<aleatorio>", "your-unsubscribe-secret", "corta", "<" + "x".repeat(40) + ">"]) {
+    process.env.EMAIL_UNSUBSCRIBE_SECRET = ejemplo;
+    assert.equal(tokenBaja("u", "w"), null, ejemplo);
+    // Con la clave pública de la documentación no se puede fabricar un enlace.
+    const forjado = createHmac("sha256", ejemplo).update("baja:u:w").digest("base64url");
+    assert.equal(verificarBaja("u", "w", forjado), false, ejemplo);
+  }
+
+  if (prev.e === undefined) delete process.env.EMAIL_UNSUBSCRIBE_SECRET; else process.env.EMAIL_UNSUBSCRIBE_SECRET = prev.e;
+  if (prev.c === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = prev.c;
+});
+
+test("baja: sin clave propia usa una derivada de CRON_SECRET, no CRON_SECRET tal cual", () => {
+  const prev = { e: process.env.EMAIL_UNSUBSCRIBE_SECRET, c: process.env.CRON_SECRET };
+  delete process.env.EMAIL_UNSUBSCRIBE_SECRET;
+  process.env.CRON_SECRET = "c".repeat(64);
+  const t = tokenBaja("u", "w")!;
+  assert.ok(verificarBaja("u", "w", t));
+  const conCronDirecto = createHmac("sha256", "c".repeat(64)).update("baja:u:w").digest("base64url");
+  assert.notEqual(t, conCronDirecto);
+  assert.equal(verificarBaja("u", "w", conCronDirecto), false);
+
+  if (prev.e === undefined) delete process.env.EMAIL_UNSUBSCRIBE_SECRET; else process.env.EMAIL_UNSUBSCRIBE_SECRET = prev.e;
+  if (prev.c === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = prev.c;
 });
 
 test("config: sin EMAIL_FROM no hay remitente; colores inválidos usan los de la marca", () => {

@@ -47,11 +47,23 @@ EMAIL_REPLY_TO=soporte@tudominio.com        # opcional
 EMAIL_LOGO_URL=https://tudominio.com/logo.png   # opcional, https
 EMAIL_BRAND_COLOR=#a3e635                   # opcional
 EMAIL_BRAND_COLOR_TEXT=#1a2e05              # opcional
-EMAIL_UNSUBSCRIBE_SECRET=<aleatorio>        # si falta usa CRON_SECRET
+EMAIL_UNSUBSCRIBE_SECRET=                   # 32+ caracteres aleatorios (ver abajo)
 # Alternativa gratuita: EMAIL_PROVIDER=resend + RESEND_API_KEY
 ```
 
 Sin `EMAIL_FROM` el módulo queda apagado: no se toma ni se envía nada.
+
+`EMAIL_UNSUBSCRIBE_SECRET` firma los enlaces de "Dejar de recibir estos
+correos". `node scripts/setup.mjs env` la genera sola; a mano:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Nunca uses un texto de ejemplo: una clave de menos de 32 caracteres o que
+parezca de ejemplo (`<...>`, `your-...`) se ignora. Si falta, se usa una clave
+derivada de `CRON_SECRET`. El enlace abre una página que pide confirmar; la
+baja en un clic de Gmail/Yahoo (`List-Unsubscribe-Post`) sigue funcionando.
 
 ## SendGrid
 

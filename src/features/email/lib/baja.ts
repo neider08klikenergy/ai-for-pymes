@@ -4,8 +4,32 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+// Una clave corta o que todavía es el texto de ejemplo ("<aleatorio>",
+// "your-…") no protege nada: la firma se podría calcular con lo que dice la
+// documentación. Se trata como si no estuviera.
+const MIN_LARGO_CLAVE = 32;
+
+function claveSegura(valor: string | undefined): string | null {
+  const v = valor?.trim();
+  if (!v || v.length < MIN_LARGO_CLAVE || /[<>]|your-/.test(v)) return null;
+  return v;
+}
+
+let avisoClave = false;
+
 function secret(): string | null {
-  return process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
+  const propia = claveSegura(process.env.EMAIL_UNSUBSCRIBE_SECRET);
+  if (propia) return propia;
+  if (process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim() && !avisoClave) {
+    avisoClave = true;
+    console.warn(
+      "[email/baja] EMAIL_UNSUBSCRIBE_SECRET es un texto de ejemplo o tiene menos de 32 caracteres; se ignora.",
+    );
+  }
+  // Sin clave propia: una derivada de CRON_SECRET solo para esto, así la misma
+  // clave no firma dos cosas distintas.
+  const cron = claveSegura(process.env.CRON_SECRET);
+  return cron ? createHmac("sha256", cron).update("email-baja").digest("hex") : null;
 }
 
 function firma(userId: string, workspaceId: string, key: string): string {
