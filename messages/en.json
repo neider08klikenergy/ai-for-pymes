@@ -161,7 +161,10 @@
         "NO_SE_PUEDE_CANCELAR": "That order is already delivered or cancelled.",
         "PEDIDO_CERRADO": "That order is already delivered or cancelled.",
         "PEDIDO_PAGADO": "That order is already paid.",
-        "SIN_SALDO_A_FAVOR": "The customer has no valid store credit."
+        "SIN_SALDO_A_FAVOR": "The customer has no valid store credit.",
+        "DOMICILIO_POR_DEFINIR": "Set the order's delivery fee first, then confirm the payment.",
+        "VALOR_NO_VALIDO": "Enter a valid delivery fee.",
+        "NO_ES_DOMICILIO": "That order is not for delivery."
       },
       "aviso": {
         "enviado": "Customer notified on WhatsApp",
@@ -170,7 +173,9 @@
         "ventana_cerrada": "WhatsApp not sent: more than 24 h have passed and the template isn't approved. A note was left in the chat",
         "bloqueado": "WhatsApp not sent: the customer asked not to receive messages",
         "error": "The WhatsApp couldn't be sent. Message them from the chat"
-      }
+      },
+      "noDomicilio": "Could not save the delivery fee.",
+      "domicilioFijado": "Delivery fee for {numero}: {valor}"
     },
     "siguiente": {
       "confirmado": "Start production",
@@ -260,7 +265,7 @@
       "sinDireccion": "no address",
       "recogeEnSede": "Pick up at location",
       "domicilio": "Delivery",
-      "valorEquipo": "amount given by the team in the chat",
+      "valorEquipo": "set by the team",
       "segunTarifa": "per rate",
       "decoracion": "Decoration",
       "mensaje": "Message",
@@ -290,7 +295,12 @@
       "clienteTieneSaldo": "The customer has {monto} of store credit",
       "usar": "Use {monto}",
       "cancelarPedido": "Cancel order",
-      "guardando": "Saving…"
+      "guardando": "Saving…",
+      "porDefinir": "To be set",
+      "porDefinirAviso": "There is no rate for this address: set the delivery fee before confirming the payment.",
+      "valorDomicilio": "Delivery fee",
+      "guardarDomicilio": "Save",
+      "corregirDomicilio": "Edit"
     },
     "dialogos": {
       "escribeMonto": "Enter the amount received",

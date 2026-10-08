@@ -161,7 +161,10 @@
         "NO_SE_PUEDE_CANCELAR": "Ese pedido ya está entregado o cancelado.",
         "PEDIDO_CERRADO": "Ese pedido ya está entregado o cancelado.",
         "PEDIDO_PAGADO": "Ese pedido ya está pagado.",
-        "SIN_SALDO_A_FAVOR": "El cliente no tiene saldo a favor vigente."
+        "SIN_SALDO_A_FAVOR": "El cliente no tiene saldo a favor vigente.",
+        "DOMICILIO_POR_DEFINIR": "Primero fija el valor del domicilio del pedido; después confirma el pago.",
+        "VALOR_NO_VALIDO": "Escribe un valor de domicilio válido.",
+        "NO_ES_DOMICILIO": "Ese pedido no es a domicilio."
       },
       "aviso": {
         "enviado": "Cliente avisado por WhatsApp",
@@ -170,7 +173,9 @@
         "ventana_cerrada": "No se envió el WhatsApp: pasaron más de 24 h y la plantilla no está aprobada. Quedó una nota en el chat",
         "bloqueado": "No se envió el WhatsApp: el cliente pidió no recibir mensajes",
         "error": "No se pudo enviar el WhatsApp. Escríbele desde el chat"
-      }
+      },
+      "noDomicilio": "No se pudo guardar el valor del domicilio.",
+      "domicilioFijado": "Domicilio de {numero}: {valor}"
     },
     "siguiente": {
       "confirmado": "Pasar a producción",
@@ -260,7 +265,7 @@
       "sinDireccion": "sin dirección",
       "recogeEnSede": "Recoge en sede",
       "domicilio": "Domicilio",
-      "valorEquipo": "valor dado por el equipo en el chat",
+      "valorEquipo": "fijado por el equipo",
       "segunTarifa": "según tarifa",
       "decoracion": "Decoración",
       "mensaje": "Mensaje",
@@ -290,7 +295,12 @@
       "clienteTieneSaldo": "El cliente tiene {monto} de saldo a favor",
       "usar": "Usar {monto}",
       "cancelarPedido": "Cancelar pedido",
-      "guardando": "Guardando…"
+      "guardando": "Guardando…",
+      "porDefinir": "Por definir",
+      "porDefinirAviso": "No hay tarifa para esta dirección: fija el valor del domicilio antes de confirmar el pago.",
+      "valorDomicilio": "Valor del domicilio",
+      "guardarDomicilio": "Guardar",
+      "corregirDomicilio": "Corregir"
     },
     "dialogos": {
       "escribeMonto": "Escribe el monto recibido",

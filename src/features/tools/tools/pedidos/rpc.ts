@@ -26,10 +26,8 @@ const GUIA_ERRORES: Record<string, string> = {
     "No se puede agendar. Si el motivo es CUPO_EN_REVISION, no ofrezcas otra fecha todavía: dile al cliente que confirmas la disponibilidad con el equipo y llama pasar_a_persona. Si es AGOTADO, dile cuántas unidades quedan (cantidad_disponible) u ofrece otro producto del menú del día. Si es MENU_SIN_CARGAR, el equipo aún no cargó el menú de ese día: ofrece confirmarlo con el equipo. Con cualquier otro motivo, explícalo y ofrece otra fecha u hora.",
   FALTA_NOMBRE_CLIENTE: "Pide el nombre de la persona que recibe el pedido.",
   FALTA_DIRECCION_DOMICILIO: "Pide la dirección de entrega para el domicilio (con el barrio).",
-  FALTA_VALOR_DOMICILIO:
-    "Falta el valor del domicilio. Usa cotizar_domicilio; si requiere una persona, dile al cliente que en un momento le confirmas el valor y llama pasar_a_persona. No registres el pedido hasta tener el valor.",
   PEDIDO_NO_ENCONTRADO:
-    "No hay un pedido pendiente en esta conversación. Pide el número de pedido o toma primero el pedido.",
+    "No se encontró un pedido de este cliente (solo cuentan los pedidos hechos desde su propio chat). Pide el número de pedido o toma primero el pedido; si insiste con un número que no aparece, pasa a una persona.",
   COMPROBANTE_DUPLICADO:
     "Ese comprobante ya fue registrado. No lo registres otra vez; si el cliente insiste, pasa a una persona.",
   PEDIDO_CANCELADO: "Ese pedido está cancelado; pasa la conversación a una persona.",

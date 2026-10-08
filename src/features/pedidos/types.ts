@@ -59,8 +59,11 @@ export interface PedidoFila {
   direccion_entrega: string | null;
   /** Incluido en total. 0 si recoge en sede. */
   valor_domicilio: number;
-  /** tarifa: de la configuración · persona: lo dio el equipo en el chat. */
-  domicilio_origen: "tarifa" | "persona" | null;
+  /**
+   * tarifa: de la configuración · persona: lo fijó el equipo en el panel ·
+   * pendiente: sin tarifa, falta que el equipo lo fije (valor 0 hasta entonces).
+   */
+  domicilio_origen: "tarifa" | "persona" | "pendiente" | null;
   fecha_entrega: string;
   total: number;
   anticipo_requerido: number;
