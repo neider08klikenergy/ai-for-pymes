@@ -34,13 +34,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({
-  message,
-  signupOpen,
-}: {
-  message?: string;
-  signupOpen: boolean;
-}) {
+export function LoginForm({ message }: { message?: string }) {
   const [state, formAction] = useActionState(login, null);
   const t = useTranslations("auth");
   // Los avisos llegan como código (?message=revisaEmail); un texto viejo se muestra tal cual
@@ -111,29 +105,17 @@ export function LoginForm({
         <SubmitButton />
       </form>
 
-      {/* El registro público solo está abierto para la primera cuenta (super
-          admin). Después las cuentas las crea el equipo de Felrick. */}
-      {signupOpen ? (
-        <p className="text-center text-sm text-muted-foreground">
-          {t("login.sinCuenta")}{" "}
-          <Link
-            href="/signup"
-            className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
-          >
-            {t("login.crearCuenta")}
-          </Link>
-        </p>
-      ) : (
-        <p className="text-center text-sm text-muted-foreground">
-          {t("login.aunSinCuenta")}{" "}
-          <Link
-            href="/demo"
-            className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
-          >
-            {t("login.agendaDemo")}
-          </Link>
-        </p>
-      )}
+      {/* No hay registro público: el super admin lo crea seed-admin y las
+          demás cuentas las crea el equipo de Felrick. */}
+      <p className="text-center text-sm text-muted-foreground">
+        {t("login.aunSinCuenta")}{" "}
+        <Link
+          href="/demo"
+          className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
+        >
+          {t("login.agendaDemo")}
+        </Link>
+      </p>
     </div>
   );
 }

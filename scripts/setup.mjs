@@ -414,7 +414,7 @@ function cmdVercelEnv() {
   log("➡️  Tras esto, redeploy con: vercel --prod");
 }
 
-function cmdDoctor() {
+async function cmdDoctor() {
   log("── Prerequisitos ──");
   for (const [cli, hint] of [
     ["node", "https://nodejs.org"],
@@ -435,6 +435,18 @@ function cmdDoctor() {
   }
   const appReady = !isPlaceholder(env.NEXT_PUBLIC_APP_URL) && !/localhost/.test(env.NEXT_PUBLIC_APP_URL || "");
   log(`${appReady ? "✅" : "⏳"} NEXT_PUBLIC_APP_URL${appReady ? "" : "  (se setea post-deploy)"}`);
+
+  // With Supabase Auth signup open, anyone holding the public anon key can
+  // create an account through /auth/v1/signup.
+  log("\n── Supabase Auth ──");
+  const closed = await signupIsClosed(env);
+  log(
+    closed === true
+      ? "✅ Registro público: cerrado"
+      : closed === false
+        ? "❌ Registro público: ABIERTO  (ciérralo: node scripts/setup.mjs close-signup)"
+        : "⏳ Registro público: no se pudo verificar (faltan URL / anon key, o no hay red)",
+  );
 }
 
 function usage() {
@@ -488,7 +500,7 @@ switch (cmd) {
     cmdVercelEnv();
     break;
   case "doctor":
-    cmdDoctor();
+    await cmdDoctor();
     break;
   case "help":
   case undefined:

@@ -40,7 +40,6 @@
   },
   "metadata": {
     "login": "Log in",
-    "signup": "Create account",
     "forgotPassword": "Reset password",
     "resetPassword": "New password",
     "demo": "Book a demo"
@@ -55,18 +54,8 @@
       "boton": "Log in",
       "enviando": "Logging in...",
       "olvide": "Forgot your password?",
-      "sinCuenta": "Don't have an account?",
-      "crearCuenta": "Create account",
       "aunSinCuenta": "Don't have an account yet?",
       "agendaDemo": "Book a demo"
-    },
-    "signup": {
-      "titulo": "Create account",
-      "subtitulo": "Start managing your inbox with AI",
-      "boton": "Create account",
-      "enviando": "Creating account...",
-      "yaTienes": "Already have an account?",
-      "iniciarSesion": "Log in"
     },
     "forgot": {
       "titulo": "Reset password",
@@ -91,10 +80,7 @@
       "emailInvalido": "Invalid email",
       "contrasenaCorta": "The password must be at least 6 characters",
       "credenciales": "Wrong email or password",
-      "emailNoConfirmado": "Email not confirmed",
-      "yaRegistrado": "This email is already registered",
-      "registroCerrado": "Sign-up is closed. Ask your administrator to invite you.",
-      "registroInstalacion": "Public sign-up is closed. If you are installing the platform, create your super admin with scripts/seed-admin.mjs (INSTALAR.md, step 8)."
+      "emailNoConfirmado": "Email not confirmed"
     }
   },
   "demo": {
