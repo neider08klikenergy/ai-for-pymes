@@ -171,3 +171,27 @@ test("domicilio: el saldo incluye el domicilio y se transfiere antes del envío"
   assert.match(mensajePagoConfirmado(dom, 158000, "America/Bogota"), /pagado en su totalidad/);
   assert.match(mensajePedidoListo({ ...dom, pagado: 150000 }), /transfiere el saldo de \$\s?8\.000/);
 });
+
+test("pago que no completa el anticipo: no dice confirmado y dice cuánto falta", () => {
+  const m = mensajePagoConfirmado({ ...datos, anticipo_requerido: 90000 }, 20000, "America/Bogota");
+  assert.doesNotMatch(m, /quedó confirmado/);
+  assert.match(m, /faltan \$\s?70\.000 del anticipo/);
+  assert.match(m, /comprobante/);
+});
+
+test("pago que completa el anticipo en dos partes: ya confirma el pedido", () => {
+  const m = mensajePagoConfirmado(
+    { ...datos, pagado: 20000, anticipo_requerido: 90000 },
+    70000,
+    "America/Bogota",
+  );
+  assert.match(m, /quedó confirmado/);
+  assert.doesNotMatch(m, /del anticipo/);
+});
+
+test("pago de más: confirma y avisa que el equipo dirá qué hacer con el excedente", () => {
+  const m = mensajePagoConfirmado({ ...datos, anticipo_requerido: 90000 }, 160000, "America/Bogota");
+  assert.match(m, /quedó confirmado/);
+  assert.match(m, /\$\s?10\.000 de más/);
+  assert.match(m, /pagado en su totalidad/);
+});

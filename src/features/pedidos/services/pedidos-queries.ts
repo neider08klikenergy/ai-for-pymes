@@ -52,8 +52,8 @@ const SELECT_PEDIDO =
   "modalidad, direccion_entrega, valor_domicilio, domicilio_origen, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
   "precio_validado, conversation_id, notas, created_at, sedes(id, codigo, nombre), " +
   "conversations(window_expires_at), " +
-  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, monto_comprobante, nota_revision, created_at), " +
-  "saldos_favor(monto_inicial, monto_disponible, vence_at, estado)";
+  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, monto_comprobante, nota_revision, excedente, excedente_destino, created_at), " +
+  "saldos_favor(monto_inicial, monto_disponible, vence_at, estado, origen)";
 
 /** Solo dígitos: +57 320… y 57320… son el mismo cliente. */
 function tel(v: string | null | undefined): string | null {
@@ -64,6 +64,16 @@ function tel(v: string | null | undefined): string | null {
 function numeroRegla(v: unknown, porDefecto: number): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) && n >= 0 ? n : porDefecto;
+}
+
+function saldoDeCancelacion(raw: unknown): PedidoFila["saldo_favor_generado"] {
+  const lista = (Array.isArray(raw) ? raw : raw ? [raw] : []) as Array<
+    NonNullable<PedidoFila["saldo_favor_generado"]> & { origen?: string }
+  >;
+  const s = lista.find((x) => (x.origen ?? "cancelacion") === "cancelacion");
+  if (!s) return null;
+  const { origen: _origen, ...saldo } = s;
+  return saldo;
 }
 
 function aPedidoFila(raw: unknown): PedidoFila | null {
@@ -78,11 +88,9 @@ function aPedidoFila(raw: unknown): PedidoFila | null {
     sede: uno(r.sedes as SedeResumen | SedeResumen[] | null),
     ventana_abierta: ventanaAbierta(r.conversations),
     pagos,
-    saldo_favor_generado: uno(
-      r.saldos_favor as
-        | PedidoFila["saldo_favor_generado"]
-        | PedidoFila["saldo_favor_generado"][],
-    ),
+    // El saldo que generó la cancelación (un excedente también crea saldos
+    // con este pedido como origen, pero esos son del cliente, no de la cancelación).
+    saldo_favor_generado: saldoDeCancelacion(r.saldos_favor),
     saldo_favor_cliente: 0,
   };
 }
@@ -247,7 +255,7 @@ async function cargarPagos(
     .select(
       "id, tipo, monto_esperado, monto_reportado, referencia, banco, fecha_pago, descripcion_ia, " +
         "created_at, media, message_id, " +
-        "pedidos(id, numero, nombre_cliente, fecha_entrega, total, pagado, modalidad, conversation_id, " +
+        "pedidos(id, numero, nombre_cliente, fecha_entrega, total, pagado, anticipo_requerido, modalidad, conversation_id, " +
         "sedes(nombre), conversations(window_expires_at))",
     )
     .eq("workspace_id", workspaceId)
@@ -314,6 +322,7 @@ async function cargarPagos(
             fecha_entrega: ped.fecha_entrega as string,
             total: ped.total as number,
             pagado: ped.pagado as number,
+            anticipo_requerido: (ped.anticipo_requerido as number | null) ?? 0,
             modalidad: ped.modalidad as "recogida" | "domicilio",
             sede_nombre: sedePed?.nombre ?? null,
             conversation_id: (ped.conversation_id as string | null) ?? null,

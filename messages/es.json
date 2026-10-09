@@ -173,7 +173,9 @@
         "NO_ES_DOMICILIO": "Ese pedido no es a domicilio.",
         "MONTO_MAYOR_AL_SALDO": "El monto supera lo que falta por pagar del pedido.",
         "MOTIVO_DIFERENCIA_REQUERIDO": "El monto no coincide con el comprobante: escribe el motivo.",
-        "MONTO_NO_VALIDO": "Escribe un monto válido."
+        "MONTO_NO_VALIDO": "Escribe un monto válido.",
+        "DESTINO_NO_VALIDO": "Elige saldo a favor o propina.",
+        "EXCEDENTE_YA_DECIDIDO": "Ese excedente ya se decidió."
       },
       "aviso": {
         "enviado": "Cliente avisado por WhatsApp",
@@ -184,7 +186,16 @@
         "error": "No se pudo enviar el WhatsApp. Escríbele desde el chat"
       },
       "noDomicilio": "No se pudo guardar el valor del domicilio.",
-      "domicilioFijado": "Domicilio de {numero}: {valor}"
+      "domicilioFijado": "Domicilio de {numero}: {valor}",
+      "pagoParcial": "Pago registrado en {numero}. Falta {falta} para el anticipo: el pedido sigue pendiente.",
+      "excedente": {
+        "porDecidir": "Pago confirmado en {numero}. Excedente de {excedente} por decidir.",
+        "saldoFavor": "Pago confirmado en {numero}. {excedente} quedaron como saldo a favor del cliente.",
+        "propina": "Pago confirmado en {numero}. {excedente} quedaron como propina."
+      },
+      "noExcedente": "No se pudo guardar qué hacer con el excedente.",
+      "excedenteASaldo": "{excedente} quedaron como saldo a favor del cliente.",
+      "excedenteAPropina": "{excedente} quedaron como propina."
     },
     "siguiente": {
       "confirmado": "Pasar a producción",
@@ -310,7 +321,15 @@
       "valorDomicilio": "Valor del domicilio",
       "guardarDomicilio": "Guardar",
       "corregirDomicilio": "Corregir",
-      "diferenciaConfirmada": "Comprobante: {comprobante} · {nota}"
+      "diferenciaConfirmada": "Comprobante: {comprobante} · {nota}",
+      "faltaAnticipo": "Falta {monto} para el anticipo: el pedido no se confirma hasta completarlo.",
+      "excedente": {
+        "por_decidir": "Pagó {monto} de más · por decidir",
+        "saldo_favor": "Pagó {monto} de más · saldo a favor",
+        "propina": "Pagó {monto} de más · propina"
+      },
+      "excedenteASaldo": "Saldo a favor",
+      "excedenteAPropina": "Propina"
     },
     "dialogos": {
       "escribeMonto": "Escribe el monto recibido",
@@ -338,10 +357,16 @@
       "cancelando": "Cancelando…",
       "cancelarPedido": "Cancelar pedido",
       "faltaPorPagar": "falta por pagar {monto}",
-      "montoSuperaSaldo": "El monto supera lo que falta por pagar ({saldo}).",
       "motivoDiferencia": "El comprobante dice {monto}. ¿Por qué confirmas otro monto?",
       "motivoDiferenciaEjemplo": "Ej: llegó menos a la cuenta, pagó en dos partes…",
-      "escribeMotivoDiferencia": "Escribe por qué el monto no coincide con el comprobante."
+      "escribeMotivoDiferencia": "Escribe por qué el monto no coincide con el comprobante.",
+      "faltaAnticipo": "Este pago no completa el anticipo: faltarán {monto}. Se registra, pero el pedido sigue pendiente.",
+      "excedentePregunta": "El cliente pagó {pago} y el pedido debía {debe}. ¿Qué hacemos con los {excedente} de más?",
+      "excedenteOpcion": {
+        "despues": "Decidir después",
+        "saldo_favor": "Saldo a favor del cliente (para otro pedido)",
+        "propina": "Propina"
+      }
     },
     "calendario": {
       "dias": {

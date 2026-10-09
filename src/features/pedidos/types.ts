@@ -36,6 +36,10 @@ export interface PagoResumen {
   monto_comprobante: number | null;
   /** Por qué se confirmó un monto distinto al del comprobante. */
   nota_revision: string | null;
+  /** Lo que el cliente pagó de más (no suma a lo pagado del pedido). */
+  excedente: number;
+  /** null si no hubo excedente. */
+  excedente_destino: "por_decidir" | "saldo_favor" | "propina" | null;
   created_at: string;
 }
 
@@ -106,6 +110,7 @@ export interface PagoPorVerificar {
     fecha_entrega: string;
     total: number;
     pagado: number;
+    anticipo_requerido: number;
     modalidad: "recogida" | "domicilio";
     sede_nombre: string | null;
     conversation_id: string | null;

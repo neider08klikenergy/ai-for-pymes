@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { fijarDomicilio } from "../services/pedidos-actions";
+import { decidirExcedente, fijarDomicilio } from "../services/pedidos-actions";
 import { siguienteEstado } from "../lib/estados";
 import { useLocale, useTranslations } from "next-intl";
 import { fechaCorta, horaLocal, pesos } from "../lib/fechas";
@@ -145,6 +145,57 @@ function ValorDomicilio({
         </button>
       )}
     </>
+  );
+}
+
+/**
+ * Lo que el cliente pagó de más en un pago: si está por decidir, cualquiera
+ * del equipo lo convierte en saldo a favor o propina.
+ */
+function ExcedentePago({
+  pago,
+  puedeDecidir,
+}: {
+  pago: PedidoFila["pagos"][number];
+  puedeDecidir: boolean;
+}) {
+  const t = useTranslations("pedidos.detalle");
+  const router = useRouter();
+  const [guardando, startTransition] = useTransition();
+  const porDecidir = pago.excedente_destino === "por_decidir";
+
+  function decidir(destino: "saldo_favor" | "propina") {
+    startTransition(async () => {
+      const r = await decidirExcedente({ pagoId: pago.id, destino });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(r.mensaje);
+      router.refresh();
+    });
+  }
+
+  return (
+    <span className="flex w-full flex-wrap items-center gap-2 text-muted-foreground">
+      <span className={cn(porDecidir && "font-medium text-info")}>
+        {t(`excedente.${pago.excedente_destino ?? "por_decidir"}` as "excedente.por_decidir", {
+          monto: pesos(pago.excedente),
+        })}
+      </span>
+      {porDecidir && puedeDecidir && (
+        <>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={guardando}
+            onClick={() => decidir("saldo_favor")}>
+            {t("excedenteASaldo")}
+          </Button>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={guardando}
+            onClick={() => decidir("propina")}>
+            {t("excedenteAPropina")}
+          </Button>
+        </>
+      )}
+    </span>
   );
 }
 
@@ -292,6 +343,15 @@ export function PedidoDetalle({
                     domicilio: pesos(pedido.valor_domicilio),
                   })}`}
               </p>
+              {pedido.pagado > 0 && pedido.pagado < pedido.anticipo_requerido &&
+                pedido.estado !== "cancelado" && (
+                <p className="flex items-center gap-1 text-xs font-medium text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("faltaAnticipo", {
+                    monto: pesos(pedido.anticipo_requerido - pedido.pagado),
+                  })}
+                </p>
+              )}
               {!pedido.precio_validado && (
                 <p className="flex items-center gap-1 text-xs text-warning">
                   <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -334,6 +394,9 @@ export function PedidoDetalle({
                             nota: pg.nota_revision,
                           })}
                         </span>
+                      )}
+                      {pg.excedente > 0 && (
+                        <ExcedentePago pago={pg} puedeDecidir={puedeActuar} />
                       )}
                     </li>
                   ))}

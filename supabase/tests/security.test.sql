@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(101);
+SELECT plan(103);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -515,6 +515,12 @@ SELECT ok(NOT has_table_privilege('authenticated', 'public.invitaciones_equipo',
   'authenticated cannot UPDATE invitaciones_equipo (accepting is only via responder_invitacion)');
 SELECT ok(NOT has_function_privilege('anon', 'public.responder_invitacion(uuid, boolean)', 'EXECUTE'),
   'anon cannot execute responder_invitacion()');
+
+-- ── excedente de pagos (20261021000000) ─────────────────────────────────────
+SELECT ok(NOT has_function_privilege('anon', 'public.pd_decidir_excedente(uuid, text)', 'EXECUTE'),
+  'anon cannot execute pd_decidir_excedente()');
+SELECT ok(NOT has_function_privilege('authenticated', 'public.pd_saldo_de_excedente(uuid)', 'EXECUTE'),
+  'authenticated cannot call pd_saldo_de_excedente() directly (credit only via confirm/decide)');
 
 SELECT * FROM finish();
 ROLLBACK;

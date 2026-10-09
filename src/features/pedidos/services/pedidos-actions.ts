@@ -216,13 +216,19 @@ const RevisionSchema = z.object({
   monto: z.number().int().min(1).max(100_000_000).nullable(),
   motivo: z.string().trim().max(300).nullable(),
   aviso: Aviso,
+  excedenteDestino: z.enum(["saldo_favor", "propina"]).nullable(),
 });
+
+const DESTINOS_EXCEDENTE = ["saldo_favor", "propina"] as const;
+type DestinoExcedente = (typeof DESTINOS_EXCEDENTE)[number];
 
 export async function revisarPago(input: {
   pagoId: string;
   aprobar: boolean;
   monto?: number | null;
   motivo?: string | null;
+  /** Si el cliente pagó de más: qué hacer con el excedente (null = decidir después). */
+  excedenteDestino?: DestinoExcedente | null;
   /** Texto para el cliente; null o vacío = no avisar. */
   aviso?: string | null;
 }): Promise<ResultadoAccion> {
@@ -233,6 +239,7 @@ export async function revisarPago(input: {
     monto: input.monto ?? null,
     motivo: input.motivo?.trim() ? input.motivo : null,
     aviso: input.aviso ?? null,
+    excedenteDestino: input.excedenteDestino ?? null,
   });
   if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
   if (!parsed.data.aprobar && !parsed.data.motivo) {
@@ -269,6 +276,7 @@ export async function revisarPago(input: {
     p_aprobar: parsed.data.aprobar,
     p_monto: parsed.data.monto,
     p_motivo: parsed.data.motivo,
+    p_excedente_destino: parsed.data.excedenteDestino,
   });
 
   if (error) {
@@ -276,13 +284,23 @@ export async function revisarPago(input: {
     return { ok: false, error: t("noRevision") };
   }
 
-  const r = (data ?? {}) as { ok?: boolean; error?: string; numero?: string };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    error?: string;
+    numero?: string;
+    falta_anticipo?: number;
+    excedente?: number;
+    excedente_destino?: string | null;
+  };
   if (!r.ok) {
     return {
       ok: false,
       error: errorRpc(t, r.error, t("noRevision")),
     };
   }
+  // Pago que no completa el anticipo: el pedido no quedó confirmado, así que
+  // no se usa la plantilla de WhatsApp de pago confirmado ("entrega agendada").
+  const faltaAnticipo = parsed.data.aprobar ? (r.falta_anticipo ?? 0) : 0;
 
   const ped = pago.pedidos as
     | { conversation_id: string | null }
@@ -296,17 +314,28 @@ export async function revisarPago(input: {
     conversationId,
     texto: parsed.data.aviso,
     userId: acceso.userId,
-    plantilla: parsed.data.aviso ? plantillaRevision : null,
+    plantilla: parsed.data.aviso && faltaAnticipo === 0 ? plantillaRevision : null,
   });
 
+  const excedente = parsed.data.aprobar ? (r.excedente ?? 0) : 0;
+  const claveExcedente =
+    r.excedente_destino === "saldo_favor"
+      ? "excedente.saldoFavor"
+      : r.excedente_destino === "propina"
+        ? "excedente.propina"
+        : "excedente.porDecidir";
   revalidatePath("/pedidos");
   return {
     ok: true,
-    mensaje: parsed.data.aprobar
-      ? r.numero
-        ? t("pagoConfirmadoNumero", { numero: r.numero })
-        : t("pagoConfirmado")
-      : t("pagoRechazado"),
+    mensaje: !parsed.data.aprobar
+      ? t("pagoRechazado")
+      : faltaAnticipo > 0
+        ? t("pagoParcial", { numero: r.numero ?? "", falta: pesos(faltaAnticipo) })
+        : excedente > 0
+          ? t(claveExcedente, { numero: r.numero ?? "", excedente: pesos(excedente) })
+          : r.numero
+            ? t("pagoConfirmadoNumero", { numero: r.numero })
+            : t("pagoConfirmado"),
     aviso,
     avisoTexto: textoAviso(t, aviso),
   };
@@ -587,6 +616,58 @@ export async function fijarDomicilio(input: {
     mensaje: t("domicilioFijado", {
       valor: pesos(parsed.data.valor),
       numero: r.numero ?? "",
+    }),
+  };
+}
+
+// ── Excedente de un pago ─────────────────────────────────────────────────────
+
+const ExcedenteSchema = z.object({
+  pagoId: z.string().uuid(),
+  destino: z.enum(DESTINOS_EXCEDENTE),
+});
+
+/**
+ * Decide qué hacer con lo que un cliente pagó de más: saldo a favor (para otro
+ * pedido) o propina. Cualquiera del equipo (admin, manager, agent);
+ * pd_decidir_excedente lo vuelve a revisar en la base de datos.
+ */
+export async function decidirExcedente(input: {
+  pagoId: string;
+  destino: DestinoExcedente;
+}): Promise<{ ok: true; mensaje: string } | { ok: false; error: string }> {
+  const t = await getTranslations("pedidos.acciones");
+  const parsed = ExcedenteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: t("datosNoValidos") };
+
+  const supabase = await createClient();
+  const { data: pago } = await supabase
+    .from("pagos_pedido")
+    .select("workspace_id")
+    .eq("id", parsed.data.pagoId)
+    .maybeSingle();
+  if (!pago) return { ok: false, error: t("rpc.PAGO_NO_EXISTE") };
+  const acceso = await checkWorkspaceMember(pago.workspace_id as string, {
+    minRole: "agent",
+  });
+  if (!acceso.ok) return { ok: false, error: t("rpc.NO_AUTORIZADO") };
+
+  const { data, error } = await supabase.rpc("pd_decidir_excedente", {
+    p_pago_id: parsed.data.pagoId,
+    p_destino: parsed.data.destino,
+  });
+  if (error) {
+    console.error("[pedidos] decidirExcedente:", error.message);
+    return { ok: false, error: t("noExcedente") };
+  }
+  const r = (data ?? {}) as { ok?: boolean; error?: string; excedente?: number };
+  if (!r.ok) return { ok: false, error: errorRpc(t, r.error, t("noExcedente")) };
+
+  revalidatePath("/pedidos");
+  return {
+    ok: true,
+    mensaje: t(parsed.data.destino === "saldo_favor" ? "excedenteASaldo" : "excedenteAPropina", {
+      excedente: pesos(r.excedente ?? 0),
     }),
   };
 }
