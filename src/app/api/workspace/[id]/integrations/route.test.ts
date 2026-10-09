@@ -144,7 +144,7 @@ test("PUT ignores the Zernio profile and accounts in the body (only the server w
           profile_id: "p_other",
           accounts: [{ id: "acc_other", platform: "whatsapp" }],
           account_ids: ["acc_other"],
-          ai_enabled: true,
+          buffer_silence_seconds: 8,
         },
       }),
     }),
@@ -154,5 +154,64 @@ test("PUT ignores the Zernio profile and accounts in the body (only the server w
   assert.equal(rpcs.length, 1);
   assert.equal(rpcs[0].fn, "save_whatsapp_integration");
   // save_whatsapp_integration keeps the stored binding (own config || p_config).
-  assert.deepEqual(rpcs[0].args.p_config, { ai_enabled: true });
+  assert.deepEqual(rpcs[0].args.p_config, { buffer_silence_seconds: 8 });
+});
+
+// ── Lista blanca de claves de config ─────────────────────────────────────────
+
+function put(body: Record<string, unknown>) {
+  return PUT(
+    new NextRequest("http://localhost/api/workspace/ws_1/integrations", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+    params,
+  );
+}
+
+test("PUT keeps only the config keys each form writes; the rest is ignored, not stored", async () => {
+  memberResult = { ok: true, userId: "user_1", role: "admin" };
+  existingRow = { credentials: {}, config: { calendar_id: "cal_old", extra_guardada: "x" }, oauth_tokens: {} };
+  upserts.length = 0;
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const res = await put({
+      provider: "highlevel",
+      config: { location_id: "loc_1", calendar_id: "cal_1", inyectada: "otra-cosa", webhook_url: "http://x" },
+    });
+    assert.equal(res.status, 200);
+  } finally {
+    console.warn = warn;
+  }
+  const config = (upserts[0] as { config: Record<string, unknown> }).config;
+  assert.equal(config.location_id, "loc_1");
+  assert.equal(config.calendar_id, "cal_1");
+  assert.equal(config.inyectada, undefined);
+  assert.equal(config.webhook_url, undefined);
+  // Lo ya guardado se conserva aunque no venga en el cuerpo.
+  assert.equal(config.extra_guardada, "x");
+});
+
+test("PUT drops values that are not short text, numbers or booleans", async () => {
+  memberResult = { ok: true, userId: "user_1", role: "admin" };
+  existingRow = { credentials: {}, config: {}, oauth_tokens: {} };
+  rpcs.length = 0;
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await put({
+      provider: "kapso",
+      enabled: false,
+      config: {
+        phone_number_id: "pn_1",
+        waba_id: { anidado: true },
+        handoff_ack_message: "x".repeat(5000),
+        buffer_silence_seconds: 10,
+      },
+    });
+  } finally {
+    console.warn = warn;
+  }
+  assert.deepEqual(rpcs[0].args.p_config, { phone_number_id: "pn_1", buffer_silence_seconds: 10 });
 });
