@@ -1,18 +1,18 @@
 // Lecturas de la pantalla Pedidos. Usan el cliente del usuario (anon key +
 // sesión), así que RLS limita todo a los workspaces donde es miembro.
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { esEstadoPedido } from "../lib/estados";
-import { hoyEnZona, rangoDelDia, semanasDelMes } from "../lib/fechas";
-import { leerFiltros, type ParamsPedidos } from "../lib/filtros";
 import type {
   CupoDia,
-  PagoPorVerificar,
-  PagoResumen,
   PedidoFila,
   SedeResumen,
+  PagoResumen,
   VistaPedidos,
+  PagoPorVerificar,
 } from "../types";
+import { esEstadoPedido } from "../lib/estados";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { leerFiltros, type ParamsPedidos } from "../lib/filtros";
+import { hoyEnZona, rangoDelDia, semanasDelMes } from "../lib/fechas";
 
 const ZONA_POR_DEFECTO = "America/Bogota";
 const LIMITE_PEDIDOS = 300;
@@ -41,7 +41,10 @@ function ventanaAbierta(conv: unknown): boolean | null {
 
 /** Escapa los comodines de LIKE y lo que rompería el filtro .or() de PostgREST. */
 function textoBusqueda(q: string): string {
-  return q.replace(/[%_\\]/g, "\\$&").replace(/[,()*"]/g, " ").trim();
+  return q
+    .replace(/[%_\\]/g, "\\$&")
+    .replace(/[,()*"]/g, " ")
+    .trim();
 }
 
 const SELECT_PEDIDO =
@@ -49,7 +52,7 @@ const SELECT_PEDIDO =
   "modalidad, direccion_entrega, valor_domicilio, domicilio_origen, fecha_entrega, total, anticipo_requerido, pagado, saldo, " +
   "precio_validado, conversation_id, notas, created_at, sedes(id, codigo, nombre), " +
   "conversations(window_expires_at), " +
-  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, created_at), " +
+  "pagos_pedido(id, tipo, estado, monto_esperado, monto_reportado, referencia, motivo_rechazo, monto_comprobante, nota_revision, created_at), " +
   "saldos_favor(monto_inicial, monto_disponible, vence_at, estado)";
 
 /** Solo dígitos: +57 320… y 57320… son el mismo cliente. */
@@ -75,7 +78,11 @@ function aPedidoFila(raw: unknown): PedidoFila | null {
     sede: uno(r.sedes as SedeResumen | SedeResumen[] | null),
     ventana_abierta: ventanaAbierta(r.conversations),
     pagos,
-    saldo_favor_generado: uno(r.saldos_favor as PedidoFila["saldo_favor_generado"] | PedidoFila["saldo_favor_generado"][]),
+    saldo_favor_generado: uno(
+      r.saldos_favor as
+        | PedidoFila["saldo_favor_generado"]
+        | PedidoFila["saldo_favor_generado"][],
+    ),
     saldo_favor_cliente: 0,
   };
 }
@@ -85,28 +92,36 @@ export async function cargarVistaPedidos(
   workspaceId: string,
   params: ParamsPedidos,
 ): Promise<VistaPedidos> {
-  const [{ data: reglasData }, { data: sedesData }, { count: pagosPendientes }] =
-    await Promise.all([
-      supabase
-        .from("reglas_negocio")
-        .select("clave, valor")
-        .eq("workspace_id", workspaceId)
-        .in("clave", ["zona_horaria", "cancelacion_dias_calendario", "saldo_favor_meses"]),
-      supabase
-        .from("sedes")
-        .select("id, codigo, nombre, acepta_personalizados")
-        .eq("workspace_id", workspaceId)
-        .eq("activa", true)
-        .order("nombre"),
-      supabase
-        .from("pagos_pedido")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("estado", "por_verificar"),
-    ]);
+  const [
+    { data: reglasData },
+    { data: sedesData },
+    { count: pagosPendientes },
+  ] = await Promise.all([
+    supabase
+      .from("reglas_negocio")
+      .select("clave, valor")
+      .eq("workspace_id", workspaceId)
+      .in("clave", [
+        "zona_horaria",
+        "cancelacion_dias_calendario",
+        "saldo_favor_meses",
+      ]),
+    supabase
+      .from("sedes")
+      .select("id, codigo, nombre, acepta_personalizados")
+      .eq("workspace_id", workspaceId)
+      .eq("activa", true)
+      .order("nombre"),
+    supabase
+      .from("pagos_pedido")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("estado", "por_verificar"),
+  ]);
 
   const regla = (clave: string) =>
-    (reglasData ?? []).find((r: { clave: string }) => r.clave === clave)?.valor as unknown;
+    (reglasData ?? []).find((r: { clave: string }) => r.clave === clave)
+      ?.valor as unknown;
   const zona = zonaValida(regla("zona_horaria"));
   const reglas = {
     cancelacionDias: numeroRegla(regla("cancelacion_dias_calendario"), 3),
@@ -202,7 +217,9 @@ async function cargarCupos(
   sede: SedeResumen | null,
   dia: string,
 ): Promise<CupoDia[]> {
-  const candidatas = (sede ? [sede] : sedes).filter((s) => s.acepta_personalizados);
+  const candidatas = (sede ? [sede] : sedes).filter(
+    (s) => s.acepta_personalizados,
+  );
   const resultados = await Promise.all(
     candidatas.map(async (s) => {
       const { data, error } = await supabase.rpc("pd_estado_cupo_dia", {
@@ -257,18 +274,26 @@ async function cargarPagos(
       .select("id, meta")
       .eq("workspace_id", workspaceId)
       .in("id", messageIds);
-    for (const m of (msgs ?? []) as { id: string; meta: Record<string, unknown> | null }[]) {
+    for (const m of (msgs ?? []) as {
+      id: string;
+      meta: Record<string, unknown> | null;
+    }[]) {
       metaPorMensaje.set(m.id, m.meta ?? {});
     }
   }
 
-  const texto = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+  const texto = (v: unknown): string | null =>
+    typeof v === "string" && v ? v : null;
 
   return pagosRaw.map((p) => {
     const meta = p.message_id ? metaPorMensaje.get(p.message_id) : undefined;
     const media = (p.media as Record<string, unknown> | null) ?? {};
-    const ped = uno(p.pedidos as Record<string, unknown> | Record<string, unknown>[] | null);
-    const sedePed = ped ? uno(ped.sedes as { nombre: string } | { nombre: string }[] | null) : null;
+    const ped = uno(
+      p.pedidos as Record<string, unknown> | Record<string, unknown>[] | null,
+    );
+    const sedePed = ped
+      ? uno(ped.sedes as { nombre: string } | { nombre: string }[] | null)
+      : null;
     return {
       id: p.id as string,
       tipo: p.tipo as PagoPorVerificar["tipo"],
@@ -336,7 +361,8 @@ async function sumarSaldosDeClientes(
     p.saldo_favor_cliente = saldos
       .filter(
         (s) =>
-          (p.contact_id && s.contact_id === p.contact_id) || (t && tel(s.telefono) === t),
+          (p.contact_id && s.contact_id === p.contact_id) ||
+          (t && tel(s.telefono) === t),
       )
       .reduce((acc, s) => acc + s.monto_disponible, 0);
   }

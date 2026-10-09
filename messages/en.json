@@ -170,7 +170,10 @@
         "SIN_SALDO_A_FAVOR": "The customer has no valid store credit.",
         "DOMICILIO_POR_DEFINIR": "Set the order's delivery fee first, then confirm the payment.",
         "VALOR_NO_VALIDO": "Enter a valid delivery fee.",
-        "NO_ES_DOMICILIO": "That order is not for delivery."
+        "NO_ES_DOMICILIO": "That order is not for delivery.",
+        "MONTO_MAYOR_AL_SALDO": "The amount exceeds what the order still owes.",
+        "MOTIVO_DIFERENCIA_REQUERIDO": "The amount does not match the receipt: write the reason.",
+        "MONTO_NO_VALIDO": "Enter a valid amount."
       },
       "aviso": {
         "enviado": "Customer notified on WhatsApp",
@@ -306,7 +309,8 @@
       "porDefinirAviso": "There is no rate for this address: set the delivery fee before confirming the payment.",
       "valorDomicilio": "Delivery fee",
       "guardarDomicilio": "Save",
-      "corregirDomicilio": "Edit"
+      "corregirDomicilio": "Edit",
+      "diferenciaConfirmada": "Receipt: {comprobante} · {nota}"
     },
     "dialogos": {
       "escribeMonto": "Enter the amount received",
@@ -332,7 +336,12 @@
       "motivoOpcional": "Reason (optional)",
       "motivoCancelarEjemplo": "E.g. the customer changed the event date",
       "cancelando": "Cancelling…",
-      "cancelarPedido": "Cancel order"
+      "cancelarPedido": "Cancel order",
+      "faltaPorPagar": "{monto} still owed",
+      "montoSuperaSaldo": "The amount exceeds what is still owed ({saldo}).",
+      "motivoDiferencia": "The receipt says {monto}. Why are you confirming a different amount?",
+      "motivoDiferenciaEjemplo": "E.g. less arrived in the account, paid in two parts…",
+      "escribeMotivoDiferencia": "Write why the amount does not match the receipt."
     },
     "calendario": {
       "dias": {

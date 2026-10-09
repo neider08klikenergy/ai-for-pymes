@@ -170,7 +170,10 @@
         "SIN_SALDO_A_FAVOR": "El cliente no tiene saldo a favor vigente.",
         "DOMICILIO_POR_DEFINIR": "Primero fija el valor del domicilio del pedido; después confirma el pago.",
         "VALOR_NO_VALIDO": "Escribe un valor de domicilio válido.",
-        "NO_ES_DOMICILIO": "Ese pedido no es a domicilio."
+        "NO_ES_DOMICILIO": "Ese pedido no es a domicilio.",
+        "MONTO_MAYOR_AL_SALDO": "El monto supera lo que falta por pagar del pedido.",
+        "MOTIVO_DIFERENCIA_REQUERIDO": "El monto no coincide con el comprobante: escribe el motivo.",
+        "MONTO_NO_VALIDO": "Escribe un monto válido."
       },
       "aviso": {
         "enviado": "Cliente avisado por WhatsApp",
@@ -306,7 +309,8 @@
       "porDefinirAviso": "No hay tarifa para esta dirección: fija el valor del domicilio antes de confirmar el pago.",
       "valorDomicilio": "Valor del domicilio",
       "guardarDomicilio": "Guardar",
-      "corregirDomicilio": "Corregir"
+      "corregirDomicilio": "Corregir",
+      "diferenciaConfirmada": "Comprobante: {comprobante} · {nota}"
     },
     "dialogos": {
       "escribeMonto": "Escribe el monto recibido",
@@ -332,7 +336,12 @@
       "motivoOpcional": "Motivo (opcional)",
       "motivoCancelarEjemplo": "Ej: el cliente cambió la fecha del evento",
       "cancelando": "Cancelando…",
-      "cancelarPedido": "Cancelar pedido"
+      "cancelarPedido": "Cancelar pedido",
+      "faltaPorPagar": "falta por pagar {monto}",
+      "montoSuperaSaldo": "El monto supera lo que falta por pagar ({saldo}).",
+      "motivoDiferencia": "El comprobante dice {monto}. ¿Por qué confirmas otro monto?",
+      "motivoDiferenciaEjemplo": "Ej: llegó menos a la cuenta, pagó en dos partes…",
+      "escribeMotivoDiferencia": "Escribe por qué el monto no coincide con el comprobante."
     },
     "calendario": {
       "dias": {
