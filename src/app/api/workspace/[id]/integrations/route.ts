@@ -24,7 +24,7 @@ import { createClient as svcClient } from "@supabase/supabase-js";
 import { workspaceCountryCode } from "@/features/inbox/services/country-code";
 import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
 import { normalizarTienda } from "@/features/productos/lib/shopify";
-import { withoutZernioServerKeys } from "@/features/inbox/services/zernio-accounts";
+import { configPermitida } from "@/features/settings/lib/config-integracion";
 
 const IntegrationSchema = z.object({
   provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel", "shopify"]),
@@ -221,10 +221,20 @@ export async function PUT(
   // YCloud's number: saved in E.164 when that is certain, confirmed against
   // the account's own lines when the key allows it (a warning, never a block).
   let config = parsed.data.config;
-  // Zernio: el perfil y las cuentas los fija el servidor (ensureZernioProfile,
-  // syncZernioAccounts); lo que venga en el cuerpo se ignora y se conserva lo
-  // guardado.
-  if (provider === "zernio" && config) config = withoutZernioServerKeys(config);
+  // Solo las claves que el panel escribe para este proveedor (lista blanca).
+  // Lo demás se ignora y se conserva lo guardado; por ejemplo, el perfil y las
+  // cuentas de Zernio los fija el servidor (ensureZernioProfile,
+  // syncZernioAccounts), nunca el cuerpo.
+  if (config) {
+    const permitida = configPermitida(provider, config);
+    if (permitida.ignoradas.length > 0) {
+      console.warn(
+        `[PUT /api/workspace/[id]/integrations] ${provider}: claves ignoradas`,
+        permitida.ignoradas,
+      );
+    }
+    config = permitida.config;
+  }
   let phoneWarning: string | undefined;
   const typedPhone = phoneString(config?.phone_number);
   if (provider === "ycloud" && config && typedPhone) {
