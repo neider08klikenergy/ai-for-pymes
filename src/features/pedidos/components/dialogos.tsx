@@ -67,6 +67,8 @@ export function RevisionDialog({
     String(pago.monto_reportado ?? pago.monto_esperado),
   );
   const [motivo, setMotivo] = useState("");
+  // Por qué se confirma un monto distinto al del comprobante.
+  const [notaDiferencia, setNotaDiferencia] = useState("");
   const [avisar, setAvisar] = useState(true);
   // null = el texto sigue la propuesta automática; string = la persona lo editó.
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
@@ -74,6 +76,11 @@ export function RevisionDialog({
   const t = useTranslations("pedidos.dialogos");
 
   const montoNum = Number(monto.replace(/[^\d]/g, ""));
+  // Las mismas reglas que pd_confirmar_pago, para avisar antes de enviar.
+  const montoComprobante = pago.monto_reportado ?? pago.monto_esperado;
+  const saldoPendiente = ped ? ped.total - ped.pagado : null;
+  const superaSaldo = saldoPendiente !== null && montoNum > saldoPendiente;
+  const difiere = Number.isFinite(montoNum) && montoNum > 0 && montoNum !== montoComprobante;
   const propuesta = datos
     ? aprobar
       ? mensajePagoConfirmado(
@@ -92,6 +99,18 @@ export function RevisionDialog({
         error: t("escribeMonto"),
       });
     }
+    if (aprobar && superaSaldo) {
+      return void toastResultado({
+        ok: false,
+        error: t("montoSuperaSaldo", { saldo: pesos(saldoPendiente ?? 0) }),
+      });
+    }
+    if (aprobar && difiere && !notaDiferencia.trim()) {
+      return void toastResultado({
+        ok: false,
+        error: t("escribeMotivoDiferencia"),
+      });
+    }
     if (!aprobar && !motivo.trim()) {
       return void toastResultado({
         ok: false,
@@ -103,7 +122,7 @@ export function RevisionDialog({
         pagoId: pago.id,
         aprobar,
         monto: aprobar ? montoNum : null,
-        motivo: aprobar ? null : motivo,
+        motivo: aprobar ? (difiere ? notaDiferencia : null) : motivo,
         aviso: avisar ? texto : null,
       });
       if (toastResultado(r)) onClose();
@@ -135,7 +154,28 @@ export function RevisionDialog({
             />
             <p className="text-xs text-muted-foreground">
               {t("esperado", { monto: pesos(pago.monto_esperado) })}
+              {saldoPendiente !== null &&
+                ` · ${t("faltaPorPagar", { monto: pesos(saldoPendiente) })}`}
             </p>
+            {superaSaldo && (
+              <p className="text-xs font-medium text-destructive">
+                {t("montoSuperaSaldo", { saldo: pesos(saldoPendiente ?? 0) })}
+              </p>
+            )}
+            {difiere && !superaSaldo && (
+              <div className="grid gap-2 rounded-md border border-warning/40 bg-warning/5 p-3">
+                <Label htmlFor="nota-diferencia">
+                  {t("motivoDiferencia", { monto: pesos(montoComprobante) })}
+                </Label>
+                <Textarea
+                  id="nota-diferencia"
+                  placeholder={t("motivoDiferenciaEjemplo")}
+                  value={notaDiferencia}
+                  maxLength={300}
+                  onChange={(e) => setNotaDiferencia(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid gap-2">

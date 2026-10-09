@@ -327,6 +327,14 @@ export function PedidoDetalle({
                           {t("motivo")}: {pg.motivo_rechazo}
                         </span>
                       )}
+                      {pg.nota_revision && (
+                        <span className="w-full text-muted-foreground">
+                          {t("diferenciaConfirmada", {
+                            comprobante: pesos(pg.monto_comprobante ?? pg.monto_esperado),
+                            nota: pg.nota_revision,
+                          })}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

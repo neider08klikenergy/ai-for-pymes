@@ -32,6 +32,10 @@ export interface PagoResumen {
   monto_reportado: number | null;
   referencia: string | null;
   motivo_rechazo: string | null;
+  /** Lo que decía el comprobante, si se confirmó otro monto. */
+  monto_comprobante: number | null;
+  /** Por qué se confirmó un monto distinto al del comprobante. */
+  nota_revision: string | null;
   created_at: string;
 }
 
