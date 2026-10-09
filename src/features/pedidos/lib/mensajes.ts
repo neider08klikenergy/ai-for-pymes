@@ -11,6 +11,8 @@ export interface DatosAviso {
   modalidad: "recogida" | "domicilio";
   total: number;
   pagado: number;
+  /** Sin él, el pago siempre se toma como suficiente para confirmar. */
+  anticipo_requerido?: number;
 }
 
 function primerNombre(nombre: string): string {
@@ -27,11 +29,27 @@ function donde(p: DatosAviso): string {
 }
 
 export function mensajePagoConfirmado(p: DatosAviso, monto: number, zona: string): string {
-  const saldo = Math.max(p.total - p.pagado - monto, 0);
+  const debe = Math.max(p.total - p.pagado, 0);
+  const saldo = Math.max(debe - monto, 0);
+  const excedente = Math.max(monto - debe, 0);
+  // Sin anticipo no hay cupo: un pago que no lo completa no confirma el pedido.
+  const faltaAnticipo = Math.max((p.anticipo_requerido ?? 0) - p.pagado - monto, 0);
+  if (faltaAnticipo > 0) {
+    return [
+      `✅ ¡Hola ${primerNombre(p.nombre_cliente)}! Recibimos tu pago de ${pesos(monto)} para el pedido ${p.numero}.`,
+      `Para confirmarlo y separar tu cupo del ${cuando(p, zona)} faltan ${pesos(faltaAnticipo)} del anticipo.`,
+      "Cuando los transfieras, envíanos el comprobante por aquí. ¡Gracias! 💛",
+    ].join("\n");
+  }
   const lineas = [
     `✅ ¡Hola ${primerNombre(p.nombre_cliente)}! Recibimos tu pago de ${pesos(monto)}.`,
     `Tu pedido ${p.numero} quedó confirmado para el ${cuando(p, zona)} ${donde(p)}.`,
   ];
+  if (excedente > 0) {
+    lineas.push(
+      `Nos llegaron ${pesos(excedente)} de más; en un momento te confirmamos qué hacemos con ese valor.`,
+    );
+  }
   lineas.push(
     saldo <= 0
       ? "Tu pedido quedó pagado en su totalidad."

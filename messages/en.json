@@ -173,7 +173,9 @@
         "NO_ES_DOMICILIO": "That order is not for delivery.",
         "MONTO_MAYOR_AL_SALDO": "The amount exceeds what the order still owes.",
         "MOTIVO_DIFERENCIA_REQUERIDO": "The amount does not match the receipt: write the reason.",
-        "MONTO_NO_VALIDO": "Enter a valid amount."
+        "MONTO_NO_VALIDO": "Enter a valid amount.",
+        "DESTINO_NO_VALIDO": "Choose customer credit or tip.",
+        "EXCEDENTE_YA_DECIDIDO": "That extra amount was already decided."
       },
       "aviso": {
         "enviado": "Customer notified on WhatsApp",
@@ -184,7 +186,16 @@
         "error": "The WhatsApp couldn't be sent. Message them from the chat"
       },
       "noDomicilio": "Could not save the delivery fee.",
-      "domicilioFijado": "Delivery fee for {numero}: {valor}"
+      "domicilioFijado": "Delivery fee for {numero}: {valor}",
+      "pagoParcial": "Payment recorded on {numero}. {falta} still owed for the deposit: the order stays pending.",
+      "excedente": {
+        "porDecidir": "Payment confirmed on {numero}. Extra {excedente} to be decided.",
+        "saldoFavor": "Payment confirmed on {numero}. {excedente} became customer credit.",
+        "propina": "Payment confirmed on {numero}. {excedente} recorded as a tip."
+      },
+      "noExcedente": "Could not save what to do with the extra amount.",
+      "excedenteASaldo": "{excedente} became customer credit.",
+      "excedenteAPropina": "{excedente} recorded as a tip."
     },
     "siguiente": {
       "confirmado": "Start production",
@@ -310,7 +321,15 @@
       "valorDomicilio": "Delivery fee",
       "guardarDomicilio": "Save",
       "corregirDomicilio": "Edit",
-      "diferenciaConfirmada": "Receipt: {comprobante} · {nota}"
+      "diferenciaConfirmada": "Receipt: {comprobante} · {nota}",
+      "faltaAnticipo": "{monto} still owed for the deposit: the order is not confirmed until it is complete.",
+      "excedente": {
+        "por_decidir": "Paid {monto} extra · to be decided",
+        "saldo_favor": "Paid {monto} extra · customer credit",
+        "propina": "Paid {monto} extra · tip"
+      },
+      "excedenteASaldo": "Customer credit",
+      "excedenteAPropina": "Tip"
     },
     "dialogos": {
       "escribeMonto": "Enter the amount received",
@@ -338,10 +357,16 @@
       "cancelando": "Cancelling…",
       "cancelarPedido": "Cancel order",
       "faltaPorPagar": "{monto} still owed",
-      "montoSuperaSaldo": "The amount exceeds what is still owed ({saldo}).",
       "motivoDiferencia": "The receipt says {monto}. Why are you confirming a different amount?",
       "motivoDiferenciaEjemplo": "E.g. less arrived in the account, paid in two parts…",
-      "escribeMotivoDiferencia": "Write why the amount does not match the receipt."
+      "escribeMotivoDiferencia": "Write why the amount does not match the receipt.",
+      "faltaAnticipo": "This payment does not complete the deposit: {monto} will still be owed. It is recorded, but the order stays pending.",
+      "excedentePregunta": "The customer paid {pago} and the order owed {debe}. What do we do with the extra {excedente}?",
+      "excedenteOpcion": {
+        "despues": "Decide later",
+        "saldo_favor": "Customer credit (for another order)",
+        "propina": "Tip"
+      }
     },
     "calendario": {
       "dias": {

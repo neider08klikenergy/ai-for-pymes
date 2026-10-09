@@ -60,6 +60,7 @@ export function RevisionDialog({
         modalidad: ped.modalidad,
         total: ped.total,
         pagado: ped.pagado,
+        anticipo_requerido: ped.anticipo_requerido,
       }
     : null;
 
@@ -69,6 +70,10 @@ export function RevisionDialog({
   const [motivo, setMotivo] = useState("");
   // Por qué se confirma un monto distinto al del comprobante.
   const [notaDiferencia, setNotaDiferencia] = useState("");
+  // Qué hacer con lo que pagó de más; "despues" = queda por decidir.
+  const [destinoExcedente, setDestinoExcedente] = useState<
+    "despues" | "saldo_favor" | "propina"
+  >("despues");
   const [avisar, setAvisar] = useState(true);
   // null = el texto sigue la propuesta automática; string = la persona lo editó.
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
@@ -78,8 +83,16 @@ export function RevisionDialog({
   const montoNum = Number(monto.replace(/[^\d]/g, ""));
   // Las mismas reglas que pd_confirmar_pago, para avisar antes de enviar.
   const montoComprobante = pago.monto_reportado ?? pago.monto_esperado;
-  const saldoPendiente = ped ? ped.total - ped.pagado : null;
-  const superaSaldo = saldoPendiente !== null && montoNum > saldoPendiente;
+  const saldoPendiente = ped ? Math.max(ped.total - ped.pagado, 0) : null;
+  // Pagó de más: se confirma igual y el excedente se decide (ahora o después).
+  const excedente =
+    saldoPendiente !== null && Number.isFinite(montoNum)
+      ? Math.max(montoNum - saldoPendiente, 0)
+      : 0;
+  // Sin anticipo no hay cupo: el pago se registra pero el pedido sigue pendiente.
+  const faltaAnticipo = ped
+    ? Math.max(ped.anticipo_requerido - ped.pagado - (Number.isFinite(montoNum) ? montoNum : 0), 0)
+    : 0;
   const difiere = Number.isFinite(montoNum) && montoNum > 0 && montoNum !== montoComprobante;
   const propuesta = datos
     ? aprobar
@@ -97,12 +110,6 @@ export function RevisionDialog({
       return void toastResultado({
         ok: false,
         error: t("escribeMonto"),
-      });
-    }
-    if (aprobar && superaSaldo) {
-      return void toastResultado({
-        ok: false,
-        error: t("montoSuperaSaldo", { saldo: pesos(saldoPendiente ?? 0) }),
       });
     }
     if (aprobar && difiere && !notaDiferencia.trim()) {
@@ -123,6 +130,10 @@ export function RevisionDialog({
         aprobar,
         monto: aprobar ? montoNum : null,
         motivo: aprobar ? (difiere ? notaDiferencia : null) : motivo,
+        excedenteDestino:
+          aprobar && excedente > 0 && destinoExcedente !== "despues"
+            ? destinoExcedente
+            : null,
         aviso: avisar ? texto : null,
       });
       if (toastResultado(r)) onClose();
@@ -157,12 +168,35 @@ export function RevisionDialog({
               {saldoPendiente !== null &&
                 ` · ${t("faltaPorPagar", { monto: pesos(saldoPendiente) })}`}
             </p>
-            {superaSaldo && (
-              <p className="text-xs font-medium text-destructive">
-                {t("montoSuperaSaldo", { saldo: pesos(saldoPendiente ?? 0) })}
+            {faltaAnticipo > 0 && (
+              <p className="text-xs font-medium text-warning">
+                {t("faltaAnticipo", { monto: pesos(faltaAnticipo) })}
               </p>
             )}
-            {difiere && !superaSaldo && (
+            {excedente > 0 && (
+              <fieldset className="grid gap-2 rounded-md border border-info/40 bg-info/5 p-3">
+                <legend className="px-1 text-sm font-medium">
+                  {t("excedentePregunta", {
+                    pago: pesos(montoNum),
+                    debe: pesos(saldoPendiente ?? 0),
+                    excedente: pesos(excedente),
+                  })}
+                </legend>
+                {(["despues", "saldo_favor", "propina"] as const).map((opcion) => (
+                  <label key={opcion} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="destino-excedente"
+                      value={opcion}
+                      checked={destinoExcedente === opcion}
+                      onChange={() => setDestinoExcedente(opcion)}
+                    />
+                    {t(`excedenteOpcion.${opcion}`)}
+                  </label>
+                ))}
+              </fieldset>
+            )}
+            {difiere && (
               <div className="grid gap-2 rounded-md border border-warning/40 bg-warning/5 p-3">
                 <Label htmlFor="nota-diferencia">
                   {t("motivoDiferencia", { monto: pesos(montoComprobante) })}
