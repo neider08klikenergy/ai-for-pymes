@@ -2,12 +2,12 @@
 // Distinct from cost-tracker.ts (which only records usage).
 // This module ACTS on budget state: degrade or cut AI when thresholds are crossed.
 
-import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
   isMissingFunctionError,
   reportMissingFunctionOnce,
 } from "@/shared/lib/db-errors";
 import { emitEventOncePerDay } from "./daily-events";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
   return createSbClient(
@@ -30,8 +30,12 @@ const FALLBACK_MODEL = "openai/gpt-4o-mini";
 /** Event types whose total_tokens count toward the daily budget. */
 export const BUDGET_EVENT_TYPES = [
   "llm_usage",
+  // Estimación de un turno que falló después de que el proveedor cobró.
+  "llm_usage_estimado",
   "template_generate",
   "agent_test_chat",
+  // Transcripción de audios y descripción de imágenes entrantes.
+  "media_understanding",
 ] as const;
 
 export type CostPolicy = "allow" | "degrade" | "cut";
@@ -65,7 +69,11 @@ export async function enforceCostPolicy(
   const dayStart = new Date();
   dayStart.setUTCHours(0, 0, 0, 0);
 
-  const totalTokensToday = await readDailyTokens(supabase, workspaceId, dayStart);
+  const totalTokensToday = await readDailyTokens(
+    supabase,
+    workspaceId,
+    dayStart,
+  );
 
   if (totalTokensToday >= DAILY_TOKEN_HARD_LIMIT) {
     console.warn(

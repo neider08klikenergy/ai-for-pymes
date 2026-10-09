@@ -18,16 +18,24 @@ import {
 } from "@/features/agents/lib/model-catalog";
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
+import { isEncrypted } from "@/shared/lib/crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { phoneString } from "@/features/inbox/services/phone";
 import { createClient as svcClient } from "@supabase/supabase-js";
+import { normalizarTienda } from "@/features/productos/lib/shopify";
 import { workspaceCountryCode } from "@/features/inbox/services/country-code";
 import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
-import { normalizarTienda } from "@/features/productos/lib/shopify";
 import { configPermitida } from "@/features/settings/lib/config-integracion";
 
 const IntegrationSchema = z.object({
-  provider: z.enum(["ycloud", "kapso", "zernio", "openrouter", "highlevel", "shopify"]),
+  provider: z.enum([
+    "ycloud",
+    "kapso",
+    "zernio",
+    "openrouter",
+    "highlevel",
+    "shopify",
+  ]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -196,10 +204,13 @@ export async function PUT(
     }
   }
 
-  // Filter out masked placeholder values from credentials update
+  // Filter out masked placeholder values from credentials update. A value that
+  // already looks encrypted ("enc:…") never comes from the form: only the
+  // server encrypts. Kept as-is it would be stored unchecked and later fail to
+  // decrypt, so it is ignored like a placeholder.
   const newCreds = Object.fromEntries(
     Object.entries(parsed.data.credentials ?? {}).filter(
-      ([, v]) => v !== "••••••" && v !== "",
+      ([, v]) => v !== "••••••" && v !== "" && !isEncrypted(v),
     ),
   );
   const mergedCreds: Record<string, unknown> = {
@@ -251,22 +262,30 @@ export async function PUT(
   // arbitrary hosts), and to enable it either the app's client id + secret or
   // a legacy Admin API token.
   if (provider === "shopify") {
-    const storedConfig = (existing?.config as Record<string, unknown> | null) ?? {};
+    const storedConfig =
+      (existing?.config as Record<string, unknown> | null) ?? {};
     const shop = normalizarTienda(
       String(config?.shop_domain ?? storedConfig.shop_domain ?? ""),
     );
     if (!shop) {
       return NextResponse.json(
-        { error: "Escribe el dominio de la tienda en Shopify, por ejemplo golosita.myshopify.com" },
+        {
+          error:
+            "Escribe el dominio de la tienda en Shopify, por ejemplo golosita.myshopify.com",
+        },
         { status: 422 },
       );
     }
     config = { ...(config ?? {}), shop_domain: shop };
     const hasApp =
-      Boolean(mergedCreds.shopify_client_id) && Boolean(mergedCreds.shopify_client_secret);
+      Boolean(mergedCreds.shopify_client_id) &&
+      Boolean(mergedCreds.shopify_client_secret);
     if (enabled && !hasApp && !mergedCreds.shopify_access_token) {
       return NextResponse.json(
-        { error: "Para activar Shopify falta el Client ID y el Client Secret de la app." },
+        {
+          error:
+            "Para activar Shopify falta el Client ID y el Client Secret de la app.",
+        },
         { status: 422 },
       );
     }

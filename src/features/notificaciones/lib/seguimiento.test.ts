@@ -3,6 +3,7 @@ import {
   evaluarSeguimiento,
   leerConfigSeguimiento,
   type MensajeSeguimiento,
+  repartirPorWorkspace,
 } from "./seguimiento";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -170,4 +171,22 @@ test("IA activa o cerrada → nada", () => {
 test("motivos del traspaso en español", () => {
   assert.match(motivoHandoff("keyword"), /pidió hablar con una persona/);
   assert.match(motivoHandoff("otro"), /necesita una persona/);
+});
+
+test("repartirPorWorkspace: un workspace con muchas conversaciones no deja sin turno a los demás", () => {
+  const grande = Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, workspace_id: "A" }));
+  const chico = [{ id: "b0", workspace_id: "B" }];
+  const elegidas = repartirPorWorkspace([...grande, ...chico], 10, 60);
+  assert.ok(elegidas.some((c) => c.id === "b0"), "la del workspace B entra aunque A tenga 40");
+  assert.equal(elegidas.filter((c) => c.workspace_id === "A").length, 10, "A queda en su máximo por workspace");
+});
+
+test("repartirPorWorkspace: respeta el total y el orden dentro de cada workspace", () => {
+  const cands = ["A", "B", "C"].flatMap((w) =>
+    Array.from({ length: 5 }, (_, i) => ({ id: `${w}${i}`, workspace_id: w })),
+  );
+  const elegidas = repartirPorWorkspace(cands, 10, 7);
+  assert.equal(elegidas.length, 7);
+  assert.deepEqual(elegidas.slice(0, 3).map((c) => c.id), ["A0", "B0", "C0"]);
+  assert.deepEqual(elegidas.filter((c) => c.workspace_id === "A").map((c) => c.id), ["A0", "A1", "A2"]);
 });

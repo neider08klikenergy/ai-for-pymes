@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(103);
+SELECT plan(104);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -521,6 +521,10 @@ SELECT ok(NOT has_function_privilege('anon', 'public.pd_decidir_excedente(uuid, 
   'anon cannot execute pd_decidir_excedente()');
 SELECT ok(NOT has_function_privilege('authenticated', 'public.pd_saldo_de_excedente(uuid)', 'EXECUTE'),
   'authenticated cannot call pd_saldo_de_excedente() directly (credit only via confirm/decide)');
+
+-- ── presupuesto de audios e imágenes (20261022000000) ───────────────────────
+SELECT ok(NOT has_function_privilege('authenticated', 'public.reserve_media_understanding(uuid, text, int, int)', 'EXECUTE'),
+  'authenticated cannot reserve media-understanding calls (only the server, after a webhook)');
 
 SELECT * FROM finish();
 ROLLBACK;

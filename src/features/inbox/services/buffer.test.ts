@@ -184,8 +184,14 @@ mock.module("./cost-tracker.ts", {
       usageRecords.push(opts);
     },
     checkRateLimits: async () => ({ allowed: rateAllowed }),
+    estimarTokensTurno: (caracteres: number) => Math.ceil(caracteres / 4) + 1024,
+    recordFailedLlmAttempt: async (opts: Row) => {
+      calls.push("recordFailedLlmAttempt");
+      failedAttempts.push(opts);
+    },
   },
 });
+const failedAttempts: Row[] = [];
 
 let whatsappSettings: Row | null = { provider: "ycloud", config: {} };
 mock.module("./whatsapp-provider.ts", {
@@ -1214,4 +1220,16 @@ test("a batch is claimed only with 180 s of the function's time left (a whole wo
   assert.equal(hasTimeToClaim(start, 300, start + 110_000), true);
   assert.equal(hasTimeToClaim(start, 300, start + 121_000), false);
   assert.equal(hasTimeToClaim(start, 120, start), false);
+});
+
+test("a turn that fails after the provider charged records an estimate in the budget, then retries", async () => {
+  reset();
+  failedAttempts.length = 0;
+  generated = { text: "", throwAfterTools: new Error("The operation was aborted due to timeout") };
+  const result = await processNextBatch();
+  assert.equal(result.processed, false);
+  assert.equal(failedAttempts.length, 1);
+  assert.ok((failedAttempts[0].estimatedTokens as number) > 1024, "at least the max output plus the input");
+  assert.match(String(failedAttempts[0].error), /timeout/);
+  assert.equal(batchUpdates().at(-1)!.status, "buffering");
 });

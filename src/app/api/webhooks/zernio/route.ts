@@ -207,6 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 storagePath: mediaMeta.storage_path,
                 mimeType: mediaMeta.mime_type,
                 workspaceId,
+                contactId: contact.id,
               });
               if (transcript) mediaMeta.transcript = transcript;
             } else if (normalized.type === "image") {
@@ -215,6 +216,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 mimeType: mediaMeta.mime_type,
                 caption: mediaMeta.caption,
                 workspaceId,
+                contactId: contact.id,
               });
               if (description) mediaMeta.description = description;
             }

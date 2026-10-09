@@ -22,7 +22,13 @@ mock.module("@/features/inbox/services/message-status.ts", {
   },
 });
 mock.module("@/shared/lib/integration-secrets.ts", {
-  exports: { decryptCredentials: async (c: unknown) => c ?? {} },
+  exports: {
+    // An "enc:" value that is not real ciphertext fails, like the real helper.
+    decryptCredentials: async (c: Record<string, unknown> | null) => {
+      if (Object.values(c ?? {}).some((v) => v === "enc:x")) throw new Error("Invalid ciphertext format");
+      return c ?? {};
+    },
+  },
 });
 const unused = async () => {
   throw new Error("not expected in this test");
@@ -114,4 +120,23 @@ test("with wsid, only that workspace's secret is accepted", async () => {
   assert.equal((await delivered("owner-secret", "?wsid=ws_squatter")).status, 401);
   assert.equal((await delivered("owner-secret", "?wsid=ws_owner")).status, 200);
   assert.deepEqual(statusCalls.map((c) => c.workspaceId), ["ws_owner"]);
+});
+
+test("an unreadable candidate ('enc:x' credentials) listed first does not block the owner", async () => {
+  const ROTO: Row = {
+    workspace_id: "ws_roto",
+    credentials: { webhook_signing_secret: "enc:x" },
+    config: { phone_number_id: "pn_1" },
+  };
+  rows = [ROTO, OWNER];
+  statusCalls.length = 0;
+  const original = console.error;
+  console.error = () => {};
+  try {
+    const res = await delivered("owner-secret");
+    assert.equal(res.status, 200);
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(statusCalls, [{ workspaceId: "ws_owner", wamid: "wamid.1" }]);
 });

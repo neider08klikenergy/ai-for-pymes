@@ -5,6 +5,7 @@ import {
   MENSAJE_ESPERA,
   evaluarSeguimiento,
   leerConfigSeguimiento,
+  repartirPorWorkspace,
   type MensajeSeguimiento,
 } from "../lib/seguimiento";
 import { crearNotificacion, nombreDelContacto } from "./crear";
@@ -19,7 +20,15 @@ function svc() {
   );
 }
 
-const MAX_CONVERSACIONES = 30;
+// Se leen hasta MAX_CANDIDATAS (las más recientes: las que esperan respuesta
+// acaban de recibir un mensaje del cliente) y se revisan como mucho
+// MAX_CONVERSACIONES por pasada, por turnos entre workspaces y con
+// MAX_POR_WORKSPACE cada uno. Antes eran las 30 más antiguas de todos los
+// workspaces juntos: un workspace con muchas conversaciones atendidas por
+// personas dejaba sin seguimiento a los demás.
+const MAX_CANDIDATAS = 500;
+const MAX_CONVERSACIONES = 60;
+const MAX_POR_WORKSPACE = 10;
 const MENSAJES_A_MIRAR = 30;
 
 export interface ResultadoSeguimiento {
@@ -49,25 +58,31 @@ export async function revisarSeguimiento(
       "last_message_at",
       new Date(ahora.getTime() - 24 * 3600_000).toISOString(),
     )
-    .order("last_message_at", { ascending: true })
-    .limit(MAX_CONVERSACIONES);
+    .order("last_message_at", { ascending: false })
+    .limit(MAX_CANDIDATAS);
 
   if (error) {
     console.error("[seguimiento] lectura de conversaciones:", error.message);
     return res;
   }
 
-  for (const raw of (convs ?? []) as unknown[]) {
-    const c = raw as {
-      id: string;
-      workspace_id: string;
-      state: string;
-      window_expires_at: string | null;
-      workspaces: { settings: unknown } | { settings: unknown }[] | null;
-    };
-    const ws = Array.isArray(c.workspaces) ? c.workspaces[0] : c.workspaces;
-    const config = leerConfigSeguimiento(ws?.settings);
-    if (!config.activo) continue;
+  type Candidata = {
+    id: string;
+    workspace_id: string;
+    state: string;
+    window_expires_at: string | null;
+    workspaces: { settings: unknown } | { settings: unknown }[] | null;
+  };
+  // El seguimiento apagado se descarta ANTES de repartir los cupos.
+  const activas = ((convs ?? []) as Candidata[])
+    .map((c) => {
+      const ws = Array.isArray(c.workspaces) ? c.workspaces[0] : c.workspaces;
+      return { ...c, config: leerConfigSeguimiento(ws?.settings) };
+    })
+    .filter((c) => c.config.activo);
+
+  for (const c of repartirPorWorkspace(activas, MAX_POR_WORKSPACE, MAX_CONVERSACIONES)) {
+    const config = c.config;
     res.revisadas++;
 
     try {

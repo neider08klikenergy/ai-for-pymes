@@ -1,9 +1,9 @@
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { performance } from "node:perf_hooks";
 import {
   isMissingFunctionError,
   reportMissingFunctionOnce,
 } from "@/shared/lib/db-errors";
+import { performance } from "node:perf_hooks";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 const LLM_TURNS_PER_CONTACT_PER_HOUR = 20;
 
@@ -30,6 +30,58 @@ interface RecordLlmUsageOpts {
  * reserveLlmTurn()), updates that reservation row in place instead of
  * inserting a second row for the same turn.
  */
+/**
+ * Tokens que como mínimo cuesta un turno: la entrada enviada una vez (≈ 4
+ * caracteres por token) más la salida máxima de un paso. Para anotar un turno
+ * que falló después de que el proveedor ya lo cobró.
+ */
+export function estimarTokensTurno(
+  caracteresEntrada: number,
+  maxSalida = 1024,
+): number {
+  return Math.ceil(Math.max(caracteresEntrada, 0) / 4) + maxSalida;
+}
+
+/**
+ * Anota en el presupuesto un turno que falló (timeout, error a mitad del
+ * bucle de herramientas): el proveedor pudo haberlo cobrado aunque no haya
+ * respuesta. Va como 'llm_usage_estimado' para que sume al presupuesto diario
+ * sin contar como turno del contacto. Nunca lanza: el error original manda.
+ */
+export async function recordFailedLlmAttempt(opts: {
+  workspaceId: string;
+  conversationId: string;
+  contactId: string;
+  model: string;
+  estimatedTokens: number;
+  error: string;
+}): Promise<void> {
+  try {
+    const { error } = await svc()
+      .from("events")
+      .insert({
+        type: "llm_usage_estimado",
+        level: "warn",
+        workspace_id: opts.workspaceId,
+        conversation_id: opts.conversationId,
+        payload: {
+          model: opts.model,
+          contact_id: opts.contactId,
+          total_tokens: opts.estimatedTokens,
+          estimated: true,
+          error: opts.error.slice(0, 300),
+        },
+      });
+    if (error)
+      console.error("[cost-tracker] recordFailedLlmAttempt:", error.message);
+  } catch (err) {
+    console.error(
+      "[cost-tracker] recordFailedLlmAttempt:",
+      err instanceof Error ? err.message : "unknown",
+    );
+  }
+}
+
 export async function recordLlmUsage(
   opts: RecordLlmUsageOpts,
   retryOpts: {
