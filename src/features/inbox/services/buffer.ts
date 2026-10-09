@@ -1,6 +1,11 @@
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { generateWithTools, getWorkspaceModel } from "./openrouter";
-import { recordLlmUsage, checkRateLimits } from "./cost-tracker";
+import {
+  recordLlmUsage,
+  checkRateLimits,
+  estimarTokensTurno,
+  recordFailedLlmAttempt,
+} from "./cost-tracker";
 import {
   isMissingFunctionError,
   reportMissingFunctionOnce,
@@ -462,7 +467,23 @@ async function consolidateBatch(
     }
   });
 
-  return { text: lines.join("\n"), lastMessageAt: rows.at(-1)?.created_at };
+  return { text: recortarTurno(lines.join("\n")), lastMessageAt: rows.at(-1)?.created_at };
+}
+
+/** Tope de lo que el cliente escribe en un turno (los mensajes del lote juntos). */
+export const MAX_CARACTERES_TURNO = 8000;
+
+/**
+ * Acota el texto del lote: si el cliente mandó más de MAX_CARACTERES_TURNO, se
+ * queda lo más reciente (lo último que pidió) y se avisa que se recortó. Sin
+ * esto un lote sin límite de mensajes se reenviaba entero en cada paso.
+ */
+export function recortarTurno(texto: string): string {
+  if (texto.length <= MAX_CARACTERES_TURNO) return texto;
+  return (
+    "[Mensajes anteriores del cliente recortados por longitud]\n" +
+    texto.slice(texto.length - MAX_CARACTERES_TURNO)
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -868,54 +889,74 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         "agent_turn",
       ));
 
-    const reply = await generateWithTools({
-      systemPrompt: finalSystemPrompt,
-      model,
-      userMessage: mergedText,
-      workspaceId: batch.workspace_id,
-      availableTools: decisionResult.availableTools,
-      toolContext: toolCtx,
-      history,
-      // A write is on record BEFORE it runs, so neither a failed turn, a
-      // timeout that cuts it off mid-call, nor a reclaim runs it again. If
-      // the record can't be saved the tool doesn't run and the turn fails
-      // (nothing was written: the retry is safe).
-      onToolStart: async (start) => {
-        if (start.sensitivity !== "write") return;
-        const run: WriteRun = { id: start.callId, name: start.name, ok: null };
-        const before = batch.meta;
-        batch.meta = { ...batch.meta, write_tools_ran: [...writeRuns, run] };
-        try {
-          await saveBatchMeta(supabase, batch, { required: true });
-        } catch (err) {
-          batch.meta = before;
-          throw err;
-        }
-        writeRuns.push(run);
-      },
-      // Then its outcome. A write the tool itself reported as failed changed
-      // nothing, so it no longer counts; otherwise it stays counted.
-      onToolExecuted: async (execution) => {
-        // pasar_a_persona: el handoff se hace DESPUÉS de entregar la respuesta
-        // (si se hiciera ya, deliverReply no enviaría el "dame un momento").
-        if (execution.name === PASAR_A_PERSONA && execution.ok) {
-          batch.meta = {
-            ...batch.meta,
-            persona_tras_respuesta:
-              motivoDePasarAPersona(execution.output) ?? "La IA pidió ayuda de una persona",
-          };
+    let reply: Awaited<ReturnType<typeof generateWithTools>>;
+    try {
+      reply = await generateWithTools({
+        systemPrompt: finalSystemPrompt,
+        model,
+        userMessage: mergedText,
+        workspaceId: batch.workspace_id,
+        availableTools: decisionResult.availableTools,
+        toolContext: toolCtx,
+        history,
+        // A write is on record BEFORE it runs, so neither a failed turn, a
+        // timeout that cuts it off mid-call, nor a reclaim runs it again. If
+        // the record can't be saved the tool doesn't run and the turn fails
+        // (nothing was written: the retry is safe).
+        onToolStart: async (start) => {
+          if (start.sensitivity !== "write") return;
+          const run: WriteRun = { id: start.callId, name: start.name, ok: null };
+          const before = batch.meta;
+          batch.meta = { ...batch.meta, write_tools_ran: [...writeRuns, run] };
+          try {
+            await saveBatchMeta(supabase, batch, { required: true });
+          } catch (err) {
+            batch.meta = before;
+            throw err;
+          }
+          writeRuns.push(run);
+        },
+        // Then its outcome. A write the tool itself reported as failed changed
+        // nothing, so it no longer counts; otherwise it stays counted.
+        onToolExecuted: async (execution) => {
+          // pasar_a_persona: el handoff se hace DESPUÉS de entregar la respuesta
+          // (si se hiciera ya, deliverReply no enviaría el "dame un momento").
+          if (execution.name === PASAR_A_PERSONA && execution.ok) {
+            batch.meta = {
+              ...batch.meta,
+              persona_tras_respuesta:
+                motivoDePasarAPersona(execution.output) ?? "La IA pidió ayuda de una persona",
+            };
+            await saveBatchMeta(supabase, batch);
+            return;
+          }
+          if (execution.sensitivity !== "write") return;
+          const index = writeRuns.findIndex((w) => w.id === execution.callId);
+          if (index < 0) return;
+          if (execution.ok === false) writeRuns.splice(index, 1);
+          else writeRuns[index] = { ...writeRuns[index], ok: execution.ok };
+          batch.meta = { ...batch.meta, write_tools_ran: [...writeRuns] };
           await saveBatchMeta(supabase, batch);
-          return;
-        }
-        if (execution.sensitivity !== "write") return;
-        const index = writeRuns.findIndex((w) => w.id === execution.callId);
-        if (index < 0) return;
-        if (execution.ok === false) writeRuns.splice(index, 1);
-        else writeRuns[index] = { ...writeRuns[index], ok: execution.ok };
-        batch.meta = { ...batch.meta, write_tools_ran: [...writeRuns] };
-        await saveBatchMeta(supabase, batch);
-      },
-    });
+        },
+      });
+    } catch (err) {
+      // Un turno que falla (timeout, error del proveedor a mitad del bucle)
+      // pudo haberse cobrado: se anota una estimación mínima en el
+      // presupuesto antes de que el lote se reintente.
+      await recordFailedLlmAttempt({
+        workspaceId: batch.workspace_id,
+        conversationId: batch.conversation_id,
+        contactId: conversation.contact_id as string,
+        model,
+        estimatedTokens: estimarTokensTurno(
+          finalSystemPrompt.length +
+            mergedText.length +
+            history.reduce((n, h) => n + h.content.length, 0),
+        ),
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
 
     // ── 8g. Record LLM usage — BEFORE judging the reply: an empty reply was
     // paid for too. A failure here must not re-queue the batch: the model was

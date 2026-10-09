@@ -136,11 +136,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // happens per candidate, only once we know which rows are in play.
     let ws: IntegrationRow | null = null;
     for (const candidate of candidates) {
-      const creds = (await decryptCredentials(
-        candidate.credentials,
-        candidate.workspace_id,
-        "kapso",
-      )) as { webhook_signing_secret?: string };
+      let creds: { webhook_signing_secret?: string };
+      try {
+        creds = (await decryptCredentials(
+          candidate.credentials,
+          candidate.workspace_id,
+          "kapso",
+        )) as { webhook_signing_secret?: string };
+      } catch (err) {
+        // One unreadable row (e.g. another workspace that copied this
+        // phone_number_id) must not block the workspace that did sign it.
+        console.error(
+          "[webhooks/kapso] credentials unreadable for",
+          candidate.workspace_id,
+          err instanceof Error ? err.message : "unknown",
+        );
+        continue;
+      }
       const secret = creds.webhook_signing_secret;
       if (secret && verifyKapsoSignature(rawBody, sigHeader, secret)) {
         ws = candidate;
@@ -243,6 +255,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                   storagePath: mediaMeta.storage_path,
                   mimeType: mediaMeta.mime_type,
                   workspaceId,
+                  contactId: contact.id,
                 }));
               if (transcript) mediaMeta.transcript = transcript;
             } else if (normalized.type === "image") {
@@ -251,6 +264,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 mimeType: mediaMeta.mime_type,
                 caption: mediaMeta.caption,
                 workspaceId,
+                contactId: contact.id,
               });
               if (description) mediaMeta.description = description;
             }

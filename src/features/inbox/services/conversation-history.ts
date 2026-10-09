@@ -99,9 +99,32 @@ export async function getConversationHistory(
     });
 
   // Rows came back newest→oldest; reverse to chronological order.
-  turns.reverse();
+  return recortarHistorial(turns).reverse();
+}
 
-  return turns;
+/** Tope por mensaje del historial (un mensaje largo no infla cada turno). */
+export const MAX_CARACTERES_MENSAJE_HISTORIAL = 1500;
+/** Tope de todo el historial que se manda al modelo. */
+export const MAX_CARACTERES_HISTORIAL = 20000;
+
+/**
+ * Recorta el historial (del más nuevo al más viejo) para acotar lo que cuesta
+ * cada turno: cada mensaje a MAX_CARACTERES_MENSAJE_HISTORIAL y, al pasar
+ * MAX_CARACTERES_HISTORIAL en total, se dejan de incluir los más viejos.
+ */
+export function recortarHistorial(turnsNuevoPrimero: ConversationTurn[]): ConversationTurn[] {
+  const salida: ConversationTurn[] = [];
+  let total = 0;
+  for (const turn of turnsNuevoPrimero) {
+    const content =
+      turn.content.length > MAX_CARACTERES_MENSAJE_HISTORIAL
+        ? `${turn.content.slice(0, MAX_CARACTERES_MENSAJE_HISTORIAL)}…`
+        : turn.content;
+    if (total + content.length > MAX_CARACTERES_HISTORIAL) break;
+    total += content.length;
+    salida.push({ ...turn, content });
+  }
+  return salida;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
+import { generateText } from "ai";
 import { APP_NAME } from "@/lib/branding";
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateText } from "ai";
-import { createClient as svcClient } from "@supabase/supabase-js";
 import { getOpenRouterApiKey } from "./openrouter";
+import { enforceCostPolicy } from "./cost-enforcer";
+import { createClient as svcClient } from "@supabase/supabase-js";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Media understanding — turns inbound voice notes and images into text via a
@@ -16,6 +17,19 @@ const BUCKET = "whatsapp-media";
 /** Multimodal model used only for media→text. Overridable via env. */
 const UNDERSTANDING_MODEL =
   process.env.MEDIA_UNDERSTANDING_MODEL ?? "google/gemini-2.5-flash";
+
+// Presupuesto: cada transcripción o descripción reserva un cupo (por contacto y
+// por workspace, por hora), respeta el corte diario y registra sus tokens en
+// el presupuesto. Sin cupo, sin presupuesto o con un archivo demasiado grande
+// no se llama al modelo: el mensaje queda como "[nota de voz]" / "[imagen]" y
+// el equipo igual ve el archivo en el inbox.
+export const MEDIA_LIMITE_CONTACTO_HORA = 20;
+export const MEDIA_LIMITE_WORKSPACE_HORA = 300;
+/** WhatsApp admite audios de hasta 16 MB e imágenes de hasta 5 MB. */
+export const MEDIA_MAX_BYTES = {
+  audio: 16 * 1024 * 1024,
+  imagen: 8 * 1024 * 1024,
+};
 
 function svc() {
   return svcClient(
@@ -38,6 +52,74 @@ async function downloadBytes(storagePath: string): Promise<Uint8Array | null> {
   return new Uint8Array(await data.arrayBuffer());
 }
 
+/**
+ * Reserva una llamada de media para este contacto. null = no llamar al modelo
+ * (presupuesto cortado, límite alcanzado o error: falla cerrado, porque la
+ * transcripción es opcional y la paga la plataforma).
+ */
+async function reservarMedia(
+  workspaceId: string,
+  contactId: string,
+): Promise<string | null> {
+  try {
+    const budget = await enforceCostPolicy(workspaceId);
+    if (budget.policy === "cut") return null;
+    const { data, error } = await svc().rpc("reserve_media_understanding", {
+      p_workspace_id: workspaceId,
+      p_contact_id: contactId,
+      p_contact_limit: MEDIA_LIMITE_CONTACTO_HORA,
+      p_workspace_limit: MEDIA_LIMITE_WORKSPACE_HORA,
+    });
+    if (error) {
+      console.error("[media-understanding] reserva:", error.message);
+      return null;
+    }
+    const fila = (Array.isArray(data) ? data[0] : data) as {
+      allowed?: boolean;
+      reservation_id?: string | null;
+    } | null;
+    return fila?.allowed && fila.reservation_id ? fila.reservation_id : null;
+  } catch (err) {
+    console.error(
+      "[media-understanding] presupuesto:",
+      err instanceof Error ? err.message : "unknown",
+    );
+    return null;
+  }
+}
+
+/** Escribe los tokens reales en la fila reservada (cuentan en el presupuesto diario). */
+async function registrarUso(
+  reservationId: string,
+  workspaceId: string,
+  promptTokens: number,
+  completionTokens: number,
+): Promise<void> {
+  const { data: fila } = await svc()
+    .from("events")
+    .select("payload")
+    .eq("id", reservationId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  const { error } = await svc()
+    .from("events")
+    .update({
+      payload: {
+        ...((fila?.payload as Record<string, unknown> | null) ?? {}),
+        reserved: false,
+        model: UNDERSTANDING_MODEL,
+        input_tokens: promptTokens,
+        output_tokens: completionTokens,
+        total_tokens: promptTokens + completionTokens,
+      },
+    })
+    .eq("id", reservationId)
+    .eq("workspace_id", workspaceId)
+    .eq("type", "media_understanding");
+  if (error)
+    console.error("[media-understanding] registro de uso:", error.message);
+}
+
 function openrouter(apiKey: string) {
   return createOpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -58,12 +140,16 @@ export async function transcribeAudio(opts: {
   storagePath: string;
   mimeType?: string;
   workspaceId: string;
+  /** Quien lo envió: el límite por hora es por contacto. */
+  contactId: string;
 }): Promise<string | null> {
   const bytes = await downloadBytes(opts.storagePath);
-  if (!bytes) return null;
+  if (!bytes || bytes.length > MEDIA_MAX_BYTES.audio) return null;
 
   const apiKey = await getOpenRouterApiKey(opts.workspaceId);
   if (!apiKey) return null;
+  const reserva = await reservarMedia(opts.workspaceId, opts.contactId);
+  if (!reserva) return null;
 
   // Call OpenRouter directly with the OpenAI-style `input_audio` content part.
   // The AI SDK's `type:"file"` audio part is NOT serialized to `input_audio`,
@@ -119,7 +205,14 @@ export async function transcribeAudio(opts: {
 
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    await registrarUso(
+      reserva,
+      opts.workspaceId,
+      data?.usage?.prompt_tokens ?? 0,
+      data?.usage?.completion_tokens ?? 0,
+    );
     const text = data?.choices?.[0]?.message?.content;
     return typeof text === "string" && text.trim() ? text.trim() : null;
   } catch (err) {
@@ -140,15 +233,19 @@ export async function describeImage(opts: {
   mimeType?: string;
   caption?: string;
   workspaceId: string;
+  /** Quien la envió: el límite por hora es por contacto. */
+  contactId: string;
 }): Promise<string | null> {
   const bytes = await downloadBytes(opts.storagePath);
-  if (!bytes) return null;
+  if (!bytes || bytes.length > MEDIA_MAX_BYTES.imagen) return null;
 
   const apiKey = await getOpenRouterApiKey(opts.workspaceId);
   if (!apiKey) return null;
+  const reserva = await reservarMedia(opts.workspaceId, opts.contactId);
+  if (!reserva) return null;
 
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: openrouter(apiKey).chat(UNDERSTANDING_MODEL),
       messages: [
         {
@@ -166,6 +263,12 @@ export async function describeImage(opts: {
       ],
       maxOutputTokens: 512,
     });
+    await registrarUso(
+      reserva,
+      opts.workspaceId,
+      usage?.inputTokens ?? 0,
+      usage?.outputTokens ?? 0,
+    );
     return text.trim() || null;
   } catch (err) {
     console.error(

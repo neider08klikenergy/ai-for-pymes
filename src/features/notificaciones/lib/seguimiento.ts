@@ -124,3 +124,30 @@ const MOTIVO_HANDOFF: Record<string, string> = {
 export function motivoHandoff(trigger: string | undefined): string {
   return MOTIVO_HANDOFF[trigger ?? ""] ?? "La conversación necesita una persona";
 }
+
+/**
+ * Elige qué conversaciones revisar en esta pasada, por turnos entre
+ * workspaces: como mucho `porWorkspace` de cada uno y `total` en la pasada,
+ * respetando el orden de entrada dentro de cada workspace. Así un workspace
+ * con muchas conversaciones esperando no deja sin seguimiento a los demás.
+ */
+export function repartirPorWorkspace<T extends { workspace_id: string }>(
+  candidatas: T[],
+  porWorkspace: number,
+  total: number,
+): T[] {
+  const colas = new Map<string, T[]>();
+  for (const c of candidatas) {
+    const cola = colas.get(c.workspace_id) ?? [];
+    if (cola.length < porWorkspace) cola.push(c);
+    colas.set(c.workspace_id, cola);
+  }
+  const elegidas: T[] = [];
+  for (let ronda = 0; ronda < porWorkspace && elegidas.length < total; ronda++) {
+    for (const cola of colas.values()) {
+      if (ronda < cola.length) elegidas.push(cola[ronda]);
+      if (elegidas.length >= total) break;
+    }
+  }
+  return elegidas;
+}
