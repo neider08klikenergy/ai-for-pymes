@@ -3,17 +3,19 @@
 // names a provider: YCloud addresses the sender by its E.164 number, Kapso by
 // Meta's phone_number_id in the request path.
 
-import * as ycloud from "./ycloud-client";
-import * as kapso from "./kapso-client";
-import * as zernio from "./zernio-client";
 import {
-  WHATSAPP_PROVIDER_LABELS,
   whatsappApiKey,
+  WHATSAPP_PROVIDER_LABELS,
   type WhatsAppProvider,
 } from "./whatsapp-provider";
+import * as kapso from "./kapso-client";
+import * as zernio from "./zernio-client";
+import * as ycloud from "./ycloud-client";
 
 /** FLAT parameters per component (both providers take Meta's shape). */
-export type TemplateComponents = NonNullable<ycloud.TemplateParams["components"]>;
+export type TemplateComponents = NonNullable<
+  ycloud.TemplateParams["components"]
+>;
 
 /**
  * A quién le escribimos, más allá del teléfono. Zernio envía por conversación
@@ -52,7 +54,12 @@ export interface WhatsAppSender {
    */
   sendLocation?(
     to: string,
-    location: { latitude: number; longitude: number; name?: string; address?: string },
+    location: {
+      latitude: number;
+      longitude: number;
+      name?: string;
+      address?: string;
+    },
     target?: SendTarget,
   ): Promise<SendResult>;
   sendTemplate(params: {
@@ -151,7 +158,8 @@ export function whatsappSender(
   }
 
   const configured = (config.phone_number as string | undefined) ?? "";
-  const from = () => requireSenderId(configured, "el número de WhatsApp", label);
+  const from = () =>
+    requireSenderId(configured, "el número de WhatsApp", label);
   return {
     provider,
     label,
@@ -177,7 +185,12 @@ export function whatsappSender(
       };
     },
     async sendLocation(to, location) {
-      const sent = await ycloud.sendLocation({ apiKey, from: from(), to, ...location });
+      const sent = await ycloud.sendLocation({
+        apiKey,
+        from: from(),
+        to,
+        ...location,
+      });
       return {
         wamid: sent.wamid || undefined,
         providerMessageId: sent.id || undefined,
@@ -209,8 +222,12 @@ interface ZernioAccountConfig {
 
 /** La cuenta de WhatsApp conectada al perfil del workspace, si hay. */
 function zernioWhatsAppAccount(config: Record<string, unknown>): string | null {
-  const accounts = Array.isArray(config.accounts) ? (config.accounts as ZernioAccountConfig[]) : [];
-  const wa = accounts.find((a) => a.platform === "whatsapp" && typeof a.id === "string");
+  const accounts = Array.isArray(config.accounts)
+    ? (config.accounts as ZernioAccountConfig[])
+    : [];
+  const wa = accounts.find(
+    (a) => a.platform === "whatsapp" && typeof a.id === "string",
+  );
   return wa ? (wa.id as string) : null;
 }
 
@@ -219,7 +236,9 @@ function bodyParams(components: TemplateComponents | undefined): string[] {
   const body = (components ?? []).find(
     (c) => String((c as { type?: unknown }).type).toLowerCase() === "body",
   ) as { parameters?: Array<{ text?: unknown }> } | undefined;
-  return (body?.parameters ?? []).map((p) => (typeof p.text === "string" ? p.text : ""));
+  return (body?.parameters ?? []).map((p) =>
+    typeof p.text === "string" ? p.text : "",
+  );
 }
 
 function zernioSender(
@@ -227,10 +246,29 @@ function zernioSender(
   live: boolean,
   label: string,
 ): WhatsAppSender {
+  // The key is one for the whole platform: the conversation's account is used
+  // only if it is one of this workspace's own (config.accounts, written by the
+  // server from what Zernio lists for its profile). A stale or foreign id falls
+  // back to the workspace's WhatsApp account, or fails for IG/FB.
+  const ownAccounts = new Set(
+    (Array.isArray(config.accounts)
+      ? (config.accounts as ZernioAccountConfig[])
+      : []
+    )
+      .map((a) => a.id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+
   function accountFor(target: SendTarget | undefined): string {
+    const fromConversation =
+      target?.externalAccountId && ownAccounts.has(target.externalAccountId)
+        ? target.externalAccountId
+        : null;
     const account =
-      target?.externalAccountId ??
-      (!target || target.channel === "whatsapp" ? zernioWhatsAppAccount(config) : null);
+      fromConversation ??
+      (!target || target.channel === "whatsapp"
+        ? zernioWhatsAppAccount(config)
+        : null);
     if (!account) {
       throw new WhatsAppConfigError(
         target && target.channel !== "whatsapp"
@@ -260,7 +298,11 @@ function zernioSender(
           "Esta conversación no tiene el id de Zernio: espera a que el cliente vuelva a escribir",
         );
       }
-      const sent = await zernio.startWhatsAppConversation({ accountId, phone: to, text: body });
+      const sent = await zernio.startWhatsAppConversation({
+        accountId,
+        phone: to,
+        text: body,
+      });
       return {
         wamid: sent.messageId ?? undefined,
         externalConversationId: sent.conversationId ?? undefined,
@@ -297,7 +339,9 @@ function zernioSender(
           template: {
             name: templateName,
             language: language ?? "es",
-            ...(components?.length ? { components: components as unknown[] } : {}),
+            ...(components?.length
+              ? { components: components as unknown[] }
+              : {}),
           },
         });
         return { wamid: sent.messageId ?? undefined };

@@ -1,5 +1,3 @@
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { generateWithTools, getWorkspaceModel } from "./openrouter";
 import {
   recordLlmUsage,
   checkRateLimits,
@@ -10,27 +8,29 @@ import {
   isMissingFunctionError,
   reportMissingFunctionOnce,
 } from "@/shared/lib/db-errors";
-import { dispatchText, dispatchTemplate } from "./dispatch";
-import { UNCONFIRMED_SEND_ERROR } from "./whatsapp-errors";
-import { decide, applyTransition } from "./decision-engine";
 import {
   applyJevToBatch,
   type JevBatchEffect,
 } from "@/features/jev-judge/apply";
-import { enforceModelPolicy } from "./model-policy";
-import type { ToolContext } from "@/features/tools/core/tool";
 import {
   PASAR_A_PERSONA,
   motivoDePasarAPersona,
 } from "@/features/tools/tools/pasar-a-persona";
-import { resolveSystemPrompt } from "./prompt-resolver";
+import { enforceModelPolicy } from "./model-policy";
 import { buildSystemPrompt } from "./prompt-builder";
+import { resolveSystemPrompt } from "./prompt-resolver";
+import { UNCONFIRMED_SEND_ERROR } from "./whatsapp-errors";
+import { decide, applyTransition } from "./decision-engine";
+import { dispatchText, dispatchTemplate } from "./dispatch";
+import type { ToolContext } from "@/features/tools/core/tool";
+import { generateWithTools, getWorkspaceModel } from "./openrouter";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 import { getActiveAgent } from "@/features/agents/services/active-agent";
 import { maybeAutoProcess } from "@/features/agents/services/auto-tagging";
 import {
   getBusinessInfo,
-  buildBusinessInfoContext,
   buildNowContext,
+  buildBusinessInfoContext,
 } from "./business-info";
 import {
   searchKb,
@@ -38,13 +38,14 @@ import {
   listKbSourceLinks,
   formatKbReferenceLinks,
 } from "./kb-service";
-import { enforceCostPolicy, buildCostAwareSystemPrompt } from "./cost-enforcer";
 import {
   getConversationHistory,
   type ConversationTurn,
 } from "./conversation-history";
 import { getSetterConfig, evaluateLead } from "./setter";
 import { syncContactToHL, createHLOpportunity } from "./highlevel-client";
+import { enforceCostPolicy, buildCostAwareSystemPrompt } from "./cost-enforcer";
+import { repartirPorWorkspace } from "@/features/notificaciones/lib/seguimiento";
 import {
   loadWhatsAppSettings,
   WHATSAPP_NOT_CONNECTED,
@@ -69,16 +70,16 @@ const TRANSIENT_BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000];
 const DETERMINISTIC_BACKOFF_MS = 30_000;
 
 function isDeterministicError(errorMsg: string): boolean {
-  return [WHATSAPP_NOT_CONNECTED, EMPTY_REPLY_ERROR, CONVERSATION_NOT_FOUND].some(
-    (marker) => errorMsg.includes(marker),
-  );
+  return [
+    WHATSAPP_NOT_CONNECTED,
+    EMPTY_REPLY_ERROR,
+    CONVERSATION_NOT_FOUND,
+  ].some((marker) => errorMsg.includes(marker));
 }
 
 function retryBackoffMs(retry: number, errorMsg: string): number {
   if (isDeterministicError(errorMsg)) return DETERMINISTIC_BACKOFF_MS * retry;
-  return TRANSIENT_BACKOFF_MS[
-    Math.min(retry, TRANSIENT_BACKOFF_MS.length) - 1
-  ];
+  return TRANSIENT_BACKOFF_MS[Math.min(retry, TRANSIENT_BACKOFF_MS.length) - 1];
 }
 
 // A batch whose reply went out but that couldn't be closed: its next attempt
@@ -175,13 +176,16 @@ export async function upsertBatch(
 
   let lastError: { message?: string } | null = null;
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const { data, error } = await supabase.rpc("upsert_batch_and_link_message", {
-      p_workspace_id: workspaceId,
-      p_conversation_id: conversationId,
-      p_message_id: messageId,
-      p_silence_ms: silenceMs,
-      p_force_new_batch: forceNewBatch,
-    });
+    const { data, error } = await supabase.rpc(
+      "upsert_batch_and_link_message",
+      {
+        p_workspace_id: workspaceId,
+        p_conversation_id: conversationId,
+        p_message_id: messageId,
+        p_silence_ms: silenceMs,
+        p_force_new_batch: forceNewBatch,
+      },
+    );
 
     if (!error && data) return data as string;
 
@@ -310,6 +314,15 @@ async function upsertBatchLegacy(
 // More than enough for upsertBatch's 3 attempts (~1 s) to have settled.
 const ORPHAN_MESSAGE_AGE_MS = 2 * 60_000;
 const MAX_ORPHANS_PER_RUN = 20;
+// The query reads a wider pool, oldest first, and the run is shared out by
+// turns between workspaces: rate-limited messages (left unbatched on purpose)
+// match the query too, and with a plain global LIMIT one workspace's flood of
+// them could push another workspace's real orphans out of their 13-minute
+// window (auditoría run-3).
+const ORPHAN_CANDIDATES = 200;
+const MAX_ORPHANS_PER_WORKSPACE = 5;
+// checkRateLimits is one query per contact: bound them per run.
+const MAX_ORPHAN_RATE_CHECKS = 40;
 // Anything older is history, not a transient failure: without this bound,
 // re-enabling the AI days later would answer the whole backlog one message at
 // a time (every inbound the webhook left unbatched on purpose — AI off, rate
@@ -350,7 +363,8 @@ export async function reconcileOrphanedMessages(
     .gt("created_at", oldest)
     .lt("created_at", cutoff)
     .eq("conversations.ai_enabled", true)
-    .limit(MAX_ORPHANS_PER_RUN);
+    .order("created_at", { ascending: true })
+    .limit(ORPHAN_CANDIDATES);
 
   if (error) {
     console.error("[buffer] reconcileOrphanedMessages lookup error:", error);
@@ -367,17 +381,41 @@ export async function reconcileOrphanedMessages(
       },
   );
 
+  // Round-robin order across workspaces; a skipped (rate-limited) row uses no
+  // slot, so it can't crowd out anyone else's orphan.
+  const ordered = repartirPorWorkspace(
+    orphans,
+    ORPHAN_CANDIDATES,
+    ORPHAN_CANDIDATES,
+  );
+  const rateByContact = new Map<string, boolean>();
+  const perWorkspace = new Map<string, number>();
   let recovered = 0;
-  for (const row of orphans) {
+  let attempted = 0;
+  for (const row of ordered) {
+    if (attempted >= MAX_ORPHANS_PER_RUN) break;
+    if ((perWorkspace.get(row.workspace_id) ?? 0) >= MAX_ORPHANS_PER_WORKSPACE)
+      continue;
     // Re-check live, like the webhook did when the message arrived: AI off or
     // a rate-limited contact means the message stays unbatched on purpose.
     if (!row.conversations?.ai_enabled) continue;
 
-    const rate = await checkRateLimits(
+    const contactKey = `${row.workspace_id}:${row.conversations.contact_id}`;
+    let allowed = rateByContact.get(contactKey);
+    if (allowed === undefined) {
+      if (rateByContact.size >= MAX_ORPHAN_RATE_CHECKS) break;
+      allowed = (
+        await checkRateLimits(row.workspace_id, row.conversations.contact_id)
+      ).allowed;
+      rateByContact.set(contactKey, allowed);
+    }
+    if (!allowed) continue;
+
+    attempted++;
+    perWorkspace.set(
       row.workspace_id,
-      row.conversations.contact_id,
+      (perWorkspace.get(row.workspace_id) ?? 0) + 1,
     );
-    if (!rate.allowed) continue;
 
     try {
       // An isolated batch flushed now: a revived orphan must never join an
@@ -467,7 +505,10 @@ async function consolidateBatch(
     }
   });
 
-  return { text: recortarTurno(lines.join("\n")), lastMessageAt: rows.at(-1)?.created_at };
+  return {
+    text: recortarTurno(lines.join("\n")),
+    lastMessageAt: rows.at(-1)?.created_at,
+  };
 }
 
 /** Tope de lo que el cliente escribe en un turno (los mensajes del lote juntos). */
@@ -857,7 +898,8 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       summary,
       kbContext,
       responseStyle: activeAgent?.config.responseStyle ?? null,
-      replyInCustomerLanguage: activeAgent?.config.replyInCustomerLanguage === true,
+      replyInCustomerLanguage:
+        activeAgent?.config.replyInCustomerLanguage === true,
       guardrails: resolvedPrompt?.guardrails ?? null,
       vars: {
         agentName: activeAgent?.name ?? null,
@@ -905,7 +947,11 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         // (nothing was written: the retry is safe).
         onToolStart: async (start) => {
           if (start.sensitivity !== "write") return;
-          const run: WriteRun = { id: start.callId, name: start.name, ok: null };
+          const run: WriteRun = {
+            id: start.callId,
+            name: start.name,
+            ok: null,
+          };
           const before = batch.meta;
           batch.meta = { ...batch.meta, write_tools_ran: [...writeRuns, run] };
           try {
@@ -925,7 +971,8 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
             batch.meta = {
               ...batch.meta,
               persona_tras_respuesta:
-                motivoDePasarAPersona(execution.output) ?? "La IA pidió ayuda de una persona",
+                motivoDePasarAPersona(execution.output) ??
+                "La IA pidió ayuda de una persona",
             };
             await saveBatchMeta(supabase, batch);
             return;
@@ -979,7 +1026,8 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         "[buffer] recordLlmUsage failed, continuing without retrying the LLM call:",
         {
           batchId: batch.id,
-          error: usageErr instanceof Error ? usageErr.message : String(usageErr),
+          error:
+            usageErr instanceof Error ? usageErr.message : String(usageErr),
         },
       );
     }
@@ -1000,7 +1048,13 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       if (writeRuns.length === 0) {
         throw new Error(EMPTY_REPLY_ERROR);
       }
-      await handOffAfterWrite(supabase, batch, mergedText, writeRuns, "empty_reply");
+      await handOffAfterWrite(
+        supabase,
+        batch,
+        mergedText,
+        writeRuns,
+        "empty_reply",
+      );
       return done();
     }
 
@@ -1298,11 +1352,16 @@ async function handOff(
       ...extra,
     });
   } catch (transitionErr) {
-    if (transitionErr instanceof Error && transitionErr.name === "TransitionError") {
+    if (
+      transitionErr instanceof Error &&
+      transitionErr.name === "TransitionError"
+    ) {
       return;
     }
     const error =
-      transitionErr instanceof Error ? transitionErr.message : String(transitionErr);
+      transitionErr instanceof Error
+        ? transitionErr.message
+        : String(transitionErr);
     console.error(`[buffer] ${trigger} handoff failed:`, {
       conversationId: batch.conversation_id,
       error,
@@ -1390,11 +1449,14 @@ async function handOffAfterWrite(
   trigger: "write_tool_unfinished" | "empty_reply" = "write_tool_unfinished",
 ): Promise<void> {
   const tools = [...new Set(writeRuns.map((w) => w.name))].join(", ");
-  console.warn("[buffer] a write tool ran but the turn didn't finish — handing off", {
-    batchId: batch.id,
-    tools,
-    trigger,
-  });
+  console.warn(
+    "[buffer] a write tool ran but the turn didn't finish — handing off",
+    {
+      batchId: batch.id,
+      tools,
+      trigger,
+    },
+  );
   await handOff(supabase, batch, trigger);
   await addInternalNote(
     supabase,
@@ -1513,7 +1575,9 @@ async function markBatchProcessed(
     }
   }
   console.error("[buffer] markBatchProcessed error:", lastError);
-  throw new Error(`[buffer] could not close batch ${batch.id}: ${lastError?.message}`);
+  throw new Error(
+    `[buffer] could not close batch ${batch.id}: ${lastError?.message}`,
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

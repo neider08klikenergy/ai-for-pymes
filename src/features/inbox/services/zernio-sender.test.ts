@@ -1,14 +1,22 @@
-import assert from "node:assert/strict";
 import { test } from "node:test";
+import assert from "node:assert/strict";
 
 // Envíos por Zernio: por conversación (Instagram, Facebook y WhatsApp), o por
 // número cuando WhatsApp aún no tiene conversación en Zernio.
 
 process.env.ZERNIO_API_KEY = "sk_test";
 
-type Call = { url: string; method: string; body: Record<string, unknown>; auth: string | null };
+type Call = {
+  url: string;
+  method: string;
+  body: Record<string, unknown>;
+  auth: string | null;
+};
 const calls: Call[] = [];
-let reply: unknown = { success: true, data: { messageId: "wamid.OK", conversationId: "conv_new" } };
+let reply: unknown = {
+  success: true,
+  data: { messageId: "wamid.OK", conversationId: "conv_new" },
+};
 let status = 200;
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const headers = new Headers(init?.headers);
@@ -24,11 +32,22 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 const { whatsappSender } = await import("./whatsapp-sender.ts");
 const { ZernioError } = await import("./zernio-client.ts");
 
-const config = { profile_id: "prof_1", accounts: [{ id: "acc_wa", platform: "whatsapp" }] };
+const config = {
+  profile_id: "prof_1",
+  accounts: [
+    { id: "acc_wa", platform: "whatsapp" },
+    { id: "acc_ig", platform: "instagram" },
+    { id: "acc_fb", platform: "facebook" },
+    { id: "a", platform: "instagram" },
+  ],
+};
 
 function reset() {
   calls.length = 0;
-  reply = { success: true, data: { messageId: "wamid.OK", conversationId: "conv_new" } };
+  reply = {
+    success: true,
+    data: { messageId: "wamid.OK", conversationId: "conv_new" },
+  };
   status = 200;
 }
 
@@ -43,7 +62,10 @@ test("responde en la conversación de Instagram con su cuenta", async () => {
   });
   assert.equal(sent.wamid, "wamid.OK");
   assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /\/api\/v1\/inbox\/conversations\/conv_ig\/messages$/);
+  assert.match(
+    calls[0].url,
+    /\/api\/v1\/inbox\/conversations\/conv_ig\/messages$/,
+  );
   assert.deepEqual(calls[0].body, { accountId: "acc_ig", message: "hola" });
   assert.equal(calls[0].auth, "Bearer sk_test");
 });
@@ -57,7 +79,11 @@ test("WhatsApp sin conversación en Zernio: escribe al número y recuerda la con
     externalAccountId: null,
   });
   assert.match(calls[0].url, /\/api\/v1\/inbox\/conversations$/);
-  assert.deepEqual(calls[0].body, { accountId: "acc_wa", participantId: "573103208950", message: "hola" });
+  assert.deepEqual(calls[0].body, {
+    accountId: "acc_wa",
+    participantId: "573103208950",
+    message: "hola",
+  });
   assert.equal(sent.externalConversationId, "conv_new");
 });
 
@@ -68,8 +94,14 @@ test("plantilla de WhatsApp en la conversación existente", async () => {
     to: "+573103208950",
     templateName: "pedido_listo",
     language: "es",
-    components: [{ type: "body", parameters: [{ type: "text", text: "Neider" }] }],
-    target: { channel: "whatsapp", externalConversationId: "conv_wa", externalAccountId: "acc_wa" },
+    components: [
+      { type: "body", parameters: [{ type: "text", text: "Neider" }] },
+    ],
+    target: {
+      channel: "whatsapp",
+      externalConversationId: "conv_wa",
+      externalAccountId: "acc_wa",
+    },
   });
   assert.deepEqual(calls[0].body, {
     accountId: "acc_wa",
@@ -78,7 +110,9 @@ test("plantilla de WhatsApp en la conversación existente", async () => {
         {
           name: "pedido_listo",
           language: "es",
-          components: [{ type: "body", parameters: [{ type: "text", text: "Neider" }] }],
+          components: [
+            { type: "body", parameters: [{ type: "text", text: "Neider" }] },
+          ],
         },
       ],
     },
@@ -91,7 +125,15 @@ test("plantilla sin conversación: por número con los parámetros del cuerpo", 
   await sender.sendTemplate({
     to: "573103208950",
     templateName: "pedido_listo",
-    components: [{ type: "body", parameters: [{ type: "text", text: "Neider" }, { type: "text", text: "GOL-1" }] }],
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: "Neider" },
+          { type: "text", text: "GOL-1" },
+        ],
+      },
+    ],
   });
   assert.deepEqual(calls[0].body, {
     accountId: "acc_wa",
@@ -109,14 +151,29 @@ test("Instagram y Facebook no tienen plantillas; sin cuenta de WhatsApp se nombr
     sender.sendTemplate({
       to: "fb:1",
       templateName: "x",
-      target: { channel: "facebook", externalConversationId: "c", externalAccountId: "a" },
+      target: {
+        channel: "facebook",
+        externalConversationId: "c",
+        externalAccountId: "a",
+      },
     }),
     /no tienen plantillas/,
   );
-  const sinWa = whatsappSender("zernio", {}, { profile_id: "p", accounts: [] });
-  await assert.rejects(sinWa.sendText("+57300", "hola"), /Conecta WhatsApp en Zernio/);
+  const sinWa = whatsappSender(
+    "zernio",
+    {},
+    { profile_id: "p", accounts: [{ id: "acc_ig", platform: "instagram" }] },
+  );
   await assert.rejects(
-    sinWa.sendText("ig:1", "hola", { channel: "instagram", externalConversationId: null, externalAccountId: "acc_ig" }),
+    sinWa.sendText("+57300", "hola"),
+    /Conecta WhatsApp en Zernio/,
+  );
+  await assert.rejects(
+    sinWa.sendText("ig:1", "hola", {
+      channel: "instagram",
+      externalConversationId: null,
+      externalAccountId: "acc_ig",
+    }),
     /no tiene el id de Zernio/,
   );
   assert.equal(calls.length, 0, "no se llama a Zernio");
@@ -125,11 +182,22 @@ test("Instagram y Facebook no tienen plantillas; sin cuenta de WhatsApp se nombr
 test("un error de Zernio llega con el error de Meta adentro", async () => {
   reset();
   status = 400;
-  reply = { error: "Outside window", code: "platform_api_error", platformError: { code: 131047, message: "Re-engagement" } };
+  reply = {
+    error: "Outside window",
+    code: "platform_api_error",
+    platformError: { code: 131047, message: "Re-engagement" },
+  };
   const sender = whatsappSender("zernio", {}, config);
   await assert.rejects(
-    sender.sendText("ig:1", "hola", { channel: "instagram", externalConversationId: "c", externalAccountId: "a" }),
-    (err: unknown) => err instanceof ZernioError && err.status === 400 && err.code === "platform_api_error",
+    sender.sendText("ig:1", "hola", {
+      channel: "instagram",
+      externalConversationId: "c",
+      externalAccountId: "a",
+    }),
+    (err: unknown) =>
+      err instanceof ZernioError &&
+      err.status === 400 &&
+      err.code === "platform_api_error",
   );
 });
 
@@ -139,10 +207,17 @@ test("imagen en la conversación existente: adjunto + pie de foto", async () => 
   const sent = await sender.sendImage(
     "fb:99",
     { url: "https://cdn.test/a.jpg", caption: "Así queda la torta" },
-    { channel: "facebook", externalConversationId: "conv_fb", externalAccountId: "acc_fb" },
+    {
+      channel: "facebook",
+      externalConversationId: "conv_fb",
+      externalAccountId: "acc_fb",
+    },
   );
   assert.equal(sent.wamid, "wamid.OK");
-  assert.match(calls[0].url, /\/api\/v1\/inbox\/conversations\/conv_fb\/messages$/);
+  assert.match(
+    calls[0].url,
+    /\/api\/v1\/inbox\/conversations\/conv_fb\/messages$/,
+  );
   assert.deepEqual(calls[0].body, {
     accountId: "acc_fb",
     message: "Así queda la torta",
@@ -155,12 +230,39 @@ test("imagen sin conversación en Zernio: pide enviar primero un texto, sin llam
   reset();
   const sender = whatsappSender("zernio", {}, config);
   await assert.rejects(
-    sender.sendImage("+573103208950", { url: "https://cdn.test/a.jpg" }, {
-      channel: "whatsapp",
-      externalConversationId: null,
-      externalAccountId: null,
-    }),
+    sender.sendImage(
+      "+573103208950",
+      { url: "https://cdn.test/a.jpg" },
+      {
+        channel: "whatsapp",
+        externalConversationId: null,
+        externalAccountId: null,
+      },
+    ),
     /envía primero un mensaje de texto/,
   );
   assert.equal(calls.length, 0);
+});
+
+test("una cuenta que no es del workspace no se usa: WhatsApp cae a la propia, Instagram falla sin llamar a Zernio", async () => {
+  reset();
+  const sender = whatsappSender("zernio", {}, config);
+  await sender.sendText("+573001112233", "hola", {
+    channel: "whatsapp",
+    externalConversationId: null,
+    externalAccountId: "acc_de_otro_negocio",
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].body.accountId, "acc_wa");
+
+  reset();
+  await assert.rejects(
+    sender.sendText("ig:1", "hola", {
+      channel: "instagram",
+      externalConversationId: "c",
+      externalAccountId: "acc_ajena",
+    }),
+    /no tiene la cuenta/,
+  );
+  assert.equal(calls.length, 0, "no se llama a Zernio");
 });
