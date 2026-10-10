@@ -176,14 +176,16 @@ mock.module("./cost-enforcer.ts", {
 });
 
 const usageRecords: Row[] = [];
-let rateAllowed = true;
+let rateAllowed: boolean | ((contactId: string) => boolean) = true;
 mock.module("./cost-tracker.ts", {
   exports: {
     recordLlmUsage: async (opts: Row) => {
       calls.push("recordLlmUsage");
       usageRecords.push(opts);
     },
-    checkRateLimits: async () => ({ allowed: rateAllowed }),
+    checkRateLimits: async (_ws: string, contactId: string) => ({
+      allowed: typeof rateAllowed === "function" ? rateAllowed(contactId) : rateAllowed,
+    }),
     estimarTokensTurno: (caracteres: number) => Math.ceil(caracteres / 4) + 1024,
     recordFailedLlmAttempt: async (opts: Row) => {
       calls.push("recordFailedLlmAttempt");
@@ -1194,6 +1196,35 @@ test("an orphan gets an isolated batch flushed now; AI-off or rate-limited ones 
   ];
   rateAllowed = false;
   assert.equal(await reconcileOrphanedMessages(), 0);
+});
+
+test("rate-limited orphans of one workspace don't crowd out another workspace's real orphan", async () => {
+  reset();
+  const now = Date.now();
+  const minutesAgo = (m: number) => new Date(now - m * 60_000).toISOString();
+  // 30 messages of a rate-limited contact in ws_a, all older than ws_b's orphan.
+  tables.messages = Array.from({ length: 30 }, (_, i) => ({
+    id: `a${i}`, workspace_id: "ws_a", conversation_id: "conv_a", batch_id: null, direction: "in",
+    created_at: minutesAgo(14 - i * 0.1), conversations: { ai_enabled: true, contact_id: "limitado" },
+  }));
+  tables.messages.push({
+    id: "b1", workspace_id: "ws_b", conversation_id: "conv_b", batch_id: null, direction: "in",
+    created_at: minutesAgo(3), conversations: { ai_enabled: true, contact_id: "c_b" },
+  });
+  rateAllowed = (contactId) => contactId !== "limitado";
+  assert.equal(await reconcileOrphanedMessages(), 1);
+  const linked = rpcCalls.filter((c) => c.fn === "upsert_batch_and_link_message");
+  assert.deepEqual(linked.map((c) => (c.args as Row).p_message_id), ["b1"]);
+});
+
+test("a workspace with many real orphans gets at most 5 per run", async () => {
+  reset();
+  const now = Date.now();
+  tables.messages = Array.from({ length: 12 }, (_, i) => ({
+    id: `o${i}`, workspace_id: "ws_1", conversation_id: `conv_${i}`, batch_id: null, direction: "in",
+    created_at: new Date(now - 5 * 60_000).toISOString(), conversations: { ai_enabled: true, contact_id: `c${i}` },
+  }));
+  assert.equal(await reconcileOrphanedMessages(), 5);
 });
 
 test("a reaction is never revived as an orphan: it isn't for answering", async () => {

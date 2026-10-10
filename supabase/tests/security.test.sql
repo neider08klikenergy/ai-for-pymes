@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(104);
+SELECT plan(105);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -525,6 +525,10 @@ SELECT ok(NOT has_function_privilege('authenticated', 'public.pd_saldo_de_excede
 -- ── presupuesto de audios e imágenes (20261022000000) ───────────────────────
 SELECT ok(NOT has_function_privilege('authenticated', 'public.reserve_media_understanding(uuid, text, int, int)', 'EXECUTE'),
   'authenticated cannot reserve media-understanding calls (only the server, after a webhook)');
+
+-- ── envío por Zernio aislado (20261023000000) ──────────────────────────────
+SELECT has_trigger('public', 'conversations', 'trg_conversations_guard_provider_columns',
+  'sessions cannot write external_account_id/external_conversation_id/window_expires_at (sending from another workspace''s Zernio account)');
 
 SELECT * FROM finish();
 ROLLBACK;
