@@ -11,6 +11,10 @@ import {
   MessageCircle,
   LayoutDashboard,
 } from "lucide-react";
+import {
+  InvitacionesPendientes,
+  type InvitacionPendiente,
+} from "@/features/workspace/components/invitaciones-pendientes";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/branding";
@@ -22,12 +26,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { resolveTimeZone } from "@/shared/lib/timezone";
 import { logout } from "@/features/auth/services/actions";
 import { SelectorIdioma } from "@/components/selector-idioma";
+import { BotonPqrs } from "@/features/pqrs/components/boton-pqrs";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
-import {
-  InvitacionesPendientes,
-  type InvitacionPendiente,
-} from "@/features/workspace/components/invitaciones-pendientes";
 import { CampanaNotificaciones } from "@/features/notificaciones/components/campana-notificaciones";
 
 export default async function MainLayout({
@@ -45,18 +46,28 @@ export default async function MainLayout({
   if (!user) redirect("/login");
 
   // Super admin flag + active workspace context + membership list (for switcher)
-  const [{ data: userRow }, active, memberships, { data: invitaciones }] =
-    await Promise.all([
-      supabase
-        .from("users")
-        .select("is_super_admin")
-        .eq("id", user.id)
-        .maybeSingle(),
-      getActiveWorkspace(supabase, user.id),
-      listMemberships(supabase, user.id),
-      // Invitaciones al equipo que esta persona todavía no respondió.
-      supabase.rpc("mis_invitaciones"),
-    ]);
+  const [
+    { data: userRow },
+    active,
+    memberships,
+    { data: invitaciones },
+    { data: perfil },
+  ] = await Promise.all([
+    supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getActiveWorkspace(supabase, user.id),
+    listMemberships(supabase, user.id),
+    // Invitaciones al equipo que esta persona todavía no respondió.
+    supabase.rpc("mis_invitaciones"),
+    // Contacto de soporte de Felrick (Agencia → Perfil) para el botón Soporte.
+    supabase
+      .from("perfil_plataforma")
+      .select("soporte_email, soporte_whatsapp")
+      .maybeSingle(),
+  ]);
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
 
@@ -119,6 +130,15 @@ export default async function MainLayout({
 
         {/* Right: agency link (super admin only) + dashboard + settings + logout */}
         <div className="flex items-center gap-1 shrink-0">
+          {activeId && (
+            <BotonPqrs
+              workspaceId={activeId}
+              contacto={{
+                email: perfil?.soporte_email ?? null,
+                whatsapp: perfil?.soporte_whatsapp ?? [],
+              }}
+            />
+          )}
           {activeId && <CampanaNotificaciones />}
           <SelectorIdioma />
           <ThemeToggle />

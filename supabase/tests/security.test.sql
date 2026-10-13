@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(105);
+SELECT plan(107);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -529,6 +529,13 @@ SELECT ok(NOT has_function_privilege('authenticated', 'public.reserve_media_unde
 -- ── envío por Zernio aislado (20261023000000) ──────────────────────────────
 SELECT has_trigger('public', 'conversations', 'trg_conversations_guard_provider_columns',
   'sessions cannot write external_account_id/external_conversation_id/window_expires_at (sending from another workspace''s Zernio account)');
+
+-- ── PQRS (20261025000000) ───────────────────────────────────────────────────
+SELECT ok(NOT has_table_privilege('authenticated', 'public.pqrs', 'INSERT'),
+  'authenticated cannot INSERT pqrs directly (only the server, after the membership and rate checks)');
+
+SELECT ok(NOT has_table_privilege('anon', 'public.perfil_plataforma', 'SELECT'),
+  'anon cannot read the platform profile (only signed-in users see the support contact)');
 
 SELECT * FROM finish();
 ROLLBACK;

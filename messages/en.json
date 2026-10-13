@@ -14,7 +14,9 @@
       "workspaces": "Workspaces",
       "solicitudes": "Requests",
       "navegacionMovil": "Mobile navigation",
-      "navegacionAgencia": "Agency navigation"
+      "navegacionAgencia": "Agency navigation",
+      "pqrs": "Support",
+      "perfil": "Profile"
     },
     "sinWorkspace": "You don't have an active workspace.",
     "invitaciones": {
