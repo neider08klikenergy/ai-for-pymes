@@ -77,7 +77,7 @@ test("PUT asks the membership helper for the admin role (integrations_write_admi
   };
   const putReq = new NextRequest("http://localhost/api/workspace/ws_1/integrations", {
     method: "PUT",
-    body: JSON.stringify({ provider: "ycloud", credentials: { api_key: "k" } }),
+    body: JSON.stringify({ provider: "kapso", credentials: { api_key: "k" } }),
   });
   const res = await PUT(putReq, params);
   // A manager gets the helper's 403 and nothing is written.

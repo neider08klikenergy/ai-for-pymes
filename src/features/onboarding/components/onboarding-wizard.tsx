@@ -16,7 +16,6 @@ import {
   e164FromDisplay,
   KapsoNumberSelect,
   describeKapsoNumber,
-  WhatsAppProviderPicker,
   type KapsoNumberOption,
   type WhatsAppProviderId,
 } from "@/features/settings/components/whatsapp-provider-picker";
@@ -238,7 +237,7 @@ function Step2({
   );
 }
 
-// ─── Step 3 — WhatsApp connection (YCloud or Kapso) ───────────────────────────
+// ─── Step 3 — WhatsApp connection (Kapso; Zernio se conecta después) ──────────
 
 function Step3({
   state,
@@ -282,37 +281,13 @@ function Step3({
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label id="onboarding-provider-label">{t("proveedor")}</Label>
-          <WhatsAppProviderPicker
-            value={provider}
-            options={["ycloud", "kapso"]}
-            onChange={(p) => {
-              if (p === provider || p === "zernio") return;
-              // Keys, secrets and Meta ids belong to one provider: never send
-              // YCloud's key to Kapso's test (or the other way around).
-              onChange({
-                whatsappProvider: p,
-                whatsappApiKey: "",
-                whatsappSigningSecret: "",
-                kapsoPhoneNumberId: "",
-                kapsoWabaId: "",
-              });
-            }}
-            labelledBy="onboarding-provider-label"
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("siTuNumeroOTusClientes")}
-          </p>
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="whatsapp-key">
             {t("apiKey")} {label}
           </Label>
           <Input
             id="whatsapp-key"
             type="password"
-            placeholder={provider === "kapso" ? "kapso_..." : "yk_..."}
+            placeholder="kapso_..."
             value={state.whatsappApiKey}
             onChange={(e) => onChange({ whatsappApiKey: e.target.value })}
             autoComplete="off"
@@ -536,7 +511,7 @@ export function OnboardingWizard() {
     businessName: "",
     industry: "",
     description: "",
-    whatsappProvider: "ycloud",
+    whatsappProvider: "kapso",
     whatsappApiKey: "",
     whatsappPhone: "",
     whatsappSigningSecret: "",

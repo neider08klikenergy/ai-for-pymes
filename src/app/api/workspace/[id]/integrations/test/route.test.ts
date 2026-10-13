@@ -172,17 +172,3 @@ test("a rejected Kapso key reads as such", async () => {
   const { json } = await post({ provider: "kapso", apiKey: "bad" });
   assert.equal(json.error, "API Key inválida o sin acceso");
 });
-
-test("YCloud answers in Spanish when the key is refused", async () => {
-  reset();
-  storedRow = null;
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = (async () => new Response("{}", { status: 401 })) as typeof fetch;
-  try {
-    const { json } = await post({ provider: "ycloud", apiKey: "yk" });
-    assert.equal(json.ok, false);
-    assert.equal(json.error, "API Key inválida o sin acceso");
-  } finally {
-    globalThis.fetch = realFetch;
-  }
-});

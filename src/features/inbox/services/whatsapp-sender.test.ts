@@ -22,13 +22,6 @@ test("Kapso without phone_number_id names the missing setting", async () => {
   assert.equal(fetchCalls, 0, "the provider is never called");
 });
 
-test("YCloud without its number names the missing setting", async () => {
-  fetchCalls = 0;
-  const sender = whatsappSender("ycloud", { ycloud_api_key: "yk" }, {});
-  await assert.rejects(sender.sendText("+5215550001111", "hola"), /Falta el número de WhatsApp de YCloud/);
-  assert.equal(fetchCalls, 0);
-});
-
 test("a configured Kapso sender still sends", async () => {
   fetchCalls = 0;
   const sender = whatsappSender("kapso", { kapso_api_key: "kp" }, { phone_number_id: "pn_1" });
@@ -51,22 +44,5 @@ test("Kapso sends an image by link with its caption", async () => {
     to: "+15550001111",
     type: "image",
     image: { link: "https://cdn.test/a.jpg", caption: "Menú" },
-  });
-});
-
-test("YCloud sends an image without caption when there is none", async () => {
-  let body: Record<string, unknown> = {};
-  globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
-    body = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ id: "yc_1", wamid: "wamid.y" }), { status: 200 });
-  }) as typeof fetch;
-  const sender = whatsappSender("ycloud", { ycloud_api_key: "yk" }, { phone_number: "+15550002222" });
-  const sent = await sender.sendImage("+15550001111", { url: "https://cdn.test/a.png" });
-  assert.equal(sent.wamid, "wamid.y");
-  assert.deepEqual(body, {
-    type: "image",
-    from: "+15550002222",
-    to: "+15550001111",
-    image: { link: "https://cdn.test/a.png" },
   });
 });

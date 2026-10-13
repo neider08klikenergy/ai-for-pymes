@@ -10,7 +10,6 @@ const connectSrc = [
   "'self'",
   "*.supabase.co",
   "wss://*.supabase.co",
-  "api.ycloud.com",
   "openrouter.ai",
   "services.leadconnectorhq.com",
   // Búsqueda de direcciones en el mapa de sedes (OpenStreetMap)

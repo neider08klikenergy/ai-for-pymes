@@ -1,6 +1,6 @@
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import type { WhatsAppProvider } from "./whatsapp-provider";
 import { zernioApiKey } from "./zernio-client";
+import type { WhatsAppProvider } from "./whatsapp-provider";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
   return createSbClient(
@@ -13,7 +13,6 @@ function svc() {
 // Kapso sirve los archivos desde api.kapso.ai o desde app.kapso.ai
 // (/rails/active_storage/blobs/redirect/…, que redirige al almacenamiento).
 const ALLOWED_MEDIA_HOSTS: Record<WhatsAppProvider, readonly string[]> = {
-  ycloud: ["api.ycloud.com"],
   kapso: ["api.kapso.ai", "app.kapso.ai"],
   // Zernio: WhatsApp sirve el archivo desde su API (con la API key); Instagram
   // y Facebook entregan un enlace firmado del CDN de Meta (sin credenciales).
@@ -21,7 +20,11 @@ const ALLOWED_MEDIA_HOSTS: Record<WhatsAppProvider, readonly string[]> = {
 };
 
 /** Zernio (Instagram/Facebook): dominios del CDN de Meta, por sufijo. */
-const ZERNIO_META_CDN_SUFFIXES = [".fbcdn.net", ".fbsbx.com", ".cdninstagram.com"];
+const ZERNIO_META_CDN_SUFFIXES = [
+  ".fbcdn.net",
+  ".fbsbx.com",
+  ".cdninstagram.com",
+];
 
 /** Hosts de Zernio a los que sí se les manda la API key. */
 function isZernioApiHost(hostname: string): boolean {
@@ -61,7 +64,6 @@ function extensionFor(mime: string): string {
 export interface MediaMeta {
   storage_path: string;
   mime_type: string;
-  ycloud_media_id?: string;
   kapso_media_id?: string;
   /** Caption from image / video payloads */
   caption?: string;
@@ -83,8 +85,6 @@ export interface DownloadAndStoreOptions {
    * webhook, never a value read back out of storage.
    */
   link: string;
-  /** YCloud only: the workspace API key, sent as X-API-Key. */
-  apiKey?: string;
   /** Forge workspace ID used as first path segment in storage */
   workspaceId: string;
   /** Conversation ID used as second path segment in storage */
@@ -162,17 +162,15 @@ export async function downloadAndStoreMedia(
     return null;
   }
 
-  // Download. YCloud wants the API key; Kapso's URL carries its own signed
+  // Download. Kapso's URL carries its own signed
   // token (a 401/403 there usually means the URL sat around and expired).
   let response: Response;
   try {
     const headers: Record<string, string> | undefined =
-      opts.provider === "ycloud"
-        ? { "X-API-Key": opts.apiKey ?? "" }
-        : opts.provider === "zernio" && isZernioApiHost(new URL(opts.link).hostname)
-          ? // Solo al API de Zernio: nunca se manda la key al CDN de Meta.
-            { Authorization: `Bearer ${zernioApiKey()}` }
-          : undefined;
+      opts.provider === "zernio" && isZernioApiHost(new URL(opts.link).hostname)
+        ? // Solo al API de Zernio: nunca se manda la key al CDN de Meta.
+          { Authorization: `Bearer ${zernioApiKey()}` }
+        : undefined;
     response = await fetchSinFiltrarKey(opts.link, headers);
   } catch (err) {
     console.error("[media-handler] fetch failed:", err);
@@ -223,10 +221,8 @@ export async function downloadAndStoreMedia(
     size_bytes: buffer.byteLength,
   };
 
-  if (opts.mediaId) {
-    if (opts.provider === "kapso") meta.kapso_media_id = opts.mediaId;
-    else if (opts.provider === "ycloud") meta.ycloud_media_id = opts.mediaId;
-  }
+  if (opts.mediaId && opts.provider === "kapso")
+    meta.kapso_media_id = opts.mediaId;
   if (opts.caption) meta.caption = opts.caption;
   if (opts.filename) meta.filename = opts.filename;
 
@@ -244,7 +240,10 @@ export async function storeOutboundImage(opts: {
 }): Promise<string | null> {
   const { error } = await svc()
     .storage.from(BUCKET)
-    .upload(opts.storagePath, opts.bytes, { contentType: opts.mimeType, upsert: false });
+    .upload(opts.storagePath, opts.bytes, {
+      contentType: opts.mimeType,
+      upsert: false,
+    });
   if (error) {
     console.error("[media-handler] outbound upload failed:", error.message);
     return null;

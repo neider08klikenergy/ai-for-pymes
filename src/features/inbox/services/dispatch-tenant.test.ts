@@ -5,8 +5,8 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = "https://fake.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-service-key";
 
 // ── In-memory tables: two tenants on DIFFERENT WhatsApp providers ────────────
-// ws_a talks through YCloud, ws_b through Kapso; ws_b also keeps a disabled
-// YCloud row from before it switched, which must never be used.
+// ws_a and ws_b both talk through Kapso with their own number and key; ws_b
+// also keeps a disabled Zernio row from before it switched, never used.
 type Row = Record<string, unknown>;
 const tables: Record<string, Row[]> = {
   conversations: [
@@ -21,18 +21,18 @@ const tables: Record<string, Row[]> = {
     {
       id: "int_a",
       workspace_id: "ws_a",
-      provider: "ycloud",
+      provider: "kapso",
       enabled: true,
-      credentials: { ycloud_api_key: "yc-key-a" },
-      config: { phone_number: "+15559999999" },
+      credentials: { kapso_api_key: "kp-key-a" },
+      config: { phone_number_id: "pn_a" },
     },
     {
       id: "int_b_old",
       workspace_id: "ws_b",
-      provider: "ycloud",
+      provider: "zernio",
       enabled: false,
-      credentials: { ycloud_api_key: "yc-key-b-old" },
-      config: { phone_number: "+15558888888" },
+      credentials: {},
+      config: { profile_id: "prof_b_old" },
     },
     {
       id: "int_b",
@@ -134,39 +134,26 @@ mock.module("@/shared/lib/integration-secrets.ts", {
 });
 
 let sends: Array<Record<string, unknown>> = [];
-// Set to make the next YCloud send fail the way the API does.
-let ycloudFailure: { status: number; body: unknown } | null = null;
-/** Runs inside the YCloud send, before it returns. */
+// Set to make the next Kapso send fail the way the API does.
+let sendFailure: { status: number; body: unknown } | null = null;
+/** Runs inside the Kapso send, before it returns. */
 let sendHook: (() => void) | null = null;
-class FakeYCloudError extends Error {
+class FakeKapsoError extends Error {
   status: number;
   body: unknown;
   constructor(status: number, body: unknown) {
-    super(`YCloud API error ${status}`);
+    super(`Kapso API error ${status}`);
     this.status = status;
     this.body = body;
   }
 }
-mock.module("./ycloud-client.ts", {
-  exports: {
-    YCloudError: FakeYCloudError,
-    sendText: async (p: Record<string, unknown>) => {
-      sends.push({ provider: "ycloud", kind: "text", ...p });
-      sendHook?.();
-      if (ycloudFailure) throw new FakeYCloudError(ycloudFailure.status, ycloudFailure.body);
-      return { id: "yc_text", wamid: "wamid_text" };
-    },
-    sendTemplate: async (p: Record<string, unknown>) => {
-      sends.push({ provider: "ycloud", kind: "template", ...p });
-      return { id: "yc_tpl", wamid: "wamid_tpl" };
-    },
-  },
-});
 mock.module("./kapso-client.ts", {
   exports: {
-    KapsoError: class KapsoError extends Error {},
+    KapsoError: FakeKapsoError,
     sendText: async (p: Record<string, unknown>) => {
       sends.push({ provider: "kapso", kind: "text", ...p });
+      sendHook?.();
+      if (sendFailure) throw new FakeKapsoError(sendFailure.status, sendFailure.body);
       return { id: "kp_text", wamid: "wamid_k_text" };
     },
     sendTemplate: async (p: Record<string, unknown>) => {
@@ -183,24 +170,22 @@ function reset() {
   tables.events = [];
   upserted = [];
   sends = [];
-  ycloudFailure = null;
+  sendFailure = null;
   (tables.contacts[0] as Row).opt_in = true;
 }
 
-test("a YCloud workspace sends through YCloud, from its E.164 number", async () => {
+test("each workspace sends with its own number and key", async () => {
   reset();
   const res = await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola" });
   assert.equal(res.ok, true);
   assert.equal(sends.length, 1);
-  assert.equal(sends[0].provider, "ycloud");
-  assert.equal(sends[0].from, "+15559999999");
-  assert.equal(sends[0].apiKey, "yc-key-a");
+  assert.equal(sends[0].phoneNumberId, "pn_a");
+  assert.equal(sends[0].apiKey, "kp-key-a");
   assert.equal(sends[0].to, "+15550000001");
   assert.equal(msgs()[0].status, "sent");
-  assert.equal((msgs()[0].meta as Row).ycloud_id, "yc_text");
 });
 
-test("a Kapso workspace sends through Kapso with its phone_number_id, never its old YCloud row", async () => {
+test("a Kapso workspace sends through Kapso with its phone_number_id, never its old Zernio row", async () => {
   reset();
   const res = await dispatchText({ workspaceId: "ws_b", conversationId: "conv_b", body: "hola" });
   assert.equal(res.ok, true);
@@ -209,17 +194,16 @@ test("a Kapso workspace sends through Kapso with its phone_number_id, never its 
   assert.equal(sends[0].phoneNumberId, "pn_b");
   assert.equal(sends[0].apiKey, "kp-key-b");
   assert.equal(msgs()[0].wamid, "wamid_k_text");
-  assert.equal((msgs()[0].meta as Row).ycloud_id, undefined);
 });
 
-test("templates follow the workspace's provider too", async () => {
+test("templates go out per workspace too", async () => {
   reset();
   await dispatchTemplate({ workspaceId: "ws_a", conversationId: "conv_a", templateName: "welcome" });
   await dispatchTemplate({ workspaceId: "ws_b", conversationId: "conv_b", templateName: "welcome" });
   assert.deepEqual(
     sends.map((s) => [s.provider, s.kind]),
     [
-      ["ycloud", "template"],
+      ["kapso", "template"],
       ["kapso", "template"],
     ],
   );
@@ -261,25 +245,22 @@ test("a workspace without an active WhatsApp provider fails loudly", async () =>
   assert.equal(sends.length, 0);
 });
 
-test("a YCloud template keeps YCloud's id and is stored as sent", async () => {
+test("a template keeps its wamid and is stored as sent", async () => {
   reset();
   await dispatchTemplate({ workspaceId: "ws_a", conversationId: "conv_a", templateName: "welcome" });
   assert.equal(msgs()[0].status, "sent");
-  assert.equal((msgs()[0].meta as Row).ycloud_id, "yc_tpl");
+  assert.equal(msgs()[0].wamid, "wamid_k_tpl");
 });
 
 test("a failed send stores the reason in Spanish and the detail in message_errors only", async () => {
   reset();
-  ycloudFailure = {
+  sendFailure = {
     status: 400,
     body: {
       error: {
-        code: "WHATSAPP_ERROR",
-        whatsappApiError: {
-          code: 131026,
-          message: "Message undeliverable",
-          fbtrace_id: "trace_1",
-        },
+        code: 131026,
+        message: "Message undeliverable",
+        fbtrace_id: "trace_1",
       },
     },
   };
@@ -300,7 +281,7 @@ test("a failed send stores the reason in Spanish and the detail in message_error
 
 test("a send WhatsApp did not accept is retryable, and the buffer can skip the failed row", async () => {
   reset();
-  ycloudFailure = { status: 429, body: { error: { whatsappApiError: { code: 130429 } } } };
+  sendFailure = { status: 429, body: { error: { code: 130429 } } };
   const res = await dispatchText({
     workspaceId: "ws_a",
     conversationId: "conv_a",
@@ -319,7 +300,7 @@ test("a send WhatsApp did not accept is retryable, and the buffer can skip the f
   assert.equal(upserted.length, 0, "not a final failure: no message_errors row");
 
   reset();
-  ycloudFailure = { status: 429, body: { error: { whatsappApiError: { code: 130429 } } } };
+  sendFailure = { status: 429, body: { error: { code: 130429 } } };
   await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola" });
   assert.equal(msgs().length, 1, "by default the failure is recorded");
   assert.equal(msgs()[0].status, "failed");
@@ -331,13 +312,13 @@ test("a not-accepted row that can't be marked is retried, then deleted — never
   try {
     reset();
     failUpdates = 1;
-    ycloudFailure = { status: 429, body: { error: { whatsappApiError: { code: 130429 } } } };
+    sendFailure = { status: 429, body: { error: { code: 130429 } } };
     await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola", recordRetryableFailure: false });
     assert.equal(msgs()[0]?.status, "failed", "the second attempt marks it");
 
     reset();
     failUpdates = 2;
-    ycloudFailure = { status: 429, body: { error: { whatsappApiError: { code: 130429 } } } };
+    sendFailure = { status: 429, body: { error: { code: 130429 } } };
     await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola", recordRetryableFailure: false });
     assert.equal(msgs().length, 0, "a row still 'queued' would block the retry: deleted");
   } finally {
@@ -348,7 +329,7 @@ test("a not-accepted row that can't be marked is retried, then deleted — never
 
 test("a network error may have delivered the message, so it is never retryable", async () => {
   reset();
-  ycloudFailure = { status: 503, body: null };
+  sendFailure = { status: 503, body: null };
   const res = await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola" });
   assert.equal(res.retryable, false);
   assert.equal(msgs().length, 1);
@@ -359,15 +340,15 @@ test("the row is queued before the send, so a failure after it still has a row",
   reset();
   let rowsAtSend = -1;
   let statusAtSend: unknown = null;
-  const originalFailure = ycloudFailure;
-  ycloudFailure = null;
+  const originalFailure = sendFailure;
+  sendFailure = null;
   sendHook = () => {
     rowsAtSend = msgs().length;
     statusAtSend = msgs()[0]?.status;
   };
   await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola" });
   sendHook = null;
-  ycloudFailure = originalFailure;
+  sendFailure = originalFailure;
   assert.equal(rowsAtSend, 1, "the queued row exists when the provider is called");
   assert.equal(statusAtSend, "queued", "and it is queued, not already 'sent'");
   assert.equal(msgs()[0].status, "sent");

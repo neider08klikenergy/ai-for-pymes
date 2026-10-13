@@ -20,16 +20,12 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { isEncrypted } from "@/shared/lib/crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { phoneString } from "@/features/inbox/services/phone";
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { normalizarTienda } from "@/features/productos/lib/shopify";
-import { workspaceCountryCode } from "@/features/inbox/services/country-code";
-import { normalizeConfiguredPhone } from "@/features/inbox/services/ycloud-client";
 import { configPermitida } from "@/features/settings/lib/config-integracion";
 
 const IntegrationSchema = z.object({
   provider: z.enum([
-    "ycloud",
     "kapso",
     "zernio",
     "openrouter",
@@ -59,25 +55,6 @@ function maskRecord(
   );
 }
 
-/** The YCloud key this save will leave: the one typed now, else the stored one. */
-async function ycloudApiKey(
-  newCreds: Record<string, string>,
-  stored: Record<string, unknown> | null,
-  workspaceId: string,
-): Promise<string | null> {
-  if (newCreds.ycloud_api_key) return newCreds.ycloud_api_key;
-  if (!stored) return null;
-  try {
-    const plain = (await decryptCredentials(stored, workspaceId, "ycloud")) as {
-      ycloud_api_key?: unknown;
-    };
-    return typeof plain.ycloud_api_key === "string"
-      ? plain.ycloud_api_key
-      : null;
-  } catch {
-    return null;
-  }
-}
 
 // GET: return integrations with masked credentials
 export async function GET(
@@ -229,8 +206,6 @@ export async function PUT(
   const provider = parsed.data.provider;
   const enabled = parsed.data.enabled ?? true;
 
-  // YCloud's number: saved in E.164 when that is certain, confirmed against
-  // the account's own lines when the key allows it (a warning, never a block).
   let config = parsed.data.config;
   // Solo las claves que el panel escribe para este proveedor (lista blanca).
   // Lo demás se ignora y se conserva lo guardado; por ejemplo, el perfil y las
@@ -245,17 +220,6 @@ export async function PUT(
       );
     }
     config = permitida.config;
-  }
-  let phoneWarning: string | undefined;
-  const typedPhone = phoneString(config?.phone_number);
-  if (provider === "ycloud" && config && typedPhone) {
-    const normalized = await normalizeConfiguredPhone(
-      typedPhone,
-      await ycloudApiKey(newCreds, existing?.credentials ?? null, workspaceId),
-      await workspaceCountryCode(svc, workspaceId),
-    );
-    config = { ...config, phone_number: normalized.value };
-    phoneWarning = normalized.warning;
   }
 
   // Shopify: only *.myshopify.com (the Admin API host, and no requests to
@@ -332,7 +296,7 @@ export async function PUT(
     );
   }
 
-  // WhatsApp (YCloud ↔ Kapso): only one may be active per workspace (unique
+  // WhatsApp (Zernio ↔ Kapso): only one may be active per workspace (unique
   // index). save_whatsapp_integration() disables the one being replaced and
   // saves this one in a single transaction, carrying the workspace-level
   // settings over (what the UI sends > the active provider's > this row's
@@ -364,12 +328,6 @@ export async function PUT(
       ok: true,
       ...(typeof switchedFrom === "string" && switchedFrom
         ? { switchedFrom }
-        : {}),
-      ...(provider === "ycloud" && typedPhone
-        ? {
-            phoneNumber: config?.phone_number,
-            ...(phoneWarning ? { warning: phoneWarning } : {}),
-          }
         : {}),
     });
   }

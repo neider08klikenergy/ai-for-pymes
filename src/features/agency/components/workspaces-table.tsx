@@ -218,9 +218,7 @@ export function WorkspacesTable({ workspaces }: Props) {
                   <Wifi className="h-3 w-3" aria-hidden="true" />
                   {workspace.whatsapp_provider === "zernio"
                     ? t("zernio")
-                    : workspace.whatsapp_provider === "kapso"
-                      ? t("kapso")
-                      : t("ycloud")}
+                    : t("kapso")}
                 </Badge>
               ) : (
                 <Badge

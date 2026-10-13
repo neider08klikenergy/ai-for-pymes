@@ -40,7 +40,7 @@ test("cada proveedor solo acepta sus claves", () => {
 });
 
 test("valores: texto corto, número finito, sí/no o null", () => {
-  const r = configPermitida("ycloud", {
+  const r = configPermitida("kapso", {
     phone_number: "+573001112233",
     buffer_silence_seconds: Number.NaN,
     handoff_ack_enabled: false,

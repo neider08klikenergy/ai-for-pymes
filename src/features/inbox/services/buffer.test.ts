@@ -195,7 +195,7 @@ mock.module("./cost-tracker.ts", {
 });
 const failedAttempts: Row[] = [];
 
-let whatsappSettings: Row | null = { provider: "ycloud", config: {} };
+let whatsappSettings: Row | null = { provider: "kapso", config: {} };
 mock.module("./whatsapp-provider.ts", {
   exports: {
     loadWhatsAppSettings: async () => {
@@ -392,7 +392,7 @@ function reset(meta: Row = {}) {
   historyArgs.length = 0;
   decideResult = { decision: "respond", reason: "normal", availableTools: [], reservationId: "res_1" };
   costPolicy = { policy: "allow", reason: "within_budget" };
-  whatsappSettings = { provider: "ycloud", config: {} };
+  whatsappSettings = { provider: "kapso", config: {} };
   jevVerdict = { suppressReply: false, ownsStage: false };
   modelPolicy = (model: string) => model;
   modelPolicyArgs.length = 0;
@@ -994,7 +994,7 @@ test("the budget cut hands off to a person only when the workspace opted in", as
 
   reset();
   costPolicy = { policy: "cut", reason: "daily_hard_limit" };
-  whatsappSettings = { provider: "ycloud", config: { cost_cut_handoff: true } };
+  whatsappSettings = { provider: "kapso", config: { cost_cut_handoff: true } };
   await processNextBatch();
   assert.deepEqual(transitions, [{ to: "handoff_pending", trigger: "cost_cut" }]);
 });

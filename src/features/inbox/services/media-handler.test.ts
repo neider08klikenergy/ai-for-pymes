@@ -7,19 +7,16 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-service-key";
 const { validateMediaUrl, downloadAndStoreMedia } = await import("./media-handler.ts");
 
 test("each provider may only make us download from its own host (SEC-08)", () => {
-  assert.equal(validateMediaUrl("ycloud", "https://api.ycloud.com/v2/media/x"), true);
   assert.equal(validateMediaUrl("kapso", "https://api.kapso.ai/media/x?token=t"), true);
-  assert.equal(validateMediaUrl("ycloud", "https://api.kapso.ai/media/x"), false);
-  assert.equal(validateMediaUrl("kapso", "https://api.ycloud.com/v2/media/x"), false);
+  assert.equal(validateMediaUrl("kapso", "https://zernio.com/v2/media/x"), false);
   assert.equal(validateMediaUrl("kapso", "https://api.kapso.ai.evil.com/x"), false);
-  assert.equal(validateMediaUrl("ycloud", "not a url"), false);
+  assert.equal(validateMediaUrl("kapso", "not a url"), false);
   // Kapso también entrega por app.kapso.ai (Active Storage)
   assert.equal(validateMediaUrl("kapso", "https://app.kapso.ai/rails/active_storage/blobs/redirect/abc/img.jpeg"), true);
   assert.equal(validateMediaUrl("kapso", "http://app.kapso.ai/x"), false);
-  assert.equal(validateMediaUrl("ycloud", "https://app.kapso.ai/x"), false);
 });
 
-test("the API key goes to YCloud only; Kapso URLs are pre-signed", async () => {
+test("Kapso URLs are pre-signed: no key is sent", async () => {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const realFetch = globalThis.fetch;
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
@@ -28,13 +25,8 @@ test("the API key goes to YCloud only; Kapso URLs are pre-signed", async () => {
   }) as typeof fetch;
   try {
     const base = { workspaceId: "ws", conversationId: "conv" };
-    await downloadAndStoreMedia({ ...base, provider: "ycloud", link: "https://api.ycloud.com/m", apiKey: "yk" });
-    await downloadAndStoreMedia({ ...base, provider: "kapso", link: "https://api.kapso.ai/m?token=t", apiKey: "leak" });
-    assert.deepEqual(
-      (calls[0].init?.headers as Record<string, string>)["X-API-Key"],
-      "yk",
-    );
-    assert.equal(calls[1].init, undefined, "no headers (and no key) for Kapso");
+    await downloadAndStoreMedia({ ...base, provider: "kapso", link: "https://api.kapso.ai/m?token=t" });
+    assert.equal(calls[0].init, undefined, "no headers (and no key) for Kapso");
   } finally {
     globalThis.fetch = realFetch;
   }
@@ -84,9 +76,8 @@ test("a redirect from the provider is followed without the API key", async () =>
   }) as typeof fetch;
   try {
     await downloadAndStoreMedia({
-      provider: "ycloud",
-      link: "https://api.ycloud.com/m",
-      apiKey: "yk",
+      provider: "zernio",
+      link: "https://zernio.com/m",
       workspaceId: "ws",
       conversationId: "conv",
     });

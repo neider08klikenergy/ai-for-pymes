@@ -1,10 +1,9 @@
 // G1: Templates sync — pulls templates from the workspace's WhatsApp provider
-// (YCloud or Kapso) and upserts them into the workspace.
+// (Zernio or Kapso) and upserts them into the workspace.
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { syncTemplates } from "@/features/inbox/services/templates";
-import { WabaNotFoundError } from "@/features/inbox/services/ycloud-client";
 import { WHATSAPP_NOT_CONNECTED } from "@/features/inbox/services/whatsapp-provider";
 
 // ── Shared auth helper ────────────────────────────────────────────────────────
@@ -71,13 +70,10 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "WhatsApp no está conectado. Elige YCloud o Kapso en la pestaña Integraciones.",
+            "WhatsApp no está conectado. Elige Zernio o Kapso en la pestaña Integraciones.",
         },
         { status: 422 },
       );
-    }
-    if (err instanceof WabaNotFoundError) {
-      return NextResponse.json({ error: err.message }, { status: 422 });
     }
     if (message.includes("falta waba_id")) {
       return NextResponse.json(

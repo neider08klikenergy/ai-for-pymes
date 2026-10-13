@@ -1,15 +1,15 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
 import type {
-  ClientCredentials,
-  CreateWorkspaceResult,
-  GetWorkspacesResult,
+  ClientInvitation,
   WorkspaceWithStats,
+  GetWorkspacesResult,
+  CreateWorkspaceResult,
 } from "../types";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -17,12 +17,6 @@ const CreateWorkspaceSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(80),
   useCase: z.enum(["setter", "soporte", "agendamiento", "general"]),
   clientEmail: z.string().email("Email inválido").optional().or(z.literal("")),
-  clientPassword: z
-    .string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .max(72)
-    .optional()
-    .or(z.literal("")),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,9 +68,9 @@ export async function createWorkspaceForClient(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  const { name, useCase, clientEmail, clientPassword } = parsed.data;
+  const { name, useCase, clientEmail } = parsed.data;
   const service = svc();
-  let clientCredentials: ClientCredentials | null = null;
+  let clientInvitation: ClientInvitation | null = null;
 
   // Create workspace
   // Short, client-friendly slug: name + 3 random chars to avoid collisions.
@@ -110,13 +104,13 @@ export async function createWorkspaceForClient(
     console.error("[agency] owner membership insert error:", ownerMemberError);
   }
 
-  // Provision the client account directly (no email/SMTP): create the user with
-  // a known password and hand the credentials to the agency to share. The client
-  // logs in directly — no invite email, no password-reset link needed.
+  // The client gets an email with a one-time link to choose their password
+  // (an existing account just joins): the agency never knows it.
   if (clientEmail && clientEmail.length > 0) {
     try {
       const provisioned = await provisionWorkspaceUser(service, clientEmail, {
-        password: clientPassword || undefined,
+        workspaceId,
+        workspaceName: name,
       });
 
       const { error: memberError } = await service.from("memberships").insert({
@@ -129,11 +123,10 @@ export async function createWorkspaceForClient(
         console.error("[agency] membership insert error:", memberError);
       }
 
-      // Only surface a password when we just created the account.
-      if (provisioned.password) {
-        clientCredentials = {
+      if (provisioned.created) {
+        clientInvitation = {
           email: clientEmail,
-          password: provisioned.password,
+          enviada: provisioned.invitacionEnviada,
         };
       }
     } catch (err) {
@@ -272,18 +265,17 @@ export async function createWorkspaceForClient(
       "NEXT_PUBLIC_APP_URL no está configurada — no se puede generar el webhook URL del workspace.",
     );
   }
-  // The provider (YCloud or Kapso) is chosen later in Integraciones; hand
-  // out both webhook URLs.
+  // The provider is chosen later in Integraciones. Zernio's webhook is one
+  // for the whole platform; Kapso's carries the workspace.
   const webhookUrls = {
-    ycloud: `${baseUrl}/api/webhooks/ycloud?wsid=${workspaceId}`,
     kapso: `${baseUrl}/api/webhooks/kapso?wsid=${workspaceId}`,
   };
 
   return {
     workspaceId,
     webhookUrls,
-    webhookUrl: webhookUrls.ycloud,
-    clientCredentials,
+    webhookUrl: webhookUrls.kapso,
+    clientInvitation,
   };
 }
 
@@ -348,11 +340,11 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     .select("workspace_id")
     .in("workspace_id", ids);
 
-  // Active WhatsApp integrations (YCloud or Kapso — at most one per workspace)
+  // Active WhatsApp integrations (Zernio or Kapso — at most one per workspace)
   const { data: integrations } = await service
     .from("integrations")
     .select("workspace_id, provider")
-    .in("provider", ["ycloud", "kapso", "zernio"])
+    .in("provider", ["kapso", "zernio"])
     .eq("enabled", true)
     .in("workspace_id", ids);
 
@@ -369,9 +361,9 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     convMap.set(id, (convMap.get(id) ?? 0) + 1);
   }
 
-  const whatsappMap = new Map<string, "ycloud" | "kapso" | "zernio">();
+  const whatsappMap = new Map<string, "kapso" | "zernio">();
   for (const i of integrations ?? []) {
-    const row = i as { workspace_id: string; provider: "ycloud" | "kapso" | "zernio" };
+    const row = i as { workspace_id: string; provider: "kapso" | "zernio" };
     whatsappMap.set(row.workspace_id, row.provider);
   }
 

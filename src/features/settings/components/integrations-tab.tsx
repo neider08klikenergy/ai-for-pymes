@@ -32,7 +32,6 @@ import { ZernioChannels, type ZernioAccountView } from "./zernio-channels";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Provider =
-  | "ycloud"
   | "kapso"
   | "zernio"
   | "openrouter"
@@ -131,18 +130,16 @@ function AdminOnlyNote({ id }: { id: string }) {
   );
 }
 
-// ─── WhatsApp section (provider per workspace: YCloud or Kapso) ───────────────
+// ─── WhatsApp section (provider per workspace: Zernio or Kapso) ───────────────
 
 function WhatsAppSection({
   workspaceId,
-  ycloud,
   kapso,
   zernio,
   canEdit,
   onSaved,
 }: {
   workspaceId: string;
-  ycloud: IntegrationData | undefined;
   kapso: IntegrationData | undefined;
   zernio: IntegrationData | undefined;
   canEdit: boolean;
@@ -154,9 +151,7 @@ function WhatsAppSection({
     ? "zernio"
     : kapso?.enabled
       ? "kapso"
-      : ycloud?.enabled
-        ? "ycloud"
-        : null;
+      : null;
   // Zernio es el proveedor recomendado (WhatsApp + Instagram + Facebook).
   const [selected, setSelected] = useState<WhatsAppProviderId>(
     active ?? "zernio",
@@ -164,7 +159,7 @@ function WhatsAppSection({
   // Workspace-level settings live in the active row (the server carries them
   // over when the provider changes).
   const settings =
-    (active === "zernio" ? zernio : active === "kapso" ? kapso : ycloud)
+    (active === "zernio" ? zernio : active === "kapso" ? kapso : undefined)
       ?.config ?? {};
   // Canales conectados en Zernio (se refrescan desde Zernio al abrir).
   const [zernioAccounts, setZernioAccounts] = useState<ZernioAccountView[]>(
@@ -173,16 +168,6 @@ function WhatsAppSection({
       : [],
   );
 
-  // YCloud credentials
-  const [ycApiKey, setYcApiKey] = useState(
-    ycloud?.credentials?.ycloud_api_key ?? "",
-  );
-  const [ycPhone, setYcPhone] = useState(
-    (ycloud?.config?.phone_number as string | undefined) ?? "",
-  );
-  const [ycSecret, setYcSecret] = useState(
-    ycloud?.credentials?.webhook_signing_secret ?? "",
-  );
   // Kapso credentials — Kapso sends by Meta's phone_number_id (the E.164
   // number is kept for display and the CRM) and needs the WABA id for
   // templates.
@@ -240,17 +225,11 @@ function WhatsAppSection({
   const missing = (
     selected === "zernio"
       ? [[zernioAccounts.length > 0 ? "ok" : "", "conectar al menos un canal"]]
-      : selected === "kapso"
-        ? [
-            [kpApiKey, "la API Key"],
-            [kpSecret, "el Webhook Signing Secret"],
-            [kpPhoneNumberId, "el Phone Number ID"],
-          ]
-        : [
-            [ycApiKey, "la API Key"],
-            [ycSecret, "el Webhook Signing Secret"],
-            [ycPhone, "el número de WhatsApp"],
-          ]
+      : [
+          [kpApiKey, "la API Key"],
+          [kpSecret, "el Webhook Signing Secret"],
+          [kpPhoneNumberId, "el Phone Number ID"],
+        ]
   )
     .filter(([value]) => !value.trim())
     .map(([, what]) => what);
@@ -288,16 +267,14 @@ function WhatsAppSection({
           body: JSON.stringify(
             selected === "zernio"
               ? { provider: "zernio" }
-              : selected === "kapso"
-                ? {
-                    provider: "kapso",
-                    apiKey: kpApiKey,
-                    config: {
-                      phone_number_id: kpPhoneNumberId.trim(),
-                      waba_id: kpWabaId.trim(),
-                    },
-                  }
-                : { provider: "ycloud", apiKey: ycApiKey },
+              : {
+                  provider: "kapso",
+                  apiKey: kpApiKey,
+                  config: {
+                    phone_number_id: kpPhoneNumberId.trim(),
+                    waba_id: kpWabaId.trim(),
+                  },
+                },
           ),
         },
       );
@@ -305,18 +282,12 @@ function WhatsAppSection({
         ok: boolean;
         error?: string;
         warnings?: string[];
-        balance?: { balance?: unknown; currency?: unknown };
         phoneNumbers?: KapsoNumberOption[];
       };
       if (json.ok) {
-        const detail =
-          selected === "ycloud"
-            ? json.balance
-              ? ` — Saldo: ${json.balance.balance ?? "?"} ${json.balance.currency ?? ""}`
-              : ""
-            : json.phoneNumbers?.[0]
-              ? ` — ${describeKapsoNumber(json.phoneNumbers[0])}`
-              : "";
+        const detail = json.phoneNumbers?.[0]
+          ? ` — ${describeKapsoNumber(json.phoneNumbers[0])}`
+          : "";
         setKapsoChoices([]);
         toast.success(`${label} conectado${detail}`);
         for (const warning of json.warnings ?? []) toast.warning(warning);
@@ -353,28 +324,19 @@ function WhatsAppSection({
     const payload =
       selected === "zernio"
         ? { provider: "zernio", credentials: {}, config: { ...shared } }
-        : selected === "kapso"
-          ? {
-              provider: "kapso",
-              credentials: {
-                kapso_api_key: kpApiKey,
-                webhook_signing_secret: kpSecret,
-              },
-              config: {
-                phone_number: kpPhone,
-                phone_number_id: kpPhoneNumberId.trim(),
-                waba_id: kpWabaId.trim(),
-                ...shared,
-              },
-            }
-          : {
-              provider: "ycloud",
-              credentials: {
-                ycloud_api_key: ycApiKey,
-                webhook_signing_secret: ycSecret,
-              },
-              config: { phone_number: ycPhone, ...shared },
-            };
+        : {
+            provider: "kapso",
+            credentials: {
+              kapso_api_key: kpApiKey,
+              webhook_signing_secret: kpSecret,
+            },
+            config: {
+              phone_number: kpPhone,
+              phone_number_id: kpPhoneNumberId.trim(),
+              waba_id: kpWabaId.trim(),
+              ...shared,
+            },
+          };
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
         method: "PUT",
@@ -385,8 +347,6 @@ function WhatsAppSection({
         ok?: boolean;
         error?: string;
         switchedFrom?: string;
-        /** YCloud's number as it was saved (E.164 when certain). */
-        phoneNumber?: string;
         warning?: string;
       };
       if (json.ok) {
@@ -395,7 +355,6 @@ function WhatsAppSection({
             ? `Listo: este workspace ahora usa ${label}`
             : `Configuración de ${label} guardada`,
         );
-        if (json.phoneNumber) setYcPhone(json.phoneNumber);
         if (json.warning) toast.warning(json.warning);
         onSaved();
       } else {
@@ -441,41 +400,6 @@ function WhatsAppSection({
             initialAccounts={zernioAccounts}
             onAccountsChange={setZernioAccounts}
           />
-        ) : selected === "ycloud" ? (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="ycloud-api-key">{t("apiKey")}</Label>
-              <Input
-                id="ycloud-api-key"
-                type="password"
-                placeholder="yk_..."
-                value={ycApiKey}
-                onChange={(e) => setYcApiKey(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ycloud-phone">{t("numeroDeWhatsappE164")}</Label>
-              <Input
-                id="ycloud-phone"
-                type="tel"
-                placeholder="+521234567890"
-                value={ycPhone}
-                onChange={(e) => setYcPhone(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ycloud-secret">{t("webhookSigningSecret")}</Label>
-              <Input
-                id="ycloud-secret"
-                type="password"
-                placeholder="whsec_..."
-                value={ycSecret}
-                onChange={(e) => setYcSecret(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
-          </>
         ) : (
           <>
             <div className="space-y-2">
@@ -1396,7 +1320,6 @@ export function IntegrationsTab({
     }
   }, [workspaceId]);
 
-  const ycloud = findIntegration(integrations, "ycloud");
   const kapso = findIntegration(integrations, "kapso");
   const zernio = findIntegration(integrations, "zernio");
   const openrouter = findIntegration(integrations, "openrouter");
@@ -1415,9 +1338,8 @@ export function IntegrationsTab({
     <div className="space-y-6">
       <WhatsAppSection
         // Remount when the active provider changes so the form reloads it.
-        key={`${ycloud?.enabled ?? "-"}:${kapso?.enabled ?? "-"}:${zernio?.enabled ?? "-"}`}
+        key={`${kapso?.enabled ?? "-"}:${zernio?.enabled ?? "-"}`}
         workspaceId={workspaceId}
-        ycloud={ycloud}
         kapso={kapso}
         zernio={zernio}
         canEdit={canEdit}

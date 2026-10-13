@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient as svcClient } from "@supabase/supabase-js";
 import {
   readJsonBody,
   requireWorkspaceMember,
 } from "@/lib/auth/workspace-access";
-import { JevPatchSchema } from "@/features/jev-judge/schema";
+import { NextRequest, NextResponse } from "next/server";
 import { writeJevPatch } from "@/features/jev-judge/uses";
+import { JevPatchSchema } from "@/features/jev-judge/schema";
+import { createClient as svcClient } from "@supabase/supabase-js";
 import { loadWhatsAppSettings } from "@/features/inbox/services/whatsapp-provider";
 
 export async function PATCH(
@@ -13,7 +13,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: workspaceId } = await params;
-  const auth = await requireWorkspaceMember(workspaceId, { minRole: "manager" });
+  const auth = await requireWorkspaceMember(workspaceId, {
+    minRole: "manager",
+  });
   if (!auth.ok) return auth.response;
 
   const parsedBody = await readJsonBody(req);
@@ -34,16 +36,13 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Conecta WhatsApp (YCloud o Kapso) en Integraciones antes de prender Jev.",
+          "Conecta WhatsApp (Zernio o Kapso) en Integraciones antes de prender Jev.",
       },
       { status: 409 },
     );
   }
 
-  const config = writeJevPatch(
-    existing.config,
-    parsed.data,
-  );
+  const config = writeJevPatch(existing.config, parsed.data);
   const { error } = await svc
     .from("integrations")
     .update({ config, updated_at: new Date().toISOString() })
