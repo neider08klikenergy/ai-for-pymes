@@ -16,7 +16,12 @@
       "navegacionMovil": "Mobile navigation",
       "navegacionAgencia": "Agency navigation",
       "pqrs": "Support",
-      "perfil": "Profile"
+      "perfil": "Profile",
+      "navegacionPrincipal": "Main navigation",
+      "miCuenta": "My account",
+      "idioma": "Language",
+      "temaClaro": "Light theme",
+      "temaOscuro": "Dark theme"
     },
     "sinWorkspace": "You don't have an active workspace.",
     "invitaciones": {

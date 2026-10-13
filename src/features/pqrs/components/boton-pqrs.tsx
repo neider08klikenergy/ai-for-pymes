@@ -87,9 +87,10 @@ export function BotonPqrs({
         size="sm"
         className="text-muted-foreground hover:text-foreground"
         onClick={() => setAbierto(true)}
+        aria-label="Soporte"
+        title="Soporte"
       >
         <LifeBuoy className="h-4 w-4" aria-hidden="true" />
-        <span className="sr-only sm:not-sr-only sm:ml-2">Soporte</span>
       </Button>
 
       <Dialog

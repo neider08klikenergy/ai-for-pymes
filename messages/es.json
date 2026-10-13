@@ -16,7 +16,12 @@
       "navegacionMovil": "Navegación móvil",
       "navegacionAgencia": "Navegación de agencia",
       "pqrs": "PQRS",
-      "perfil": "Perfil"
+      "perfil": "Perfil",
+      "navegacionPrincipal": "Navegación principal",
+      "miCuenta": "Mi cuenta",
+      "idioma": "Idioma",
+      "temaClaro": "Tema claro",
+      "temaOscuro": "Tema oscuro"
     },
     "sinWorkspace": "No tienes un workspace activo.",
     "invitaciones": {
