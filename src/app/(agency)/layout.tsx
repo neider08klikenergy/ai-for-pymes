@@ -1,3 +1,11 @@
+import {
+  LogOut,
+  LifeBuoy,
+  Settings,
+  Building,
+  Building2,
+  CalendarCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/branding";
@@ -7,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/features/auth/services/actions";
-import { Building2, CalendarCheck, LogOut, Settings } from "lucide-react";
 
 export default async function AgencyLayout({
   children,
@@ -109,6 +116,30 @@ export default async function AgencyLayout({
           >
             <CalendarCheck className="h-4 w-4" aria-hidden="true" />
             {t("solicitudes")}
+          </Link>
+          <Link
+            href="/pqrs"
+            className={cn(
+              "flex items-center gap-1.5 px-3 h-full",
+              "text-sm text-muted-foreground hover:text-foreground",
+              "border-b-2 border-transparent hover:border-border",
+              "transition-colors duration-150",
+            )}
+          >
+            <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+            {t("pqrs")}
+          </Link>
+          <Link
+            href="/perfil"
+            className={cn(
+              "flex items-center gap-1.5 px-3 h-full",
+              "text-sm text-muted-foreground hover:text-foreground",
+              "border-b-2 border-transparent hover:border-border",
+              "transition-colors duration-150",
+            )}
+          >
+            <Building className="h-4 w-4" aria-hidden="true" />
+            {t("perfil")}
           </Link>
         </div>
       </nav>
