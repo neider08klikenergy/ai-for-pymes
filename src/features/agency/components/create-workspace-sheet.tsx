@@ -15,13 +15,13 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import type { UseCase } from "../types";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, CheckCheck } from "lucide-react";
+import type { ClientInvitation, UseCase } from "../types";
 import { createWorkspaceForClient } from "../services/agency-actions";
 
 interface Props {
@@ -58,47 +58,30 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
   const t = useTranslations("ui.createWorkspaceSheet");
   const [name, setName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
-  const [clientPassword, setClientPassword] = useState("");
   const [useCase, setUseCase] = useState<UseCase>("general");
-  const [webhookUrls, setWebhookUrls] = useState<{
-    ycloud: string;
-    kapso: string;
-  } | null>(null);
-  const [credentials, setCredentials] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
-  const [copied, setCopied] = useState<"ycloud" | "kapso" | null>(null);
-  const [copiedCred, setCopiedCred] = useState(false);
+  const [webhookUrls, setWebhookUrls] = useState<{ kapso: string } | null>(
+    null,
+  );
+  const [invitation, setInvitation] = useState<ClientInvitation | null>(null);
+  const [copied, setCopied] = useState<"kapso" | null>(null);
   const [saving, startSave] = useTransition();
 
   function handleClose() {
     if (saving) return;
     setName("");
     setClientEmail("");
-    setClientPassword("");
     setUseCase("general");
     setWebhookUrls(null);
-    setCredentials(null);
+    setInvitation(null);
     setCopied(null);
-    setCopiedCred(false);
     onClose();
   }
 
-  function handleCopy(provider: "ycloud" | "kapso") {
+  function handleCopy(provider: "kapso") {
     if (!webhookUrls) return;
     navigator.clipboard.writeText(webhookUrls[provider]);
     setCopied(provider);
     setTimeout(() => setCopied(null), 2000);
-  }
-
-  function handleCopyCredentials() {
-    if (!credentials) return;
-    navigator.clipboard.writeText(
-      `Email: ${credentials.email}\nContraseña: ${credentials.password}`,
-    );
-    setCopiedCred(true);
-    setTimeout(() => setCopiedCred(false), 2000);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -108,7 +91,6 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
         name,
         useCase,
         clientEmail: clientEmail || undefined,
-        clientPassword: clientPassword || undefined,
       });
 
       if (result.error) {
@@ -117,7 +99,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
       }
 
       setWebhookUrls(result.webhookUrls ?? null);
-      setCredentials(result.clientCredentials ?? null);
+      setInvitation(result.clientInvitation ?? null);
       toast.success(t("workspaceCreadoCorrectamente"));
       onCreated();
     });
@@ -143,44 +125,19 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
         {webhookUrls ? (
           // Success state — show webhook URL
           <div className="mt-6 space-y-5">
-            {credentials && (
-              <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-2">
-                <p className="text-sm font-medium text-foreground">
-                  {t("credencialesDelCliente")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("compartelasConTuClienteNoSe")}
-                </p>
-                <div className="space-y-1 font-mono text-xs mt-1">
-                  <p className="text-foreground break-all">
-                    <span className="text-muted-foreground">{t("email")} </span>
-                    {credentials.email}
-                  </p>
-                  <p className="text-foreground break-all">
-                    <span className="text-muted-foreground">
-                      {t("contrasena")}{" "}
-                    </span>
-                    {credentials.password}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-1 gap-1.5"
-                  onClick={handleCopyCredentials}
-                >
-                  {copiedCred ? (
-                    <CheckCheck
-                      className="h-4 w-4 text-primary"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Copy className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  {t("copiarCredenciales")}
-                </Button>
-              </div>
+            {invitation && (
+              <p
+                role="status"
+                className={
+                  invitation.enviada
+                    ? "rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-foreground"
+                    : "rounded-lg border border-warning/30 bg-warning/5 p-4 text-sm text-foreground"
+                }
+              >
+                {invitation.enviada
+                  ? t("correoDeAccesoEnviado", { email: invitation.email })
+                  : t("correoDeAccesoNoSalio", { email: invitation.email })}
+              </p>
             )}
 
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
@@ -190,12 +147,10 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
               <p className="text-xs text-muted-foreground">
                 {t("elClienteEligeSuProveedorDe")}
               </p>
-              {(["ycloud", "kapso"] as const).map((provider) => (
+              {(["kapso"] as const).map((provider) => (
                 <div key={provider} className="space-y-1 mt-1">
                   <p className="text-xs font-medium text-foreground">
-                    {provider === "kapso"
-                      ? t("kapsoEstadosUnidos")
-                      : t("ycloud")}
+                    {t("kapsoEstadosUnidos")}
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-xs text-foreground break-all">
@@ -206,7 +161,7 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
                       variant="ghost"
                       size="sm"
                       className="shrink-0"
-                      aria-label={`Copiar URL de ${provider === "kapso" ? "Kapso" : "YCloud"}`}
+                      aria-label="Copiar URL de Kapso"
                       onClick={() => handleCopy(provider)}
                     >
                       {copied === provider ? (
@@ -272,27 +227,6 @@ export function CreateWorkspaceSheet({ open, onClose, onCreated }: Props) {
               <p className="text-xs text-muted-foreground">
                 {t("seCreaSuCuentaAlInstante")}
               </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="ws-password"
-                className="text-sm font-medium text-foreground"
-              >
-                {t("contrasenaDelCliente")}
-                <span className="ml-1 text-muted-foreground text-xs">
-                  {t("opcional")}
-                </span>
-              </Label>
-              <Input
-                id="ws-password"
-                type="text"
-                value={clientPassword}
-                onChange={(e) => setClientPassword(e.target.value)}
-                placeholder={t("seGeneraUnaSeguraSiLo")}
-                disabled={saving}
-                autoComplete="off"
-              />
             </div>
 
             <div className="space-y-2">

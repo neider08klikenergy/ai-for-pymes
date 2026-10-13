@@ -7,9 +7,11 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-service-key";
 
 const RAW = 'duplicate key value violates unique constraint "users_email_key"';
 
-let provisionImpl: () => Promise<{ userId: string; password?: string }> = async () => ({
+type Provisioned = { userId: string; created?: boolean; invitacionEnviada?: boolean };
+let provisionImpl: () => Promise<Provisioned> = async () => ({
   userId: "user_new",
-  password: "x",
+  created: true,
+  invitacionEnviada: true,
 });
 let upsertError: { message: string } | null = null;
 
@@ -61,7 +63,7 @@ function postReq(body: unknown) {
 let errorLogs: unknown[][] = [];
 const originalError = console.error;
 function reset() {
-  provisionImpl = async () => ({ userId: "user_new", password: "x", created: true });
+  provisionImpl = async () => ({ userId: "user_new", created: true, invitacionEnviada: true });
   upsertError = null;
   errorLogs = [];
   console.error = (...args: unknown[]) => {
@@ -72,15 +74,12 @@ function restore() {
   console.error = originalError;
 }
 
-test("POST provisions the user and returns the credentials", async () => {
+test("POST invites a new user by email and never returns a password", async () => {
   reset();
   try {
     const res = await POST(postReq({ email: "ana@example.com", role: "agent" }), params);
     assert.equal(res.status, 200);
-    assert.deepEqual(await res.json(), {
-      ok: true,
-      credentials: { email: "ana@example.com", password: "x" },
-    });
+    assert.deepEqual(await res.json(), { ok: true, invitacionEnviada: true });
   } finally {
     restore();
   }

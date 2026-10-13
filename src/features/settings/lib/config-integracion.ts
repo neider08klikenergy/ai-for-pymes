@@ -11,7 +11,6 @@
 import { WORKSPACE_WHATSAPP_SETTINGS } from "@/features/inbox/services/whatsapp-provider";
 
 export type ProveedorIntegracion =
-  | "ycloud"
   | "kapso"
   | "zernio"
   | "openrouter"
@@ -19,7 +18,6 @@ export type ProveedorIntegracion =
   | "shopify";
 
 export const CLAVES_CONFIG: Record<ProveedorIntegracion, readonly string[]> = {
-  ycloud: ["phone_number", ...WORKSPACE_WHATSAPP_SETTINGS],
   kapso: ["phone_number", "phone_number_id", "waba_id", ...WORKSPACE_WHATSAPP_SETTINGS],
   zernio: [...WORKSPACE_WHATSAPP_SETTINGS],
   // `model` es la clave antigua del modelo por defecto (getWorkspaceModel la lee).

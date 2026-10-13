@@ -1,70 +1,89 @@
-// Agency-managed user provisioning — NO email / NO SMTP required.
+// Alta de usuarios de un workspace por invitación.
 //
-// Instead of inviteUserByEmail (which sends a magic-link email and needs SMTP +
-// Site URL configured), the agency creates the account with a known password and
-// shares the credentials with the client, who logs in directly. This is the
-// distribution model for the one-click/giveaway install: zero email setup.
+// Nadie más que la persona conoce su contraseña: para un correo nuevo se crea
+// la cuenta SIN contraseña y se le envía (con nuestro proveedor de correo, no
+// el SMTP de Supabase) un enlace de un solo uso a /auth/confirmar, donde la
+// elige. Un correo que ya tiene cuenta se resuelve sin tocar su contraseña.
 
-import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-/** Strong, URL-safe password (~22 chars). Avoids ambiguous email-delivery issues. */
-export function generatePassword(): string {
-  return randomBytes(16).toString("base64url");
-}
+import { enviarCorreo } from "@/features/email/services/enviar";
+import { emailBrand } from "@/features/email/lib/config";
 
 export interface ProvisionResult {
   userId: string;
-  /** Password to share with the user — only set when a NEW account was created. */
-  password: string | null;
-  /** false when the email already existed (we don't reset an existing password). */
+  /** true cuando la cuenta es nueva (o nunca se activó) y se le mandó el enlace. */
   created: boolean;
+  /** Solo con created: si el correo de invitación salió. */
+  invitacionEnviada: boolean;
 }
 
 /**
- * Creates a confirmed Supabase auth user with a known password (no email sent),
- * or resolves the existing user by email. Ensures a `users` profile row exists.
+ * Invita a `email`: si no tiene cuenta activa, la crea (sin contraseña) y le
+ * envía el enlace para elegirla; si ya tiene cuenta, solo devuelve su id.
+ * Asegura la fila de `users`.
  *
- * @param service  A service-role Supabase client (admin API access).
- * @param email    The user's email (also their login).
- * @param opts.password  Optional explicit password; a strong one is generated if omitted.
+ * @param service  Cliente con service role (API de administración).
  */
 export async function provisionWorkspaceUser(
   service: SupabaseClient,
-  email: string,
-  opts?: { password?: string; fullName?: string },
+  rawEmail: string,
+  opts: { workspaceId: string; workspaceName: string; fullName?: string },
 ): Promise<ProvisionResult> {
-  const password = opts?.password?.trim() || generatePassword();
+  const email = rawEmail.trim().toLowerCase();
 
-  const { data, error } = await service.auth.admin.createUser({
+  // generateLink('invite') crea la cuenta (o reusa una invitada que nunca se
+  // activó) sin enviar nada; a una cuenta ya confirmada la rechaza.
+  const { data, error } = await service.auth.admin.generateLink({
+    type: "invite",
     email,
-    password,
-    email_confirm: true, // mark confirmed → no verification email
   });
 
   let userId = data?.user?.id ?? null;
-  let created = Boolean(userId);
+  const tokenHash = data?.properties?.hashed_token ?? null;
+  const created = Boolean(userId && tokenHash);
 
-  if (!userId) {
-    // Most likely the email is already registered — resolve the existing user.
-    const { data: list } = await service.auth.admin.listUsers();
-    userId = list?.users?.find((u) => u.email === email)?.id ?? null;
-    created = false;
-    if (!userId) {
-      throw new Error(error?.message ?? "No se pudo crear el usuario");
-    }
+  if (!created) {
+    userId = await usuarioExistente(service, email);
+    if (!userId) throw new Error(error?.message ?? "No se pudo crear el usuario");
   }
 
-  // Ensure the public.users profile row exists (the auth trigger may lag).
   await service.from("users").upsert(
     {
       id: userId,
       email,
-      full_name: opts?.fullName ?? email.split("@")[0],
+      full_name: opts.fullName ?? email.split("@")[0],
       is_active: true,
     },
     { onConflict: "id", ignoreDuplicates: true },
   );
 
-  return { userId, password: created ? password : null, created };
+  let invitacionEnviada = false;
+  if (created) {
+    const url = `${emailBrand().appUrl}/auth/confirmar?token_hash=${encodeURIComponent(tokenHash!)}&type=invite`;
+    const enviado = await enviarCorreo({
+      template: "invitacion",
+      data: { workspaceName: opts.workspaceName, url },
+      to: email,
+      workspaceId: opts.workspaceId,
+    });
+    invitacionEnviada = enviado.ok;
+  }
+
+  return { userId: userId!, created, invitacionEnviada };
+}
+
+async function usuarioExistente(service: SupabaseClient, email: string): Promise<string | null> {
+  const { data } = await service.from("users").select("id").eq("email", email).maybeSingle();
+  if (data?.id) return data.id as string;
+  // Sin fila en users: se recorre auth.users página por página (la API no busca por correo).
+  const perPage = 1000;
+  for (let page = 1; page <= 100; page++) {
+    const { data: list, error } = await service.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(error.message);
+    const users = list?.users ?? [];
+    const found = users.find((u) => u.email?.toLowerCase() === email);
+    if (found) return found.id;
+    if (users.length < perPage) break;
+  }
+  return null;
 }

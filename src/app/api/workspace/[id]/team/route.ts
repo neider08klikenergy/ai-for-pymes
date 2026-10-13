@@ -1,10 +1,10 @@
+import {
+  readJsonBody,
+  requireWorkspaceMember,
+} from "@/lib/auth/workspace-access";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as svcClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import {
-  requireWorkspaceMember,
-  readJsonBody,
-} from "@/lib/auth/workspace-access";
 import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -16,7 +16,6 @@ const RoleEnum = z.enum(["admin", "manager", "agent", "viewer"]);
 const InviteSchema = z.object({
   email: z.string().email(),
   role: RoleEnum,
-  password: z.string().min(8).max(72).optional().or(z.literal("")),
 });
 
 const PatchSchema = z.object({
@@ -57,7 +56,12 @@ function svc() {
 
 type Role = z.infer<typeof RoleEnum>;
 
-const RANK: Record<Role, number> = { viewer: 0, agent: 1, manager: 2, admin: 3 };
+const RANK: Record<Role, number> = {
+  viewer: 0,
+  agent: 1,
+  manager: 2,
+  admin: 3,
+};
 
 function withinCeiling(actor: Role, role: Role): boolean {
   return actor === "admin" || RANK[role] < RANK[actor];
@@ -128,7 +132,9 @@ async function crearInvitacion(
   role: Role,
   invitadoPor: string,
 ): Promise<NextResponse> {
-  const venceAt = new Date(Date.now() + INVITACION_DIAS * 86_400_000).toISOString();
+  const venceAt = new Date(
+    Date.now() + INVITACION_DIAS * 86_400_000,
+  ).toISOString();
   const { data: pendiente, error: findError } = await db
     .from("invitaciones_equipo")
     .select("id")
@@ -151,7 +157,10 @@ async function crearInvitacion(
           vence_at: venceAt,
         });
   if (error) {
-    console.error("[POST /api/workspace/[id]/team] invitation error:", error.message);
+    console.error(
+      "[POST /api/workspace/[id]/team] invitation error:",
+      error.message,
+    );
     return NextResponse.json(
       { error: "No se pudo enviar la invitación. Intenta de nuevo." },
       { status: 500 },
@@ -175,14 +184,20 @@ async function cancelarInvitacion(
     .eq("estado", "pendiente")
     .maybeSingle();
   if (findError) {
-    console.error("[DELETE /api/workspace/[id]/team] invitation lookup:", findError.message);
+    console.error(
+      "[DELETE /api/workspace/[id]/team] invitation lookup:",
+      findError.message,
+    );
     return NextResponse.json(
       { error: "No se pudo cancelar la invitación. Intenta de nuevo." },
       { status: 500 },
     );
   }
   if (!inv) {
-    return NextResponse.json({ error: "Invitación no encontrada" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Invitación no encontrada" },
+      { status: 404 },
+    );
   }
   if (!withinCeiling(actor, inv.role as Role)) return FORBIDDEN_ROLE();
 
@@ -192,7 +207,10 @@ async function cancelarInvitacion(
     .eq("id", inv.id)
     .eq("estado", "pendiente");
   if (error) {
-    console.error("[DELETE /api/workspace/[id]/team] invitation cancel:", error.message);
+    console.error(
+      "[DELETE /api/workspace/[id]/team] invitation cancel:",
+      error.message,
+    );
     return NextResponse.json(
       { error: "No se pudo cancelar la invitación. Intenta de nuevo." },
       { status: 500 },
@@ -271,13 +289,18 @@ export async function GET(
   if (auth.role === "admin" || auth.role === "manager") {
     const { data: inv, error: invError } = await db
       .from("invitaciones_equipo")
-      .select("id, role, vence_at, users!invitaciones_equipo_user_id_fkey ( full_name, email )")
+      .select(
+        "id, role, vence_at, users!invitaciones_equipo_user_id_fkey ( full_name, email )",
+      )
       .eq("workspace_id", workspaceId)
       .eq("estado", "pendiente")
       .gt("vence_at", new Date().toISOString())
       .order("created_at", { ascending: true });
     if (invError) {
-      console.error("[GET /api/workspace/[id]/team] invitations error:", invError.message);
+      console.error(
+        "[GET /api/workspace/[id]/team] invitations error:",
+        invError.message,
+      );
     } else {
       invitaciones = (
         (inv ?? []) as unknown as Array<{
@@ -326,16 +349,22 @@ export async function POST(
     );
   }
 
-  const { email, role, password } = parsed.data;
+  const { email, role } = parsed.data;
   if (!withinCeiling(auth.role, role)) return FORBIDDEN_ROLE();
   const db = svc();
 
-  // Provision the account directly — no invite email / SMTP. The agency shares
-  // the returned credentials and the user logs in directly.
+  // A new email gets an account without a password and a one-time link by
+  // email to choose it: nobody but the person ever knows it.
+  const { data: ws } = await db
+    .from("workspaces")
+    .select("name")
+    .eq("id", workspaceId)
+    .maybeSingle();
   let provisioned;
   try {
     provisioned = await provisionWorkspaceUser(db, email, {
-      password: password || undefined,
+      workspaceId,
+      workspaceName: (ws as { name?: string } | null)?.name ?? "tu equipo",
     });
   } catch (err) {
     console.error(
@@ -345,7 +374,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "No se pudo crear el usuario. Revisa el correo y la contraseña e intenta de nuevo.",
+          "No se pudo crear el usuario. Revisa el correo e intenta de nuevo.",
       },
       { status: 400 },
     );
@@ -379,7 +408,13 @@ export async function POST(
   // Only a brand-new account (created above for this team) or an active
   // member whose role changes skips it.
   if (!provisioned.created && !existing?.is_active) {
-    return crearInvitacion(db, workspaceId, provisioned.userId, role, auth.userId);
+    return crearInvitacion(
+      db,
+      workspaceId,
+      provisioned.userId,
+      role,
+      auth.userId,
+    );
   }
 
   // Create membership (upsert — re-invite idempotent)
@@ -407,9 +442,11 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    credentials: provisioned.password
-      ? { email, password: provisioned.password }
-      : null,
+    // New account: whether the email with the link went out (if not, invite
+    // again once email is configured).
+    ...(provisioned.created
+      ? { invitacionEnviada: provisioned.invitacionEnviada }
+      : {}),
   });
 }
 
@@ -447,7 +484,10 @@ export async function PATCH(
   try {
     current = await loadMembership(db, workspaceId, userId);
     if (!current) {
-      return NextResponse.json({ error: "Miembro no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Miembro no encontrado" },
+        { status: 404 },
+      );
     }
     if (!withinCeiling(auth.role, current.role)) return FORBIDDEN_ROLE();
     if (role !== undefined && !withinCeiling(auth.role, role)) {
@@ -472,7 +512,13 @@ export async function PATCH(
   // invitation (with the requested or previous role) instead of writing
   // is_active = true behind their back. Same rule as POST for existing accounts.
   if (is_active === true && !current.is_active) {
-    return crearInvitacion(db, workspaceId, userId, role ?? current.role, auth.userId);
+    return crearInvitacion(
+      db,
+      workspaceId,
+      userId,
+      role ?? current.role,
+      auth.userId,
+    );
   }
 
   const updates: Record<string, unknown> = {
@@ -488,7 +534,10 @@ export async function PATCH(
     .eq("user_id", userId);
 
   if (error) {
-    console.error("[PATCH /api/workspace/[id]/team] update error:", error.message);
+    console.error(
+      "[PATCH /api/workspace/[id]/team] update error:",
+      error.message,
+    );
     return NextResponse.json(
       { error: "No se pudo actualizar el miembro. Intenta de nuevo." },
       { status: 500 },
@@ -519,7 +568,12 @@ export async function DELETE(
 
   const cancel = CancelInvitationSchema.safeParse(parsedBody.body);
   if (cancel.success) {
-    return cancelarInvitacion(svc(), workspaceId, auth.role, cancel.data.invitacionId);
+    return cancelarInvitacion(
+      svc(),
+      workspaceId,
+      auth.role,
+      cancel.data.invitacionId,
+    );
   }
 
   const parsed = DeleteSchema.safeParse(parsedBody.body);
@@ -536,7 +590,10 @@ export async function DELETE(
   try {
     const current = await loadMembership(db, workspaceId, userId);
     if (!current) {
-      return NextResponse.json({ error: "Miembro no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Miembro no encontrado" },
+        { status: 404 },
+      );
     }
     if (!withinCeiling(auth.role, current.role)) return FORBIDDEN_ROLE();
     if (
@@ -562,7 +619,10 @@ export async function DELETE(
     .eq("user_id", userId);
 
   if (error) {
-    console.error("[DELETE /api/workspace/[id]/team] remove error:", error.message);
+    console.error(
+      "[DELETE /api/workspace/[id]/team] remove error:",
+      error.message,
+    );
     return NextResponse.json(
       { error: "No se pudo quitar al miembro. Intenta de nuevo." },
       { status: 500 },

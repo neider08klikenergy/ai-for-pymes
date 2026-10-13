@@ -2,16 +2,9 @@
 // WhatsApp provider, build Meta's `components` from the stored rich fields, and
 // flip the row to status='submitted' on success.
 //
-// The WABA id differs by provider: YCloud's is resolved from the registered
-// phone number and goes in the body; Kapso's is configured per workspace
-// (the API can't discover it) and goes in the request path.
+// Kapso's WABA id is configured per workspace (the API can't discover it) and
+// goes in the request path; Zernio creates it on the connected WhatsApp account.
 
-import {
-  YCloudError,
-  resolveWabaId,
-  WabaNotFoundError,
-  createYCloudTemplate,
-} from "@/features/inbox/services/ycloud-client";
 import {
   KapsoError,
   createKapsoTemplate,
@@ -40,7 +33,6 @@ import {
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { phoneString } from "@/features/inbox/services/phone";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
@@ -175,7 +167,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "Conecta WhatsApp (Zernio, YCloud o Kapso) en Integraciones antes de enviar plantillas",
+          "Conecta WhatsApp (Zernio o Kapso) en Integraciones antes de enviar plantillas",
       },
       { status: 400 },
     );
@@ -213,7 +205,7 @@ export async function POST(
         );
       }
       result = await createZernioTemplate(wa.id as string, payload);
-    } else if (whatsapp.provider === "kapso") {
+    } else {
       const wabaId = (whatsapp.config.waba_id as string | undefined) ?? "";
       if (!wabaId) {
         return NextResponse.json(
@@ -225,18 +217,6 @@ export async function POST(
         );
       }
       result = await createKapsoTemplate(apiKey, wabaId, payload);
-    } else {
-      const phoneNumber = phoneString(whatsapp.config.phone_number) ?? "";
-      if (!phoneNumber) {
-        return NextResponse.json(
-          {
-            error: "Falta el número de WhatsApp en la configuración de YCloud",
-          },
-          { status: 400 },
-        );
-      }
-      const wabaId = await resolveWabaId(apiKey, phoneNumber);
-      result = await createYCloudTemplate(apiKey, { wabaId, ...payload });
     }
 
     const { data: updated, error: updateError } = await db
@@ -264,14 +244,7 @@ export async function POST(
 
     return NextResponse.json({ data: updated });
   } catch (err) {
-    if (err instanceof WabaNotFoundError) {
-      return NextResponse.json({ error: err.message }, { status: 422 });
-    }
-    if (
-      err instanceof YCloudError ||
-      err instanceof KapsoError ||
-      err instanceof ZernioError
-    ) {
+    if (err instanceof KapsoError || err instanceof ZernioError) {
       // `err.message` carries Meta's raw text: server log only. The team gets
       // the catalog's Spanish reason.
       const body =

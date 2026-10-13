@@ -157,8 +157,8 @@ mock.module("@/lib/auth/provision-user.ts", {
     provisionWorkspaceUser: async (_db: unknown, email: string) => {
       const known = ACCOUNTS[email];
       return known
-        ? { userId: known.userId, password: null, created: false }
-        : { userId: "u_new", password: "generated", created: true };
+        ? { userId: known.userId, created: false, invitacionEnviada: false }
+        : { userId: "u_new", created: true, invitacionEnviada: true };
     },
   },
 });
@@ -319,7 +319,9 @@ test("an active member's role change and a brand-new account skip the invitation
   const roleChange = await POST(req("POST", { email: "boss@x.com", role: "manager" }), params);
   assert.equal((await roleChange.json()).invitacion, undefined);
   const nueva = await POST(req("POST", { email: "new@x.com", role: "agent" }), params);
-  assert.deepEqual((await nueva.json()).credentials, { email: "new@x.com", password: "generated" });
+  const nuevaJson = await nueva.json();
+  assert.equal(nuevaJson.invitacionEnviada, true, "the link went by email");
+  assert.equal("credentials" in nuevaJson, false, "no password is ever returned");
   assert.equal(writes.filter((w) => w.kind === "upsert").length, 2);
   assert.equal(invitations.length, 0);
 });

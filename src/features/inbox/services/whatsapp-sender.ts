@@ -1,7 +1,7 @@
 // Provider-neutral send surface. dispatch.ts (the SEC-04 single exit point)
 // asks for a sender for the workspace's active WhatsApp integration and never
-// names a provider: YCloud addresses the sender by its E.164 number, Kapso by
-// Meta's phone_number_id in the request path.
+// names a provider: Kapso addresses the sender by Meta's phone_number_id in
+// the request path, Zernio by the conversation or the connected account.
 
 import {
   whatsappApiKey,
@@ -10,11 +10,10 @@ import {
 } from "./whatsapp-provider";
 import * as kapso from "./kapso-client";
 import * as zernio from "./zernio-client";
-import * as ycloud from "./ycloud-client";
 
 /** FLAT parameters per component (both providers take Meta's shape). */
 export type TemplateComponents = NonNullable<
-  ycloud.TemplateParams["components"]
+  kapso.TemplateParams["components"]
 >;
 
 /**
@@ -28,10 +27,8 @@ export interface SendTarget {
 }
 
 export interface SendResult {
-  /** WhatsApp message id — synchronous on Kapso, may arrive later on YCloud */
+  /** WhatsApp message id */
   wamid?: string;
-  /** The provider's own message id (YCloud only), for status reconciliation */
-  providerMessageId?: string;
   /** Zernio: conversación creada al escribir por primera vez a un número. */
   externalConversationId?: string;
 }
@@ -107,108 +104,51 @@ export function whatsappSender(
 
   if (provider === "zernio") return zernioSender(config, live, label);
 
-  if (provider === "kapso") {
-    const configured = (config.phone_number_id as string | undefined) ?? "";
-    const phoneNumberId = () =>
-      requireSenderId(configured, "el Phone Number ID", label);
-    return {
-      provider,
-      label,
-      live,
-      async sendText(to, body) {
-        const sent = await kapso.sendText({
-          apiKey,
-          phoneNumberId: phoneNumberId(),
-          to,
-          body,
-        });
-        return { wamid: sent.wamid || undefined };
-      },
-      async sendImage(to, image) {
-        const sent = await kapso.sendImage({
-          apiKey,
-          phoneNumberId: phoneNumberId(),
-          to,
-          link: image.url,
-          caption: image.caption,
-        });
-        return { wamid: sent.wamid || undefined };
-      },
-      async sendLocation(to, location) {
-        const sent = await kapso.sendLocation({
-          apiKey,
-          phoneNumberId: phoneNumberId(),
-          to,
-          ...location,
-        });
-        return { wamid: sent.wamid || undefined };
-      },
-      async sendTemplate({ to, templateName, language, components }) {
-        const sent = await kapso.sendTemplate({
-          apiKey,
-          phoneNumberId: phoneNumberId(),
-          to,
-          templateName,
-          language,
-          components,
-        });
-        return { wamid: sent.wamid || undefined };
-      },
-    };
-  }
-
-  const configured = (config.phone_number as string | undefined) ?? "";
-  const from = () =>
-    requireSenderId(configured, "el número de WhatsApp", label);
+  const configured = (config.phone_number_id as string | undefined) ?? "";
+  const phoneNumberId = () =>
+    requireSenderId(configured, "el Phone Number ID", label);
   return {
     provider,
     label,
     live,
     async sendText(to, body) {
-      const sent = await ycloud.sendText({ apiKey, from: from(), to, body });
-      return {
-        wamid: sent.wamid || undefined,
-        providerMessageId: sent.id || undefined,
-      };
+      const sent = await kapso.sendText({
+        apiKey,
+        phoneNumberId: phoneNumberId(),
+        to,
+        body,
+      });
+      return { wamid: sent.wamid || undefined };
     },
     async sendImage(to, image) {
-      const sent = await ycloud.sendImage({
+      const sent = await kapso.sendImage({
         apiKey,
-        from: from(),
+        phoneNumberId: phoneNumberId(),
         to,
         link: image.url,
         caption: image.caption,
       });
-      return {
-        wamid: sent.wamid || undefined,
-        providerMessageId: sent.id || undefined,
-      };
+      return { wamid: sent.wamid || undefined };
     },
     async sendLocation(to, location) {
-      const sent = await ycloud.sendLocation({
+      const sent = await kapso.sendLocation({
         apiKey,
-        from: from(),
+        phoneNumberId: phoneNumberId(),
         to,
         ...location,
       });
-      return {
-        wamid: sent.wamid || undefined,
-        providerMessageId: sent.id || undefined,
-      };
+      return { wamid: sent.wamid || undefined };
     },
     async sendTemplate({ to, templateName, language, components }) {
-      const sent = await ycloud.sendTemplate({
+      const sent = await kapso.sendTemplate({
         apiKey,
-        from: from(),
+        phoneNumberId: phoneNumberId(),
         to,
         templateName,
         language,
         components,
       });
-      return {
-        wamid: sent.wamid || undefined,
-        providerMessageId: sent.id || undefined,
-      };
+      return { wamid: sent.wamid || undefined };
     },
   };
 }

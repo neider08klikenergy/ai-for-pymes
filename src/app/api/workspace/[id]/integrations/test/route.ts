@@ -30,7 +30,6 @@ import { syncZernioAccounts } from "@/features/inbox/services/zernio-accounts";
 // carry the values typed so far; anything missing (or masked) falls back to the
 // stored row. Without a provider, the workspace's active one is tested.
 //
-// YCloud: its /balance endpoint proves the key works.
 // Kapso: there is no balance endpoint, so we list the project's WhatsApp
 // numbers — that proves the key AND catches a phone_number_id that doesn't
 // exist in the project, which would otherwise stay invisible until the first
@@ -50,12 +49,6 @@ const bodySchema = z.object({
     })
     .optional(),
 });
-
-type YCloudBalanceResponse = {
-  balance?: number;
-  currency?: string;
-  [key: string]: unknown;
-};
 
 type KapsoTestConfig = { waba_id?: string; phone_number_id?: string };
 
@@ -134,43 +127,11 @@ export async function POST(
     });
   }
 
-  if (provider === "ycloud") return testYCloud(apiKey);
-
   const config: KapsoTestConfig = {
     ...((stored?.config ?? {}) as KapsoTestConfig),
     ...(parsed.data.config ?? {}),
   };
   return testKapso(apiKey, config, Boolean(typedKey));
-}
-
-async function testYCloud(apiKey: string) {
-  try {
-    const res = await fetch("https://api.ycloud.com/v2/balance", {
-      headers: { "X-API-Key": apiKey },
-    });
-
-    if (res.ok) {
-      const balance = (await res.json()) as YCloudBalanceResponse;
-      return NextResponse.json({ ok: true, provider: "ycloud", balance });
-    }
-
-    return NextResponse.json({
-      ok: false,
-      error:
-        res.status === 401 || res.status === 403
-          ? "API Key inválida o sin acceso"
-          : `YCloud respondió ${res.status} — intenta de nuevo en un momento`,
-    });
-  } catch (err) {
-    console.error(
-      "[integrations/test] YCloud fetch error:",
-      err instanceof Error ? err.message : "unknown",
-    );
-    return NextResponse.json({
-      ok: false,
-      error: "No se pudo conectar con YCloud",
-    });
-  }
 }
 
 async function testKapso(

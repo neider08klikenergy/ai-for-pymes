@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
 import { encryptCredentials } from "@/shared/lib/integration-secrets";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,7 @@ export const OnboardingSchema = z.object({
   businessName: z.string().min(1, "El nombre del negocio es requerido"),
   industry: z.string().optional(),
   description: z.string().optional(),
-  whatsappProvider: z.enum(["ycloud", "kapso"]).default("ycloud"),
+  whatsappProvider: z.enum(["kapso"]).default("kapso"),
   whatsappApiKey: z.string().optional(),
   whatsappPhone: z.string().optional(),
   whatsappSigningSecret: z.string().optional(),
@@ -253,7 +253,7 @@ export async function completeOnboarding(
   }
 
   // 9. Save the WhatsApp integration (if credentials provided) with the
-  //    provider the workspace chose: YCloud or Kapso.
+  //    provider the workspace chose (Kapso; Zernio is connected later).
   if (data.whatsappApiKey) {
     const provider = data.whatsappProvider;
     const { error: intError } = await serviceClient
@@ -264,8 +264,7 @@ export async function completeOnboarding(
         enabled: true,
         credentials: await encryptCredentials(
           {
-            [provider === "kapso" ? "kapso_api_key" : "ycloud_api_key"]:
-              data.whatsappApiKey,
+            kapso_api_key: data.whatsappApiKey,
             webhook_signing_secret: data.whatsappSigningSecret ?? "",
           },
           workspaceId,

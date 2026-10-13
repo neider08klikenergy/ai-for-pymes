@@ -1,24 +1,18 @@
 /**
  * templates.ts — Template management: list, sync from the workspace's WhatsApp
- * provider (YCloud or Kapso), helpers.
+ * provider (Zernio or Kapso), helpers.
  */
 
-import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
-  fetchYCloudTemplates,
-  resolveWabaId,
-  templateOfficialId,
-} from "./ycloud-client";
+  whatsappApiKey,
+  type WhatsAppProvider,
+  WHATSAPP_NOT_CONNECTED,
+  loadWhatsAppIntegration,
+  decryptWhatsAppCredentials,
+} from "./whatsapp-provider";
 import { fetchKapsoTemplates } from "./kapso-client";
 import { listWhatsAppTemplates } from "./zernio-client";
-import { phoneString } from "./phone";
-import {
-  decryptWhatsAppCredentials,
-  loadWhatsAppIntegration,
-  whatsappApiKey,
-  WHATSAPP_NOT_CONNECTED,
-  type WhatsAppProvider,
-} from "./whatsapp-provider";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 import { extractRejectionReason, templateStatusPatch } from "./template-sync";
 
 function svc() {
@@ -140,6 +134,15 @@ export async function listTemplates(
 // syncTemplates — pulls the workspace's templates from its WhatsApp provider
 // ──────────────────────────────────────────────────────────────────────────────
 
+/** The provider's template id (Meta's official one when it gives both). */
+function templateOfficialId(template: unknown): string | null {
+  const t = (template ?? {}) as Record<string, unknown>;
+  for (const value of [t.officialTemplateId, t.id]) {
+    if (typeof value === "string" && value) return value;
+  }
+  return null;
+}
+
 async function fetchProviderTemplates(
   provider: WhatsAppProvider,
   apiKey: string,
@@ -150,32 +153,28 @@ async function fetchProviderTemplates(
     const accounts = Array.isArray(config.accounts)
       ? (config.accounts as Array<{ id?: unknown; platform?: unknown }>)
       : [];
-    const wa = accounts.find((a) => a.platform === "whatsapp" && typeof a.id === "string");
+    const wa = accounts.find(
+      (a) => a.platform === "whatsapp" && typeof a.id === "string",
+    );
     if (!wa) {
-      throw new Error("[templates] conecta WhatsApp en Zernio para sincronizar plantillas");
-    }
-    return { items: await listWhatsAppTemplates(wa.id as string), truncated: false };
-  }
-  if (provider === "kapso") {
-    // Kapso's template endpoints are Meta's, scoped to a WABA id in the path.
-    // It is configured per workspace — the API can't discover it without it.
-    const wabaId = (config.waba_id as string | undefined) ?? "";
-    if (!wabaId) {
       throw new Error(
-        "[templates] falta waba_id en la configuración de Kapso del workspace",
+        "[templates] conecta WhatsApp en Zernio para sincronizar plantillas",
       );
     }
-    return { items: await fetchKapsoTemplates(apiKey, wabaId), truncated: false };
+    return {
+      items: await listWhatsAppTemplates(wa.id as string),
+      truncated: false,
+    };
   }
-  // YCloud's key reaches every WABA of the account: only this number's.
-  const phoneNumber = phoneString(config.phone_number) ?? "";
-  if (!phoneNumber) {
+  // Kapso's template endpoints are Meta's, scoped to a WABA id in the path.
+  // It is configured per workspace — the API can't discover it without it.
+  const wabaId = (config.waba_id as string | undefined) ?? "";
+  if (!wabaId) {
     throw new Error(
-      "[templates] falta el número de WhatsApp en la configuración de YCloud del workspace",
+      "[templates] falta waba_id en la configuración de Kapso del workspace",
     );
   }
-  const wabaId = await resolveWabaId(apiKey, phoneNumber);
-  return fetchYCloudTemplates(apiKey, wabaId);
+  return { items: await fetchKapsoTemplates(apiKey, wabaId), truncated: false };
 }
 
 export async function syncTemplates(
@@ -207,7 +206,10 @@ export async function syncTemplates(
   // keeps a rejection reason Meta stops reporting, and `approved_at` on the
   // first approval instead of every sync.
   const previous = new Map(
-    (await listTemplates(workspaceId)).map((t) => [`${t.name}|${t.language}`, t]),
+    (await listTemplates(workspaceId)).map((t) => [
+      `${t.name}|${t.language}`,
+      t,
+    ]),
   );
 
   let synced = 0;

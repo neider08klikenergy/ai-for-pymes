@@ -15,37 +15,36 @@
  *   leaves the message visible in the inbox.
  */
 
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { formatWhatsAppMarkdown } from "./text-formatter";
 import {
-  decryptWhatsAppCredentials,
-  loadWhatsAppIntegration,
   WHATSAPP_NOT_CONNECTED,
+  loadWhatsAppIntegration,
+  decryptWhatsAppCredentials,
 } from "./whatsapp-provider";
 import {
   whatsappSender,
-  WhatsAppConfigError,
   type SendResult,
   type SendTarget,
-  type TemplateComponents,
+  WhatsAppConfigError,
   type WhatsAppSender,
+  type TemplateComponents,
 } from "./whatsapp-sender";
-import { YCloudError } from "./ycloud-client";
-import { KapsoError } from "./kapso-client";
-import { ZernioError, ZernioConfigError } from "./zernio-client";
-import { getSignedUrl } from "./media-handler";
 import {
-  parseWhatsAppError,
+  wasNotAccepted,
+  OPT_OUT_MESSAGE,
   formatErrorForLog,
   recordMessageError,
-  wasNotAccepted,
+  parseWhatsAppError,
   GENERIC_SEND_ERROR,
-  UNCONFIRMED_SEND_ERROR,
-  RETRY_PENDING_SEND_ERROR,
-  WINDOW_EXPIRED_MESSAGE,
-  OPT_OUT_MESSAGE,
   type WhatsAppError,
+  UNCONFIRMED_SEND_ERROR,
+  WINDOW_EXPIRED_MESSAGE,
+  RETRY_PENDING_SEND_ERROR,
 } from "./whatsapp-errors";
+import { KapsoError } from "./kapso-client";
+import { getSignedUrl } from "./media-handler";
+import { formatWhatsAppMarkdown } from "./text-formatter";
+import { ZernioError, ZernioConfigError } from "./zernio-client";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
   return createSbClient(
@@ -153,19 +152,25 @@ export interface DispatchResult {
  * where the message may or may not have left.
  */
 function toWhatsAppError(sendErr: unknown): WhatsAppError {
-  if (sendErr instanceof YCloudError || sendErr instanceof KapsoError) {
+  if (sendErr instanceof KapsoError) {
     return parseWhatsAppError(sendErr.body, sendErr.status);
   }
   if (sendErr instanceof ZernioError) {
     // El error de Meta, si lo hay, viene en platformError; si no, el texto de Zernio.
     const body = sendErr.body as { platformError?: unknown } | null;
     const platformError =
-      body && typeof body === "object" && body.platformError && typeof body.platformError === "object"
+      body &&
+      typeof body === "object" &&
+      body.platformError &&
+      typeof body.platformError === "object"
         ? body.platformError
         : null;
     return parseWhatsAppError(platformError ?? sendErr.body, sendErr.status);
   }
-  if (sendErr instanceof WhatsAppConfigError || sendErr instanceof ZernioConfigError) {
+  if (
+    sendErr instanceof WhatsAppConfigError ||
+    sendErr instanceof ZernioConfigError
+  ) {
     return {
       code: null,
       message: sendErr.message,
@@ -201,10 +206,13 @@ interface ConversationWindowRow {
 }
 
 /**
- * The sender for the workspace's active WhatsApp provider (YCloud or Kapso).
+ * The sender for the workspace's active WhatsApp provider (Zernio or Kapso).
  * dispatch never names a provider itself.
  */
-async function loadSender(workspaceId: string, supabase: Db): Promise<WhatsAppSender> {
+async function loadSender(
+  workspaceId: string,
+  supabase: Db,
+): Promise<WhatsAppSender> {
   const row = await loadWhatsAppIntegration(supabase, workspaceId);
   if (!row) {
     throw new Error(`[dispatch] ${WHATSAPP_NOT_CONNECTED}`);
@@ -233,13 +241,17 @@ async function loadConversationAndPhone(
 } | null> {
   const { data: conv, error: convError } = await supabase
     .from("conversations")
-    .select("window_expires_at, contact_id, channel, external_conversation_id, external_account_id")
+    .select(
+      "window_expires_at, contact_id, channel, external_conversation_id, external_account_id",
+    )
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
 
   if (convError) {
-    throw new Error(`[dispatch] conversation lookup failed: ${convError.message}`);
+    throw new Error(
+      `[dispatch] conversation lookup failed: ${convError.message}`,
+    );
   }
   if (!conv) return null;
 
@@ -253,7 +265,9 @@ async function loadConversationAndPhone(
     .maybeSingle();
 
   if (contactError) {
-    throw new Error(`[dispatch] contact lookup failed: ${contactError.message}`);
+    throw new Error(
+      `[dispatch] contact lookup failed: ${contactError.message}`,
+    );
   }
   if (!contact) return null;
 
@@ -353,7 +367,10 @@ async function logNotFound(
       type: "outbound_not_sent",
       level: "warn",
       workspace_id: workspaceId,
-      payload: { reason: "conversation_not_found", conversation_id: conversationId },
+      payload: {
+        reason: "conversation_not_found",
+        conversation_id: conversationId,
+      },
     })
     .then(
       () => {},
@@ -409,7 +426,10 @@ async function sendQueuedRow(opts: {
           .eq("workspace_id", workspaceId);
         marked = !markError;
         if (markError) {
-          console.error("[dispatch] not-accepted update error:", markError.message);
+          console.error(
+            "[dispatch] not-accepted update error:",
+            markError.message,
+          );
         }
       }
       if (!marked) {
@@ -426,7 +446,10 @@ async function sendQueuedRow(opts: {
         .eq("id", rowId)
         .eq("workspace_id", workspaceId);
       if (failError) {
-        console.error("[dispatch] failed-status update error:", failError.message);
+        console.error(
+          "[dispatch] failed-status update error:",
+          failError.message,
+        );
       }
       await recordMessageError(supabase, waError, workspaceId, rowId);
     }
@@ -444,11 +467,7 @@ async function sendQueuedRow(opts: {
   const patch = {
     status: "sent",
     wamid: sent.wamid ?? null,
-    meta: {
-      ...rowMeta,
-      // YCloud's own message id, kept to reconcile its status webhooks.
-      ycloud_id: sender.provider === "ycloud" ? sent.providerMessageId : undefined,
-    },
+    meta: rowMeta,
   };
   for (let attempt = 0; attempt < 2; attempt++) {
     const { error } = await supabase
@@ -492,7 +511,10 @@ async function insertQueuedRow(
   return { id: data.id as string };
 }
 
-async function touchConversation(supabase: Db, conversationId: string): Promise<void> {
+async function touchConversation(
+  supabase: Db,
+  conversationId: string,
+): Promise<void> {
   await supabase
     .from("conversations")
     .update({ last_message_at: new Date().toISOString() })
@@ -528,7 +550,8 @@ export async function dispatchText(
     supabase,
   );
   if (!loaded) {
-    if (noteWhenBlocked) await logNotFound(supabase, workspaceId, conversationId);
+    if (noteWhenBlocked)
+      await logNotFound(supabase, workspaceId, conversationId);
     return NOT_FOUND;
   }
   const { window_expires_at, toPhone, target } = loaded;
@@ -536,7 +559,13 @@ export async function dispatchText(
   // SEC-10: Block outbound to opted-out contacts
   if (!loaded.optIn) {
     if (noteWhenBlocked) {
-      await noteBlockedSend(supabase, workspaceId, conversationId, OPT_OUT_MESSAGE, body);
+      await noteBlockedSend(
+        supabase,
+        workspaceId,
+        conversationId,
+        OPT_OUT_MESSAGE,
+        body,
+      );
     }
     return OPT_OUT;
   }
@@ -641,9 +670,22 @@ const PROVIDER_MEDIA_URL_TTL_S = 24 * 3600;
 export async function dispatchImage(
   params: DispatchImageParams,
 ): Promise<DispatchResult> {
-  const { workspaceId, conversationId, storagePath, imageUrl, mimeType, sizeBytes, senderUserId } = params;
+  const {
+    workspaceId,
+    conversationId,
+    storagePath,
+    imageUrl,
+    mimeType,
+    sizeBytes,
+    senderUserId,
+  } = params;
   if (imageUrl !== undefined && !/^https:\/\/\S+$/.test(imageUrl)) {
-    return { ok: false, error: "La imagen debe ser un enlace https", errorCode: "INVALID_MEDIA", retryable: false };
+    return {
+      ok: false,
+      error: "La imagen debe ser un enlace https",
+      errorCode: "INVALID_MEDIA",
+      retryable: false,
+    };
   }
   const caption = params.caption?.trim()
     ? formatWhatsAppMarkdown(params.caption.trim())
@@ -651,7 +693,11 @@ export async function dispatchImage(
 
   const supabase = svc();
 
-  const loaded = await loadConversationAndPhone(conversationId, workspaceId, supabase);
+  const loaded = await loadConversationAndPhone(
+    conversationId,
+    workspaceId,
+    supabase,
+  );
   if (!loaded) return NOT_FOUND;
   const { window_expires_at, toPhone, target } = loaded;
   if (!loaded.optIn) return OPT_OUT;
@@ -664,7 +710,11 @@ export async function dispatchImage(
   const sender = await loadSender(workspaceId, supabase);
   const rowMeta: Record<string, unknown> = {
     ...(storagePath !== undefined
-      ? { storage_path: storagePath, mime_type: mimeType, size_bytes: sizeBytes }
+      ? {
+          storage_path: storagePath,
+          mime_type: mimeType,
+          size_bytes: sizeBytes,
+        }
       : { image_url: imageUrl }),
     ...(caption ? { caption } : {}),
     dev_mode: sender.live ? undefined : true,
@@ -682,7 +732,12 @@ export async function dispatchImage(
   if ("error" in queued) {
     console.error("[dispatch] image insert error:", queued.error);
     if (queued.error.includes("WINDOW_EXPIRED")) return WINDOW_EXPIRED;
-    return { ok: false, error: GENERIC_SEND_ERROR, errorCode: "DB_ERROR", retryable: true };
+    return {
+      ok: false,
+      error: GENERIC_SEND_ERROR,
+      errorCode: "DB_ERROR",
+      retryable: true,
+    };
   }
 
   if (!sender.live) {
@@ -697,11 +752,14 @@ export async function dispatchImage(
     rowId: queued.id,
     rowMeta,
     send: async () => {
-      const url = storagePath !== undefined
-        ? await getSignedUrl(storagePath, PROVIDER_MEDIA_URL_TTL_S)
-        : imageUrl;
+      const url =
+        storagePath !== undefined
+          ? await getSignedUrl(storagePath, PROVIDER_MEDIA_URL_TTL_S)
+          : imageUrl;
       if (!url) {
-        throw new WhatsAppConfigError("No se pudo preparar la imagen para enviarla. Intenta de nuevo.");
+        throw new WhatsAppConfigError(
+          "No se pudo preparar la imagen para enviarla. Intenta de nuevo.",
+        );
       }
       return sender.sendImage(toPhone, { url, caption }, target);
     },
@@ -737,16 +795,33 @@ export interface DispatchLocationParams {
 export async function dispatchLocation(
   params: DispatchLocationParams,
 ): Promise<DispatchResult> {
-  const { workspaceId, conversationId, latitude, longitude, name, address, text } = params;
+  const {
+    workspaceId,
+    conversationId,
+    latitude,
+    longitude,
+    name,
+    address,
+    text,
+  } = params;
   const supabase = svc();
 
   const sender = await loadSender(workspaceId, supabase);
   const sendLocation = sender.sendLocation?.bind(sender);
   if (!sendLocation) {
-    return dispatchText({ workspaceId, conversationId, body: text, meta: params.meta });
+    return dispatchText({
+      workspaceId,
+      conversationId,
+      body: text,
+      meta: params.meta,
+    });
   }
 
-  const loaded = await loadConversationAndPhone(conversationId, workspaceId, supabase);
+  const loaded = await loadConversationAndPhone(
+    conversationId,
+    workspaceId,
+    supabase,
+  );
   if (!loaded) return NOT_FOUND;
   const { window_expires_at, toPhone, target } = loaded;
   if (!loaded.optIn) return OPT_OUT;
@@ -756,7 +831,12 @@ export async function dispatchLocation(
 
   const rowMeta: Record<string, unknown> = {
     ...(params.meta ?? {}),
-    location: { latitude, longitude, ...(name ? { name } : {}), ...(address ? { address } : {}) },
+    location: {
+      latitude,
+      longitude,
+      ...(name ? { name } : {}),
+      ...(address ? { address } : {}),
+    },
     dev_mode: sender.live ? undefined : true,
   };
   const queued = await insertQueuedRow(supabase, {
@@ -771,7 +851,12 @@ export async function dispatchLocation(
   if ("error" in queued) {
     console.error("[dispatch] location insert error:", queued.error);
     if (queued.error.includes("WINDOW_EXPIRED")) return WINDOW_EXPIRED;
-    return { ok: false, error: GENERIC_SEND_ERROR, errorCode: "DB_ERROR", retryable: true };
+    return {
+      ok: false,
+      error: GENERIC_SEND_ERROR,
+      errorCode: "DB_ERROR",
+      retryable: true,
+    };
   }
 
   if (!sender.live) {
@@ -785,7 +870,8 @@ export async function dispatchLocation(
     workspaceId,
     rowId: queued.id,
     rowMeta,
-    send: () => sendLocation(toPhone, { latitude, longitude, name, address }, target),
+    send: () =>
+      sendLocation(toPhone, { latitude, longitude, name, address }, target),
     what: "sendLocation",
     recordRetryableFailure: true,
   });

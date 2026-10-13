@@ -6,7 +6,7 @@ export interface WorkspaceWithStats {
   member_count: number;
   conversation_count: number;
   /** The workspace's active WhatsApp provider, or null when not connected. */
-  whatsapp_provider: "ycloud" | "kapso" | "zernio" | null;
+  whatsapp_provider: "kapso" | "zernio" | null;
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";
@@ -15,31 +15,29 @@ export interface CreateWorkspaceInput {
   name: string;
   useCase: UseCase;
   clientEmail?: string;
-  /** Optional password for the client account; auto-generated if omitted. */
-  clientPassword?: string;
 }
 
-/** Login credentials to hand to the client (agency-managed accounts, no email). */
-export interface ClientCredentials {
+/** New client account: whether the email to choose a password went out. */
+export interface ClientInvitation {
   email: string;
-  password: string;
+  enviada: boolean;
 }
 
 export type CreateWorkspaceResult =
   | {
       workspaceId: string;
       /** Webhook URL per WhatsApp provider — the client picks one in Integraciones. */
-      webhookUrls: { ycloud: string; kapso: string };
-      /** YCloud's webhook URL (kept for API callers from before Kapso). */
+      webhookUrls: { kapso: string };
+      /** Kapso's webhook URL (kept for API callers that read a single URL). */
       webhookUrl: string;
-      clientCredentials?: ClientCredentials | null;
+      clientInvitation?: ClientInvitation | null;
       error?: never;
     }
   | {
       workspaceId?: never;
       webhookUrls?: never;
       webhookUrl?: never;
-      clientCredentials?: never;
+      clientInvitation?: never;
       error: string;
     };
 

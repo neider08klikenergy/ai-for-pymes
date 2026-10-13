@@ -15,13 +15,11 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import {
-  Copy,
   Users,
   Loader2,
   UserPlus,
   UserMinus,
   RefreshCw,
-  CheckCheck,
   UserCheck,
   AlertCircle,
 } from "lucide-react";
@@ -183,13 +181,7 @@ export function TeamTab({ workspaceId }: Props) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("agent");
-  const [invitePassword, setInvitePassword] = useState("");
   const [inviting, setInviting] = useState(false);
-  const [createdCreds, setCreatedCreds] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
-  const [copiedCred, setCopiedCred] = useState(false);
 
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [togglingActive, setTogglingActive] = useState<string | null>(null);
@@ -224,18 +216,6 @@ export function TeamTab({ workspaceId }: Props) {
     setInviteOpen(false);
     setInviteEmail("");
     setInviteRole("agent");
-    setInvitePassword("");
-    setCreatedCreds(null);
-    setCopiedCred(false);
-  }
-
-  function handleCopyCreds() {
-    if (!createdCreds) return;
-    navigator.clipboard.writeText(
-      `Email: ${createdCreds.email}\nContraseña: ${createdCreds.password}`,
-    );
-    setCopiedCred(true);
-    setTimeout(() => setCopiedCred(false), 2000);
   }
 
   async function handleInvite(e: React.FormEvent) {
@@ -248,20 +228,22 @@ export function TeamTab({ workspaceId }: Props) {
         body: JSON.stringify({
           email: inviteEmail,
           role: inviteRole,
-          password: invitePassword || undefined,
         }),
       });
       const json = (await res.json()) as {
         error?: string;
         invitacion?: boolean;
-        credentials?: { email: string; password: string } | null;
+        invitacionEnviada?: boolean;
       };
       if (!res.ok) throw new Error(json.error ?? "Error al crear el usuario");
       await fetchTeam();
-      if (json.credentials) {
-        // New account — show credentials for the agency to share.
-        setCreatedCreds(json.credentials);
-        toast.success(t("cuentaCreada"));
+      if (json.invitacionEnviada === true) {
+        // New account: they choose their password from the email's link.
+        toast.success(t("correoDeAccesoEnviado", { email: inviteEmail }));
+        closeInvite();
+      } else if (json.invitacionEnviada === false) {
+        toast.error(t("correoDeAccesoNoSalio", { email: inviteEmail }));
+        closeInvite();
       } else if (json.invitacion) {
         // The account already existed: it joins only once that person accepts.
         toast.success(t("invitacionEnviada", { email: inviteEmail }), {
@@ -606,50 +588,10 @@ export function TeamTab({ workspaceId }: Props) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-base font-semibold">
-              {createdCreds ? t("credencialesDelCliente") : t("invitarMiembro")}
+              {t("invitarMiembro")}
             </DialogTitle>
           </DialogHeader>
-          {createdCreds ? (
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-muted-foreground">
-                {t("comparteEstasCredencialesConElUsuario")}
-              </p>
-              <div className="space-y-1 rounded-lg border border-warning/30 bg-warning/5 p-3 font-mono text-xs">
-                <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">{t("email")} </span>
-                  {createdCreds.email}
-                </p>
-                <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">
-                    {t("contrasena")}{" "}
-                  </span>
-                  {createdCreds.password}
-                </p>
-              </div>
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={handleCopyCreds}
-                >
-                  {copiedCred ? (
-                    <CheckCheck
-                      className="h-4 w-4 text-primary"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Copy className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  {t("copiar")}
-                </Button>
-                <Button type="button" size="sm" onClick={closeInvite}>
-                  {t("listo")}
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
+          {(
             <form onSubmit={handleInvite} className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <Label
@@ -721,26 +663,6 @@ export function TeamTab({ workspaceId }: Props) {
                 <p className="text-xs text-muted-foreground">
                   {t("seCreaSuCuentaAlInstante")}
                 </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="invite-password"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t("contrasena2")}
-                  <span className="ml-1 text-muted-foreground text-xs">
-                    {t("opcional")}
-                  </span>
-                </Label>
-                <Input
-                  id="invite-password"
-                  type="text"
-                  value={invitePassword}
-                  onChange={(e) => setInvitePassword(e.target.value)}
-                  placeholder={t("seGeneraUnaSeguraSiLo")}
-                  className="font-mono text-sm"
-                  autoComplete="off"
-                />
               </div>
               <DialogFooter className="pt-2">
                 <Button

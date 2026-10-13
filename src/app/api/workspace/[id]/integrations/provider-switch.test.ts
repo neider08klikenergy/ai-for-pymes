@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test, mock } from "node:test";
 import { NextRequest } from "next/server";
 
-// PUT /api/workspace/[id]/integrations — saving a WhatsApp provider (YCloud or
+// PUT /api/workspace/[id]/integrations — saving a WhatsApp provider (Zernio or
 // Kapso). The switch itself (disable the old row, carry the workspace settings,
 // upsert the new one) happens in save_whatsapp_integration(), pinned by pgTAP;
 // this covers what the route decides before calling it.
@@ -33,10 +33,6 @@ mock.module("@/shared/lib/integration-secrets.ts", {
     },
     decryptCredentials: async (c: unknown) => c ?? {},
   },
-});
-
-mock.module("@/features/inbox/services/country-code.ts", {
-  exports: { workspaceCountryCode: async () => "52" },
 });
 
 type Stored = { credentials: Record<string, unknown>; config: Record<string, unknown> };
@@ -90,9 +86,9 @@ function reset() {
   upserts = [];
   rpcResult = { data: null, error: null };
   stored = {
-    ycloud: {
-      credentials: { ycloud_api_key: "enc:yk", webhook_signing_secret: "enc:ys" },
-      config: { phone_number: "+5215550000000", message_history_window: 20 },
+    kapso: {
+      credentials: { kapso_api_key: "enc:kk", webhook_signing_secret: "enc:ks0" },
+      config: { phone_number_id: "pn_0", waba_id: "waba_0", message_history_window: 20 },
     },
   };
 }
@@ -105,11 +101,11 @@ const KAPSO_READY = {
 
 test("switching to Kapso saves it through the one-transaction RPC", async () => {
   reset();
-  rpcResult = { data: "ycloud", error: null };
+  rpcResult = { data: "zernio", error: null };
   const res = await put(KAPSO_READY);
   const json = await res.json();
   assert.equal(res.status, 200);
-  assert.equal(json.switchedFrom, "ycloud");
+  assert.equal(json.switchedFrom, "zernio");
   assert.equal(rpcCalls.length, 1);
   const { fn, args } = rpcCalls[0];
   assert.equal(fn, "save_whatsapp_integration");
@@ -138,6 +134,7 @@ test("a failed encryption writes nothing", async () => {
 
 test("activating a provider without its sender id is refused with 422", async () => {
   reset();
+  stored = {};
   const res = await put({ ...KAPSO_READY, config: { waba_id: "waba_1" } });
   const json = await res.json();
   assert.equal(res.status, 422);
@@ -148,6 +145,7 @@ test("activating a provider without its sender id is refused with 422", async ()
 
 test("activating a provider without key or secret is refused with 422", async () => {
   reset();
+  stored = {};
   const res = await put({ provider: "kapso", config: { phone_number_id: "pn_1" } });
   assert.equal(res.status, 422);
   assert.deepEqual((await res.json()).missing, ["la API Key", "el Webhook Signing Secret"]);
@@ -157,22 +155,22 @@ test("activating a provider without key or secret is refused with 422", async ()
 test("masked values count as the stored ones", async () => {
   reset();
   const res = await put({
-    provider: "ycloud",
-    credentials: { ycloud_api_key: "••••••", webhook_signing_secret: "••••••" },
+    provider: "kapso",
+    credentials: { kapso_api_key: "••••••", webhook_signing_secret: "••••••" },
     config: { buffer_silence_seconds: 40 },
   });
   assert.equal(res.status, 200);
   assert.deepEqual(rpcCalls[0].args.p_credentials, {
-    ycloud_api_key: "enc:yk",
-    webhook_signing_secret: "enc:ys",
+    kapso_api_key: "enc:kk",
+    webhook_signing_secret: "enc:ks0",
   });
 });
 
 test("an explicitly emptied sender id is refused", async () => {
   reset();
-  const res = await put({ provider: "ycloud", config: { phone_number: "" } });
+  const res = await put({ provider: "kapso", config: { phone_number_id: "" } });
   assert.equal(res.status, 422);
-  assert.deepEqual((await res.json()).missing, ["el número de WhatsApp"]);
+  assert.deepEqual((await res.json()).missing, ["el Phone Number ID"]);
 });
 
 test("saving a provider disabled skips the check (kept for later)", async () => {
@@ -184,7 +182,7 @@ test("saving a provider disabled skips the check (kept for later)", async () => 
 
 test("saving the active provider again is not a switch", async () => {
   reset();
-  const res = await put({ provider: "ycloud", config: { buffer_silence_seconds: 40 } });
+  const res = await put({ provider: "kapso", config: { buffer_silence_seconds: 40 } });
   const json = await res.json();
   assert.equal(res.status, 200);
   assert.equal(json.switchedFrom, undefined);
@@ -204,124 +202,4 @@ test("other integrations (OpenRouter) never touch the WhatsApp provider", async 
   assert.equal(rpcCalls.length, 0);
   assert.equal(upserts.length, 1);
   assert.equal(upserts[0].provider, "openrouter");
-});
-
-// ── YCloud's number, normalized on save ──────────────────────────────────────
-
-/** YCloud's phoneNumbers endpoint for the next PUT; null = unreachable. */
-function ycloudLists(numbers: string[] | null): { keys: string[]; restore: () => void } {
-  const keys: string[] = [];
-  const original = globalThis.fetch;
-  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
-    keys.push(String((init?.headers as Record<string, string>)?.["X-API-Key"]));
-    if (!numbers) return new Response("{}", { status: 503 });
-    return new Response(
-      JSON.stringify({ items: numbers.map((phoneNumber) => ({ phoneNumber, wabaId: "waba_1" })) }),
-      { status: 200 },
-    );
-  }) as typeof fetch;
-  return { keys, restore: () => (globalThis.fetch = original) };
-}
-
-async function saveYCloudPhone(phone: string) {
-  const res = await put({ provider: "ycloud", config: { phone_number: phone } });
-  return { status: res.status, json: await res.json(), saved: rpcCalls[0]?.args.p_config as Record<string, unknown> };
-}
-
-test("a national YCloud number the account has is saved as YCloud lists it", async () => {
-  reset();
-  const { keys, restore } = ycloudLists(["+15550000001", "+5219981234567"]);
-  try {
-    for (const typed of ["998 123 4567", "(998) 123-4567"]) {
-      rpcCalls = [];
-      const { status, json, saved } = await saveYCloudPhone(typed);
-      assert.equal(status, 200);
-      assert.equal(saved.phone_number, "+5219981234567", typed);
-      assert.equal(json.phoneNumber, "+5219981234567");
-      assert.equal(json.warning, undefined);
-    }
-  } finally {
-    restore();
-  }
-  assert.equal(keys[0], "enc:yk", "the stored key, decrypted");
-});
-
-test("a US number typed without its 1 is matched to the account's line, not given +52", async () => {
-  reset();
-  const { restore } = ycloudLists(["+15551234567"]);
-  try {
-    const { saved } = await saveYCloudPhone("555-123-4567");
-    assert.equal(saved.phone_number, "+15551234567");
-  } finally {
-    restore();
-  }
-});
-
-test("a number with its country code is saved in E.164, with a warning if the account lacks it", async () => {
-  reset();
-  const { restore } = ycloudLists(["+15550000001"]);
-  try {
-    const { status, saved, json } = await saveYCloudPhone("0052 998 123 4567");
-    assert.equal(status, 200, "a warning, never a block");
-    assert.equal(saved.phone_number, "+529981234567");
-    assert.match(json.warning, /No encontramos \+529981234567/);
-  } finally {
-    restore();
-  }
-});
-
-test("a national number YCloud can't confirm is kept as typed, with how to fix it", async () => {
-  reset();
-  const { restore } = ycloudLists(null);
-  const original = console.warn;
-  console.warn = () => {};
-  try {
-    const { status, saved, json } = await saveYCloudPhone("998 123 4567");
-    assert.equal(status, 200);
-    assert.equal(saved.phone_number, "998 123 4567", "no guessed country code");
-    assert.match(json.warning, /lada internacional/);
-  } finally {
-    console.warn = original;
-    restore();
-  }
-});
-
-test("a typed 1 998 123 4567 never becomes +1…: YCloud's line if listed, else kept as typed", async () => {
-  reset();
-  const listed = ycloudLists(["+5219981234567"]);
-  try {
-    const { saved, json } = await saveYCloudPhone("1 998 123 4567");
-    assert.equal(saved.phone_number, "+5219981234567");
-    assert.equal(json.warning, undefined);
-  } finally {
-    listed.restore();
-  }
-
-  reset();
-  const unreachable = ycloudLists(null);
-  const original = console.warn;
-  console.warn = () => {};
-  try {
-    const { saved, json } = await saveYCloudPhone("1 998 123 4567");
-    assert.equal(saved.phone_number, "1 998 123 4567");
-    assert.match(json.warning, /lada internacional/);
-  } finally {
-    console.warn = original;
-    unreachable.restore();
-  }
-});
-
-test("bare digits with the workspace's code are saved in E.164 even without YCloud to confirm", async () => {
-  reset();
-  const { restore } = ycloudLists(null);
-  const original = console.warn;
-  console.warn = () => {};
-  try {
-    const { saved, json } = await saveYCloudPhone("5219981234567");
-    assert.equal(saved.phone_number, "+5219981234567");
-    assert.equal(json.warning, undefined);
-  } finally {
-    console.warn = original;
-    restore();
-  }
 });

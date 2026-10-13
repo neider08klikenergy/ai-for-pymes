@@ -1,5 +1,5 @@
 // WhatsApp providers. Each workspace picks ONE in Settings → Integraciones:
-// YCloud or Kapso (Kapso works in the United States, YCloud does not). Its
+// Zernio or Kapso. Its
 // `integrations` row is the enabled one with provider in WHATSAPP_PROVIDERS —
 // a partial unique index guarantees there is at most one per workspace.
 //
@@ -11,11 +11,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { decryptCredentials } from "@/shared/lib/integration-secrets";
 import { zernioApiKey, zernioWebhookSecret } from "./zernio-client";
 
-export const WHATSAPP_PROVIDERS = ["ycloud", "kapso", "zernio"] as const;
+export const WHATSAPP_PROVIDERS = ["kapso", "zernio"] as const;
 export type WhatsAppProvider = (typeof WHATSAPP_PROVIDERS)[number];
 
 export const WHATSAPP_PROVIDER_LABELS: Record<WhatsAppProvider, string> = {
-  ycloud: "YCloud",
   kapso: "Kapso",
   zernio: "Zernio",
 };
@@ -47,7 +46,6 @@ export const WORKSPACE_WHATSAPP_SETTINGS = [
 
 /** Where each provider keeps the id it sends from. */
 const SENDER_ID_KEY: Record<WhatsAppProvider, string> = {
-  ycloud: "phone_number", // the E.164 number
   kapso: "phone_number_id", // Meta's phone number id
   zernio: "profile_id", // the workspace's Zernio profile
 };
@@ -106,26 +104,13 @@ async function loadActiveRow(
   workspaceId: string,
   columns: string,
 ): Promise<Record<string, unknown> | null> {
-  const lookup = (providers: readonly string[]) =>
-    supabase
-      .from("integrations")
-      .select(columns)
-      .eq("workspace_id", workspaceId)
-      .in("provider", providers as string[])
-      .eq("enabled", true)
-      .maybeSingle();
-
-  let { data, error } = await lookup(WHATSAPP_PROVIDERS);
-  // 22P02: the database does not know 'kapso' yet — this code was deployed
-  // before `db push` ran 20260927000000. Keep YCloud workspaces sending
-  // instead of failing every lookup until the migration lands.
-  if (error?.code === "22P02") {
-    console.error(
-      "[whatsapp] a provider is not in integration_provider yet — run `supabase db push`",
-    );
-    ({ data, error } = await lookup(["ycloud", "kapso"]));
-    if (error?.code === "22P02") ({ data, error } = await lookup(["ycloud"]));
-  }
+  const { data, error } = await supabase
+    .from("integrations")
+    .select(columns)
+    .eq("workspace_id", workspaceId)
+    .in("provider", WHATSAPP_PROVIDERS as unknown as string[])
+    .eq("enabled", true)
+    .maybeSingle();
   if (error) {
     throw new Error(`[whatsapp] integration lookup failed: ${error.message}`);
   }
@@ -133,7 +118,7 @@ async function loadActiveRow(
 }
 
 /**
- * The workspace's ACTIVE WhatsApp integration (enabled, YCloud or Kapso), or
+ * The workspace's ACTIVE WhatsApp integration (enabled, Zernio or Kapso), or
  * null when it has none. `credentials` come back still encrypted — call
  * `decryptWhatsAppCredentials` only where the secret is actually needed.
  * Callers that only read settings use `loadWhatsAppSettings`.
@@ -191,7 +176,6 @@ export function whatsappApiKey(
   credentials: Record<string, unknown>,
 ): string {
   if (provider === "zernio") return zernioApiKey();
-  const key =
-    provider === "kapso" ? credentials.kapso_api_key : credentials.ycloud_api_key;
+  const key = credentials.kapso_api_key;
   return typeof key === "string" ? key : "";
 }

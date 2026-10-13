@@ -6,18 +6,17 @@ import { Label } from "@/components/ui/label";
 
 // Shared by Settings → Integraciones and the onboarding wizard.
 
-export type WhatsAppProviderId = "zernio" | "ycloud" | "kapso";
+export type WhatsAppProviderId = "zernio" | "kapso";
 
-const OPTIONS: readonly WhatsAppProviderId[] = ["zernio", "ycloud", "kapso"];
+const OPTIONS: readonly WhatsAppProviderId[] = ["zernio", "kapso"];
 
 export const WHATSAPP_LABEL: Record<WhatsAppProviderId, string> = {
   zernio: "Zernio",
-  ycloud: "YCloud",
   kapso: "Kapso",
 };
 
 /**
- * YCloud / Kapso as a segmented radio group. Keyboard follows the ARIA radio
+ * Zernio / Kapso as a segmented radio group. Keyboard follows the ARIA radio
  * pattern: a single tab stop, and the arrow keys move to (and select) the
  * other option.
  */

@@ -104,7 +104,7 @@ export default async function SettingsPage({
 
   const initialAgents = await listAgents(svc, workspaceId);
   // Jev's settings live in the workspace's active WhatsApp integration
-  // (YCloud or Kapso — at most one is enabled).
+  // (Zernio or Kapso — at most one is enabled).
   const whatsapp = (integrationsData ?? []).find(
     (row) => row.enabled && isWhatsAppProvider(row.provider),
   );
