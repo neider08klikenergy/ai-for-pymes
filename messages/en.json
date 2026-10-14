@@ -10,13 +10,17 @@
       "settings": "Settings",
       "salir": "Log out",
       "agencia": "Agency",
-      "app": "App",
       "workspaces": "Workspaces",
       "solicitudes": "Requests",
       "navegacionMovil": "Mobile navigation",
       "navegacionAgencia": "Agency navigation",
       "pqrs": "Support",
-      "perfil": "Profile"
+      "navegacionPrincipal": "Main navigation",
+      "miCuenta": "My account",
+      "idioma": "Language",
+      "temaClaro": "Light theme",
+      "temaOscuro": "Dark theme",
+      "volverAlPanel": "Back to the app"
     },
     "sinWorkspace": "You don't have an active workspace.",
     "invitaciones": {
@@ -750,8 +754,8 @@
       "errorDeRedAlProbarLa": "Network error testing the connection",
       "errorAlGuardar": "Error saving",
       "errorDeRedAlGuardar": "Network error saving",
-      "whatsapp": "WhatsApp",
-      "canalesDeMensajeriaDelWorkspaceZernio": "Workspace messaging channels. Zernio connects WhatsApp, Instagram and Facebook; Kapso only WhatsApp.",
+      "whatsapp": "Messaging channels",
+      "canalesDeMensajeriaDelWorkspaceZernio": "Choose the provider your workspace uses to receive and answer your customers' messages.",
       "proveedor": "Provider",
       "alGuardarEsteWorkspaceDejaDe": "When you save, this workspace stops using",
       "yPasaA": "and switches to",
@@ -835,7 +839,12 @@
       "tienda": "Store",
       "elDominioMyshopifyComNoEl": "The .myshopify.com domain (not the website's own domain).",
       "activa": "Active",
-      "soloLosAdministradoresYManagersDel": "Only the workspace's admins and managers can see the integrations."
+      "soloLosAdministradoresYManagersDel": "Only the workspace's admins and managers can see the integrations.",
+      "canalesZernio": "WhatsApp, Instagram and Facebook",
+      "detalleZernio": "Recommended. Connect your channels in one click, no credentials to handle.",
+      "canalesKapso": "WhatsApp only",
+      "detalleKapso": "Requires your own Kapso account: API Key, Phone Number ID and webhook.",
+      "enUso": "In use"
     },
     "kbTab": {
       "losChunksSeAlmacenanInternamenteEn": "Chunks are stored internally in the vector database.",
@@ -915,7 +924,19 @@
       "invitacionCancelada": "Invitation cancelled",
       "invitacionReactivarDetalle": "They will rejoin the team once they accept the invitation when they log in.",
       "correoDeAccesoEnviado": "We emailed {email} a link to choose their password and sign in.",
-      "correoDeAccesoNoSalio": "We created the account for {email}, but the email did not go out. Check the email settings (EMAIL_FROM) and invite them again."
+      "correoDeAccesoNoSalio": "We created the account for {email}, but the email did not go out. Check the email settings (EMAIL_FROM) and invite them again.",
+      "confirmarRolTitulo": "Change {nombre}'s role?",
+      "confirmarRolTexto": "From {de} to {a}. Their permissions change right away.",
+      "confirmarRolBoton": "Change role",
+      "confirmarQuitarTitulo": "Remove {nombre} from the team?",
+      "confirmarQuitarTexto": "They lose access to this workspace right away. To come back they will need to accept a new invitation.",
+      "confirmarQuitarBoton": "Remove access",
+      "confirmarReactivarTitulo": "Invite {nombre} again?",
+      "confirmarReactivarTexto": "They get an invitation and regain access once they accept it.",
+      "confirmarReactivarBoton": "Send invitation",
+      "confirmarCancelarTitulo": "Cancel the invitation to {email}?",
+      "confirmarCancelarTexto": "The invitation stops working. You can invite them again any time.",
+      "volver": "Back"
     },
     "templateFormSheet": {
       "plantillaActualizada": "Template updated",
@@ -1286,8 +1307,11 @@
       "creado": "Created:",
       "inbox": "Inbox",
       "gestionar": "Manage",
-      "eliminar": "Delete",
-      "cancelar": "Cancel"
+      "cancelar": "Cancel",
+      "eliminarTitulo": "Delete {nombre}?",
+      "eliminarTexto": "Its conversations, contacts, orders, products and integrations are deleted forever, and its team loses access. This cannot be undone.",
+      "eliminarEscribe": "To confirm, type",
+      "eliminarBoton": "Delete workspace"
     },
     "solicitudesPanel": {
       "solicitudesDeDemo": "Demo requests",
@@ -1389,7 +1413,8 @@
     },
     "workspaceSwitcher": {
       "cambiarDeWorkspace": "Switch workspace",
-      "workspace": "Workspace"
+      "workspace": "Workspace",
+      "verTodos": "See all in Agency"
     },
     "constantes": {
       "aprobado": "Approved",

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVE_WORKSPACE_COOKIE } from "./active-workspace";
+import { createClient as svcClient } from "@supabase/supabase-js";
 
 /**
  * Sets the active-workspace cookie after verifying the user is an active member
@@ -38,6 +39,28 @@ export async function switchWorkspace(
   const allowed = Boolean(membership) || Boolean(userRow?.is_super_admin);
   if (!allowed) {
     return { error: "No tienes acceso a este workspace." };
+  }
+
+  // The Felrick team can enter any workspace. The app (and RLS) work with
+  // memberships, so it gets an admin one — hidden from the client's team list.
+  if (!membership) {
+    const svc = svcClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { error } = await svc.from("memberships").upsert(
+      {
+        workspace_id: workspaceId,
+        user_id: user.id,
+        role: "admin",
+        is_active: true,
+      },
+      { onConflict: "workspace_id,user_id" },
+    );
+    if (error) {
+      console.error("[switchWorkspace] super admin membership:", error.message);
+      return { error: "No se pudo entrar a este workspace. Intenta de nuevo." };
+    }
   }
 
   (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, {

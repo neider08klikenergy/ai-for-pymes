@@ -3,29 +3,17 @@ import {
   getActiveWorkspace,
 } from "@/features/workspace/services/active-workspace";
 import {
-  LogOut,
-  Receipt,
-  Package,
-  Settings,
-  Building2,
-  MessageCircle,
-  LayoutDashboard,
-} from "lucide-react";
-import {
   InvitacionesPendientes,
   type InvitacionPendiente,
 } from "@/features/workspace/components/invitaciones-pendientes";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/branding";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { resolveTimeZone } from "@/shared/lib/timezone";
-import { logout } from "@/features/auth/services/actions";
-import { SelectorIdioma } from "@/components/selector-idioma";
+import { MenuUsuario } from "@/components/menu-usuario";
+import { NavPrincipal } from "@/components/nav-principal";
 import { BotonPqrs } from "@/features/pqrs/components/boton-pqrs";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
@@ -55,7 +43,7 @@ export default async function MainLayout({
   ] = await Promise.all([
     supabase
       .from("users")
-      .select("is_super_admin")
+      .select("is_super_admin, full_name")
       .eq("id", user.id)
       .maybeSingle(),
     getActiveWorkspace(supabase, user.id),
@@ -71,6 +59,20 @@ export default async function MainLayout({
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
 
+  // El equipo de Felrick puede entrar a cualquier workspace: su selector los
+  // lista todos (RLS de workspaces ya lo permite); los demás, los suyos.
+  const { data: todos } = isSuperAdmin
+    ? await supabase.from("workspaces").select("id, name").order("name")
+    : { data: null };
+  const opcionesWorkspace = todos
+    ? (todos as { id: string; name: string }[]).map((w) => ({
+        workspace_id: w.id,
+        name: w.name,
+      }))
+    : memberships
+        .map((m) => ({ workspace_id: m.workspace_id, name: m.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "es"));
+
   // Zona horaria del negocio (Settings → Negocio) para mostrar horas locales.
   const { data: biRow } = active
     ? await supabase
@@ -85,6 +87,12 @@ export default async function MainLayout({
   const activeId = active?.workspace_id ?? null;
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
+  const etiquetasNav = {
+    inbox: t("inbox"),
+    pedidos: t("pedidos"),
+    productos: t("productos"),
+    dashboard: t("dashboard"),
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -95,40 +103,46 @@ export default async function MainLayout({
           "border-b border-border/50",
         )}
       >
-        {/* Left: brand + workspace name */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-display text-base font-semibold text-primary tracking-tight shrink-0">
-            {APP_NAME}
-          </span>
-          {workspaceName && (
-            <>
-              <span
-                className="text-border/70 select-none shrink-0"
-                aria-hidden="true"
-              >
-                /
-              </span>
-              {memberships.length > 1 && activeId ? (
-                <WorkspaceSwitcher
-                  workspaces={memberships.map((m) => ({
-                    workspace_id: m.workspace_id,
-                    name: m.name,
-                  }))}
-                  activeId={activeId}
-                />
-              ) : (
+        {/* Izquierda: marca y workspace, luego las secciones del día a día */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-display text-base font-semibold text-primary tracking-tight shrink-0">
+              {APP_NAME}
+            </span>
+            {workspaceName && (
+              <>
                 <span
-                  className="font-mono text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]"
-                  title={workspaceName}
+                  className="text-border/70 select-none shrink-0"
+                  aria-hidden="true"
                 >
-                  {workspaceName}
+                  /
                 </span>
-              )}
-            </>
-          )}
+                {activeId ? (
+                  <WorkspaceSwitcher
+                    workspaces={opcionesWorkspace}
+                    activeId={activeId}
+                    verTodos={isSuperAdmin}
+                  />
+                ) : (
+                  <span
+                    className="font-mono text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]"
+                    title={workspaceName}
+                  >
+                    {workspaceName}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          <NavPrincipal
+            variante="header"
+            etiquetas={etiquetasNav}
+            ariaLabel={t("navegacionPrincipal")}
+          />
         </div>
 
-        {/* Right: agency link (super admin only) + dashboard + settings + logout */}
+        {/* Derecha: ayuda, avisos y la cuenta */}
         <div className="flex items-center gap-1 shrink-0">
           {activeId && (
             <BotonPqrs
@@ -140,102 +154,22 @@ export default async function MainLayout({
             />
           )}
           {activeId && <CampanaNotificaciones />}
-          <SelectorIdioma />
-          <ThemeToggle />
-
-          {isSuperAdmin && (
-            <Link href="/workspaces">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">
-                  {t("agencia")}
-                </span>
-              </Button>
-            </Link>
-          )}
-
-          <Link href="/inbox">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("inbox")}
-              </span>
-            </Button>
-          </Link>
-
-          <Link href="/pedidos">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Receipt className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("pedidos")}
-              </span>
-            </Button>
-          </Link>
-
-          <Link href="/productos">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Package className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("productos")}
-              </span>
-            </Button>
-          </Link>
-
-          <Link href="/dashboard">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("dashboard")}
-              </span>
-            </Button>
-          </Link>
-
-          <Link href="/settings">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("settings")}
-              </span>
-            </Button>
-          </Link>
-
-          <form action={logout}>
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">
-                {t("salir")}
-              </span>
-            </Button>
-          </form>
+          <MenuUsuario
+            nombre={(userRow?.full_name as string | null | undefined) ?? null}
+            email={user.email ?? ""}
+            esSuperAdmin={isSuperAdmin}
+            etiquetas={{
+              cuenta: t("miCuenta"),
+              miCuenta: t("miCuenta"),
+              settings: t("settings"),
+              agencia: t("agencia"),
+              volverAlPanel: t("volverAlPanel"),
+              idioma: t("idioma"),
+              temaClaro: t("temaClaro"),
+              temaOscuro: t("temaOscuro"),
+              salir: t("salir"),
+            }}
+          />
         </div>
       </header>
 
@@ -247,65 +181,12 @@ export default async function MainLayout({
         <ZonaHorariaProvider zona={zonaHoraria}>{children}</ZonaHorariaProvider>
       </div>
 
-      {/* Mobile bottom nav — hidden on md+ */}
-      <nav
-        className={cn(
-          "md:hidden fixed bottom-0 inset-x-0 z-50 h-14",
-          "glass-strong border-t border-border/50",
-          "flex items-center justify-around px-4",
-        )}
-        aria-label={t("navegacionMovil")}
-      >
-        <Link
-          href="/inbox"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          <span>{t("inbox")}</span>
-        </Link>
-
-        <Link
-          href="/pedidos"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Receipt className="h-5 w-5" aria-hidden="true" />
-          <span>{t("pedidos")}</span>
-        </Link>
-
-        <Link
-          href="/productos"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Package className="h-5 w-5" aria-hidden="true" />
-          <span>{t("productos")}</span>
-        </Link>
-
-        <Link
-          href="/dashboard"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-          <span>{t("dashboard")}</span>
-        </Link>
-
-        <Link
-          href="/settings"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>{t("settings")}</span>
-        </Link>
-
-        {isSuperAdmin && (
-          <Link
-            href="/workspaces"
-            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Building2 className="h-5 w-5" aria-hidden="true" />
-            <span>{t("agencia")}</span>
-          </Link>
-        )}
-      </nav>
+      {/* Móvil: las secciones en la barra inferior; lo demás, en el menú de cuenta */}
+      <NavPrincipal
+        variante="movil"
+        etiquetas={etiquetasNav}
+        ariaLabel={t("navegacionMovil")}
+      />
     </div>
   );
 }

@@ -10,13 +10,17 @@
       "settings": "Configuración",
       "salir": "Salir",
       "agencia": "Agencia",
-      "app": "App",
       "workspaces": "Workspaces",
       "solicitudes": "Solicitudes",
       "navegacionMovil": "Navegación móvil",
       "navegacionAgencia": "Navegación de agencia",
       "pqrs": "PQRS",
-      "perfil": "Perfil"
+      "navegacionPrincipal": "Navegación principal",
+      "miCuenta": "Mi cuenta",
+      "idioma": "Idioma",
+      "temaClaro": "Tema claro",
+      "temaOscuro": "Tema oscuro",
+      "volverAlPanel": "Volver al panel"
     },
     "sinWorkspace": "No tienes un workspace activo.",
     "invitaciones": {
@@ -750,8 +754,8 @@
       "errorDeRedAlProbarLa": "Error de red al probar la conexión",
       "errorAlGuardar": "Error al guardar",
       "errorDeRedAlGuardar": "Error de red al guardar",
-      "whatsapp": "WhatsApp",
-      "canalesDeMensajeriaDelWorkspaceZernio": "Canales de mensajería del workspace. Zernio conecta WhatsApp, Instagram y Facebook; Kapso solo WhatsApp.",
+      "whatsapp": "Canales de mensajería",
+      "canalesDeMensajeriaDelWorkspaceZernio": "Elige el proveedor con el que tu workspace recibe y responde los mensajes de tus clientes.",
       "proveedor": "Proveedor",
       "alGuardarEsteWorkspaceDejaDe": "Al guardar, este workspace deja de usar",
       "yPasaA": "y pasa a",
@@ -835,7 +839,12 @@
       "tienda": "Tienda",
       "elDominioMyshopifyComNoEl": "El dominio .myshopify.com (no el dominio propio de la web).",
       "activa": "Activa",
-      "soloLosAdministradoresYManagersDel": "Solo los administradores y managers del workspace pueden ver las integraciones."
+      "soloLosAdministradoresYManagersDel": "Solo los administradores y managers del workspace pueden ver las integraciones.",
+      "canalesZernio": "WhatsApp, Instagram y Facebook",
+      "detalleZernio": "Recomendado. Conectas tus canales con un clic, sin manejar credenciales.",
+      "canalesKapso": "Solo WhatsApp",
+      "detalleKapso": "Necesitas tu propia cuenta de Kapso: API Key, Phone Number ID y webhook.",
+      "enUso": "En uso"
     },
     "kbTab": {
       "losChunksSeAlmacenanInternamenteEn": "Los chunks se almacenan internamente en la base de datos vectorial.",
@@ -915,7 +924,19 @@
       "invitacionCancelada": "Invitación cancelada",
       "invitacionReactivarDetalle": "Volverá al equipo cuando acepte la invitación al iniciar sesión.",
       "correoDeAccesoEnviado": "Le enviamos a {email} un correo para que elija su contraseña y entre.",
-      "correoDeAccesoNoSalio": "Creamos la cuenta de {email}, pero el correo no salió. Revisa la configuración de correos (EMAIL_FROM) y vuelve a invitarlo."
+      "correoDeAccesoNoSalio": "Creamos la cuenta de {email}, pero el correo no salió. Revisa la configuración de correos (EMAIL_FROM) y vuelve a invitarlo.",
+      "confirmarRolTitulo": "¿Cambiar el rol de {nombre}?",
+      "confirmarRolTexto": "Pasa de {de} a {a}. Sus permisos cambian de inmediato.",
+      "confirmarRolBoton": "Cambiar rol",
+      "confirmarQuitarTitulo": "¿Quitar a {nombre} del equipo?",
+      "confirmarQuitarTexto": "Pierde el acceso a este workspace de inmediato. Para volver tendrá que aceptar una nueva invitación.",
+      "confirmarQuitarBoton": "Quitar acceso",
+      "confirmarReactivarTitulo": "¿Invitar de nuevo a {nombre}?",
+      "confirmarReactivarTexto": "Le llega una invitación y recupera el acceso cuando la acepte.",
+      "confirmarReactivarBoton": "Enviar invitación",
+      "confirmarCancelarTitulo": "¿Cancelar la invitación a {email}?",
+      "confirmarCancelarTexto": "La invitación deja de funcionar. Puedes volver a invitarlo cuando quieras.",
+      "volver": "Volver"
     },
     "templateFormSheet": {
       "plantillaActualizada": "Plantilla actualizada",
@@ -1286,8 +1307,11 @@
       "creado": "Creado:",
       "inbox": "Inbox",
       "gestionar": "Gestionar",
-      "eliminar": "Eliminar",
-      "cancelar": "Cancelar"
+      "cancelar": "Cancelar",
+      "eliminarTitulo": "¿Eliminar {nombre}?",
+      "eliminarTexto": "Se borran para siempre sus conversaciones, contactos, pedidos, productos e integraciones, y su equipo pierde el acceso. No se puede deshacer.",
+      "eliminarEscribe": "Para confirmar, escribe",
+      "eliminarBoton": "Eliminar workspace"
     },
     "solicitudesPanel": {
       "solicitudesDeDemo": "Solicitudes de demo",
@@ -1389,7 +1413,8 @@
     },
     "workspaceSwitcher": {
       "cambiarDeWorkspace": "Cambiar de workspace",
-      "workspace": "Workspace"
+      "workspace": "Workspace",
+      "verTodos": "Ver todos en la Agencia"
     },
     "constantes": {
       "aprobado": "Aprobado",
