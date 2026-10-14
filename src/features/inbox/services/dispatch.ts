@@ -44,6 +44,7 @@ import { KapsoError } from "./kapso-client";
 import { getSignedUrl } from "./media-handler";
 import { formatWhatsAppMarkdown } from "./text-formatter";
 import { ZernioError, ZernioConfigError } from "./zernio-client";
+import { workspaceActivo } from "@/features/workspace/services/estado";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 
 function svc() {
@@ -136,7 +137,8 @@ export interface DispatchResult {
     | "SEND_FAILED"
     | "DB_ERROR"
     | "NOT_FOUND"
-    | "INVALID_MEDIA";
+    | "INVALID_MEDIA"
+    | "SUSPENDED";
   /**
    * True only when nothing was sent — WhatsApp refused it for a reason that
    * clears with time (rate limits), or the database failed before the send —
@@ -310,6 +312,11 @@ async function rememberExternalConversation(
   return sent;
 }
 
+const SUSPENDED: DispatchResult = {
+  ok: false,
+  error: "Este workspace está suspendido: no se envían mensajes.",
+  errorCode: "SUSPENDED",
+};
 const NOT_FOUND: DispatchResult = {
   ok: false,
   error: "No se encontró la conversación.",
@@ -542,6 +549,7 @@ export async function dispatchText(
   const body = formatWhatsAppMarkdown(rawBody);
 
   const supabase = svc();
+  if (!(await workspaceActivo(workspaceId, supabase))) return SUSPENDED;
 
   // 1. Load conversation window + contact phone (scoped to the workspace)
   const loaded = await loadConversationAndPhone(
@@ -692,6 +700,7 @@ export async function dispatchImage(
     : undefined;
 
   const supabase = svc();
+  if (!(await workspaceActivo(workspaceId, supabase))) return SUSPENDED;
 
   const loaded = await loadConversationAndPhone(
     conversationId,
@@ -805,6 +814,7 @@ export async function dispatchLocation(
     text,
   } = params;
   const supabase = svc();
+  if (!(await workspaceActivo(workspaceId, supabase))) return SUSPENDED;
 
   const sender = await loadSender(workspaceId, supabase);
   const sendLocation = sender.sendLocation?.bind(sender);
@@ -896,6 +906,7 @@ export async function dispatchTemplate(
   } = params;
 
   const supabase = svc();
+  if (!(await workspaceActivo(workspaceId, supabase))) return SUSPENDED;
 
   // 1. Load contact phone (templates bypass the window guard entirely)
   const loaded = await loadConversationAndPhone(

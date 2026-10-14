@@ -51,6 +51,12 @@ mock.module("@supabase/supabase-js", {
   exports: { createClient: () => fakeClient },
 });
 
+// El estado del workspace tiene su propia prueba; aquí, activo salvo que se diga.
+let activo = true;
+mock.module("@/features/workspace/services/estado.ts", {
+  exports: { workspaceActivo: async () => activo },
+});
+
 const { enforceCostPolicy, buildCostAwareSystemPrompt } = await import(
   "./cost-enforcer.ts"
 );
@@ -233,4 +239,17 @@ test("buildCostAwareSystemPrompt keeps the whole prompt on degrade and only swit
 test("buildCostAwareSystemPrompt returns the base prompt unchanged on allow", async () => {
   const result = await buildCostAwareSystemPrompt("ws_1", "base prompt", "allow");
   assert.deepEqual(result, { systemPrompt: "base prompt" });
+});
+
+test("a suspended workspace gets no AI at all (cut, without reading the budget)", async () => {
+  activo = false;
+  selectOps = [];
+  rpcCalls = [];
+  try {
+    const r = await enforceCostPolicy("ws_suspendido");
+    assert.deepEqual(r, { policy: "cut", reason: "workspace_suspendido" });
+    assert.equal(rpcCalls.length + selectOps.length, 0);
+  } finally {
+    activo = true;
+  }
 });

@@ -51,7 +51,7 @@ export async function revisarSeguimiento(
   const { data: convs, error } = await supabase
     .from("conversations")
     .select(
-      "id, workspace_id, state, window_expires_at, last_message_at, workspaces(settings)",
+      "id, workspace_id, state, window_expires_at, last_message_at, workspaces(settings, is_active)",
     )
     .in("state", ["human_active", "handoff_pending"])
     .gt(
@@ -71,17 +71,29 @@ export async function revisarSeguimiento(
     workspace_id: string;
     state: string;
     window_expires_at: string | null;
-    workspaces: { settings: unknown } | { settings: unknown }[] | null;
+    workspaces:
+      | { settings: unknown; is_active?: boolean }
+      | { settings: unknown; is_active?: boolean }[]
+      | null;
   };
-  // El seguimiento apagado se descarta ANTES de repartir los cupos.
+  // El seguimiento apagado (y un workspace suspendido por Felrick) se
+  // descarta ANTES de repartir los cupos.
   const activas = ((convs ?? []) as Candidata[])
     .map((c) => {
       const ws = Array.isArray(c.workspaces) ? c.workspaces[0] : c.workspaces;
-      return { ...c, config: leerConfigSeguimiento(ws?.settings) };
+      return {
+        ...c,
+        config: leerConfigSeguimiento(ws?.settings),
+        suspendido: ws?.is_active === false,
+      };
     })
-    .filter((c) => c.config.activo);
+    .filter((c) => c.config.activo && !c.suspendido);
 
-  for (const c of repartirPorWorkspace(activas, MAX_POR_WORKSPACE, MAX_CONVERSACIONES)) {
+  for (const c of repartirPorWorkspace(
+    activas,
+    MAX_POR_WORKSPACE,
+    MAX_CONVERSACIONES,
+  )) {
     const config = c.config;
     res.revisadas++;
 

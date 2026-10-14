@@ -162,3 +162,31 @@ test("checkWorkspaceMember: returns status 401 with no reason when unauthenticat
 test("NextResponse import resolves under node --test (sanity check for the alias/next.js hook)", () => {
   assert.equal(typeof NextResponse.json, "function");
 });
+
+test("a suspended workspace is denied to its members, with a clear message", async () => {
+  currentClient = fakeSupabase({
+    user: { id: "u1" },
+    member: { role: "admin", workspaces: { is_active: false } } as unknown as FakeMember,
+  });
+  const check = await checkWorkspaceMember("ws_1");
+  assert.deepEqual(check, { ok: false, status: 403, reason: "suspended" });
+  const res = await requireWorkspaceMember("ws_1");
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.response.status, 403);
+    assert.match((await res.response.json()).error, /suspendido/);
+  }
+});
+
+test("the Felrick team (super admin) still enters a suspended workspace", async () => {
+  currentClient = fakeSupabase({
+    user: { id: "u_felrick" },
+    member: {
+      role: "admin",
+      workspaces: { is_active: false },
+      is_super_admin: true,
+    } as unknown as FakeMember,
+  });
+  const check = await checkWorkspaceMember("ws_1");
+  assert.equal(check.ok, true);
+});

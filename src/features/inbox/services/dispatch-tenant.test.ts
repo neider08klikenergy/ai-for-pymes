@@ -397,3 +397,21 @@ test("a conversation the send can't find is logged for the workspace", async () 
   assert.equal(msgs().length, 0);
   assert.equal(tables.events[0]?.type, "outbound_not_sent");
 });
+
+test("a suspended workspace sends nothing (no message row either)", async () => {
+  reset();
+  tables.workspaces = [{ id: "ws_a", is_active: false }];
+  try {
+    const text = await dispatchText({ workspaceId: "ws_a", conversationId: "conv_a", body: "hola" });
+    const tpl = await dispatchTemplate({ workspaceId: "ws_a", conversationId: "conv_a", templateName: "welcome" });
+    assert.equal(text.errorCode, "SUSPENDED");
+    assert.equal(tpl.errorCode, "SUSPENDED");
+    assert.equal(sends.length, 0);
+    assert.equal(msgs().length, 0);
+    // Another workspace keeps sending.
+    const otro = await dispatchText({ workspaceId: "ws_b", conversationId: "conv_b", body: "hola" });
+    assert.equal(otro.ok, true);
+  } finally {
+    delete tables.workspaces;
+  }
+});

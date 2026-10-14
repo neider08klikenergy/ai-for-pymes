@@ -16,17 +16,6 @@ import {
   PASAR_A_PERSONA,
   motivoDePasarAPersona,
 } from "@/features/tools/tools/pasar-a-persona";
-import { enforceModelPolicy } from "./model-policy";
-import { buildSystemPrompt } from "./prompt-builder";
-import { resolveSystemPrompt } from "./prompt-resolver";
-import { UNCONFIRMED_SEND_ERROR } from "./whatsapp-errors";
-import { decide, applyTransition } from "./decision-engine";
-import { dispatchText, dispatchTemplate } from "./dispatch";
-import type { ToolContext } from "@/features/tools/core/tool";
-import { generateWithTools, getWorkspaceModel } from "./openrouter";
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import { getActiveAgent } from "@/features/agents/services/active-agent";
-import { maybeAutoProcess } from "@/features/agents/services/auto-tagging";
 import {
   getBusinessInfo,
   buildNowContext,
@@ -42,14 +31,26 @@ import {
   getConversationHistory,
   type ConversationTurn,
 } from "./conversation-history";
-import { getSetterConfig, evaluateLead } from "./setter";
-import { syncContactToHL, createHLOpportunity } from "./highlevel-client";
-import { enforceCostPolicy, buildCostAwareSystemPrompt } from "./cost-enforcer";
-import { repartirPorWorkspace } from "@/features/notificaciones/lib/seguimiento";
 import {
   loadWhatsAppSettings,
   WHATSAPP_NOT_CONNECTED,
 } from "./whatsapp-provider";
+import { enforceModelPolicy } from "./model-policy";
+import { buildSystemPrompt } from "./prompt-builder";
+import { resolveSystemPrompt } from "./prompt-resolver";
+import { getSetterConfig, evaluateLead } from "./setter";
+import { UNCONFIRMED_SEND_ERROR } from "./whatsapp-errors";
+import { decide, applyTransition } from "./decision-engine";
+import { dispatchText, dispatchTemplate } from "./dispatch";
+import type { ToolContext } from "@/features/tools/core/tool";
+import { generateWithTools, getWorkspaceModel } from "./openrouter";
+import { createClient as createSbClient } from "@supabase/supabase-js";
+import { getActiveAgent } from "@/features/agents/services/active-agent";
+import { maybeAutoProcess } from "@/features/agents/services/auto-tagging";
+import { workspaceActivo } from "@/features/workspace/services/estado";
+import { syncContactToHL, createHLOpportunity } from "./highlevel-client";
+import { enforceCostPolicy, buildCostAwareSystemPrompt } from "./cost-enforcer";
+import { repartirPorWorkspace } from "@/features/notificaciones/lib/seguimiento";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
 const MAX_BATCH_RETRIES = 3;
@@ -389,6 +390,7 @@ export async function reconcileOrphanedMessages(
     ORPHAN_CANDIDATES,
   );
   const rateByContact = new Map<string, boolean>();
+  const activoPor = new Map<string, boolean>();
   const perWorkspace = new Map<string, number>();
   let recovered = 0;
   let attempted = 0;
@@ -399,6 +401,14 @@ export async function reconcileOrphanedMessages(
     // Re-check live, like the webhook did when the message arrived: AI off or
     // a rate-limited contact means the message stays unbatched on purpose.
     if (!row.conversations?.ai_enabled) continue;
+    // Suspendido: sus mensajes quedan sin lote a propósito.
+    if (!activoPor.has(row.workspace_id)) {
+      activoPor.set(
+        row.workspace_id,
+        await workspaceActivo(row.workspace_id, supabase),
+      );
+    }
+    if (!activoPor.get(row.workspace_id)) continue;
 
     const contactKey = `${row.workspace_id}:${row.conversations.contact_id}`;
     let allowed = rateByContact.get(contactKey);
@@ -649,6 +659,12 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     // ── 3. Consolidate messages into one string ──────────────────────────────
     const consolidated = await consolidateBatch(batch, supabase);
     mergedText = consolidated.text;
+
+    // ── 3b. Workspace suspendido: se cierra el lote sin respuesta ──────────
+    if (!(await workspaceActivo(batch.workspace_id, supabase))) {
+      await markBatchProcessed(batch, mergedText, supabase);
+      return done();
+    }
 
     // ── 4. Load conversation record ─────────────────────────────────────────
     const { data: conversation, error: convError } = await supabase

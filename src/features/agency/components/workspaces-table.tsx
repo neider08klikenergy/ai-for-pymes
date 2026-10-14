@@ -8,7 +8,13 @@ import {
   Building2,
   Settings,
   ExternalLink,
+  PauseCircle,
+  PlayCircle,
 } from "lucide-react";
+import {
+  cambiarEstadoWorkspace,
+  deleteWorkspaceForClient,
+} from "../services/agency-actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -19,9 +25,9 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import type { WorkspaceWithStats } from "../types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SuspenderDialog } from "./suspender-dialog";
 import { CreateWorkspaceSheet } from "./create-workspace-sheet";
 import { ConfirmarDialog } from "@/components/confirmar-dialog";
-import { deleteWorkspaceForClient } from "../services/agency-actions";
 import { switchWorkspace } from "@/features/workspace/services/actions";
 
 interface Props {
@@ -46,6 +52,11 @@ export function WorkspacesTable({ workspaces }: Props) {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Suspender (con motivo) o reactivar: siempre con confirmación.
+  const [cambioEstado, setCambioEstado] = useState<{
+    id: string;
+    activo: boolean;
+  } | null>(null);
   const [refreshing, startRefresh] = useTransition();
 
   const filtered = workspaces.filter(
@@ -90,6 +101,22 @@ export function WorkspacesTable({ workspaces }: Props) {
   }
 
   const aEliminar = workspaces.find((w) => w.id === confirmId) ?? null;
+  const aCambiar = cambioEstado
+    ? (workspaces.find((w) => w.id === cambioEstado.id) ?? null)
+    : null;
+
+  function handleEstado(workspaceId: string, activo: boolean, motivo?: string) {
+    startRefresh(async () => {
+      const result = await cambiarEstadoWorkspace(workspaceId, activo, motivo);
+      setCambioEstado(null);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(activo ? t("reactivado") : t("suspendido"));
+      router.refresh();
+    });
+  }
 
   return (
     <>
@@ -105,6 +132,27 @@ export function WorkspacesTable({ workspaces }: Props) {
           textoVolver={t("cancelar")}
           onConfirmar={() => handleDelete(aEliminar.id)}
           onCerrar={() => setConfirmId(null)}
+        />
+      )}
+
+      {aCambiar && cambioEstado && !cambioEstado.activo && (
+        <SuspenderDialog
+          nombre={aCambiar.name}
+          ocupado={refreshing}
+          onConfirmar={(motivo) => handleEstado(aCambiar.id, false, motivo)}
+          onCerrar={() => setCambioEstado(null)}
+        />
+      )}
+      {aCambiar && cambioEstado?.activo && (
+        <ConfirmarDialog
+          abierto
+          titulo={t("reactivarTitulo", { nombre: aCambiar.name })}
+          descripcion={t("reactivarTexto")}
+          textoConfirmar={t("reactivarBoton")}
+          textoVolver={t("cancelar")}
+          ocupado={refreshing}
+          onConfirmar={() => handleEstado(aCambiar.id, true)}
+          onCerrar={() => setCambioEstado(null)}
         />
       )}
 
@@ -201,6 +249,21 @@ export function WorkspacesTable({ workspaces }: Props) {
               <p className="font-mono text-xs text-muted-foreground mt-0.5">
                 {workspace.slug}
               </p>
+              {!workspace.is_active && (
+                <p className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant="outline"
+                    className="border-destructive/30 bg-destructive/10 text-destructive"
+                  >
+                    {t("estadoSuspendido")}
+                  </Badge>
+                  {workspace.motivo_suspension && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      {workspace.motivo_suspension}
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Miembros */}
@@ -284,6 +347,35 @@ export function WorkspacesTable({ workspaces }: Props) {
                 <span className="sr-only sm:not-sr-only sm:ml-1.5 text-xs">
                   {t("gestionar")}
                 </span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  "h-8 px-2.5",
+                  workspace.is_active
+                    ? "text-muted-foreground hover:text-warning"
+                    : "text-success hover:text-success",
+                )}
+                aria-label={
+                  workspace.is_active
+                    ? `${t("suspender")} ${workspace.name}`
+                    : `${t("reactivar")} ${workspace.name}`
+                }
+                title={workspace.is_active ? t("suspender") : t("reactivar")}
+                onClick={() =>
+                  setCambioEstado({
+                    id: workspace.id,
+                    activo: !workspace.is_active,
+                  })
+                }
+              >
+                {workspace.is_active ? (
+                  <PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
               </Button>
 
               <Button
