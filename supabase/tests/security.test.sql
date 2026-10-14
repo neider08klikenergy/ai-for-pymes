@@ -8,7 +8,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(107);
+SELECT plan(109);
 
 -- ── public.users: read-only for sessions ────────────────────────────────────
 SELECT ok(NOT has_table_privilege('authenticated', 'public.users', 'UPDATE'),
@@ -536,6 +536,12 @@ SELECT ok(NOT has_table_privilege('authenticated', 'public.pqrs', 'INSERT'),
 
 SELECT ok(NOT has_table_privilege('anon', 'public.perfil_plataforma', 'SELECT'),
   'anon cannot read the platform profile (only signed-in users see the support contact)');
+
+-- ── suspender workspace (20261027000000) ────────────────────────────────────
+SELECT has_trigger('public', 'workspaces', 'trg_workspaces_guard_is_active',
+  'a workspace admin cannot suspend or reactivate their own workspace');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.workspace_suspensiones', 'INSERT'),
+  'the suspension history (with its reason) is written only by cambiar_estado_workspace()');
 
 SELECT * FROM finish();
 ROLLBACK;

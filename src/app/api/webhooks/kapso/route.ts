@@ -27,6 +27,7 @@ import { type NextRequest, NextResponse, after } from "next/server";
 import { decryptCredentials } from "@/shared/lib/integration-secrets";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
+import { workspaceActivo } from "@/features/workspace/services/estado";
 import { applyMessageStatus } from "@/features/inbox/services/message-status";
 
 // Keep the function alive long enough for the best-effort fast path below
@@ -283,6 +284,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // it must not start a paid agent turn.
     if (normalized.rawType === "reaction") {
       return NextResponse.json({ received: true, reaction: true });
+    }
+
+    // Workspace suspendido: el mensaje queda guardado, sin respuesta. El
+    // archivo se descarga para verlo al reactivar; transcribirlo no (la IA
+    // corta en enforceCostPolicy).
+    if (!(await workspaceActivo(workspaceId))) {
+      if (mediaJob) after(mediaJob);
+      return NextResponse.json({ received: true, suspended: true });
     }
 
     // AI is toggled off — still fetch the media so the human agent sees it.

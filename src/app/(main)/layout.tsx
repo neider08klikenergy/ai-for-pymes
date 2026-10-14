@@ -17,6 +17,7 @@ import { NavPrincipal } from "@/components/nav-principal";
 import { BotonPqrs } from "@/features/pqrs/components/boton-pqrs";
 import { ZonaHorariaProvider } from "@/shared/lib/zona-horaria-context";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import { WorkspaceSuspendido } from "@/features/workspace/components/workspace-suspendido";
 import { CampanaNotificaciones } from "@/features/notificaciones/components/campana-notificaciones";
 
 export default async function MainLayout({
@@ -87,6 +88,21 @@ export default async function MainLayout({
   const activeId = active?.workspace_id ?? null;
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
+
+  // Suspendido por Felrick: el equipo del workspace ve un aviso genérico (el
+  // servidor ya le niega las rutas); el equipo de Felrick entra normal.
+  const { data: wsEstado } = activeId
+    ? await supabase
+        .from("workspaces")
+        .select("is_active")
+        .eq("id", activeId)
+        .maybeSingle()
+    : { data: null };
+  const suspendido = !isSuperAdmin && wsEstado?.is_active === false;
+  const contacto = {
+    email: perfil?.soporte_email ?? null,
+    whatsapp: perfil?.soporte_whatsapp ?? [],
+  };
   const etiquetasNav = {
     inbox: t("inbox"),
     pedidos: t("pedidos"),
@@ -135,25 +151,21 @@ export default async function MainLayout({
             )}
           </div>
 
-          <NavPrincipal
-            variante="header"
-            etiquetas={etiquetasNav}
-            ariaLabel={t("navegacionPrincipal")}
-          />
+          {!suspendido && (
+            <NavPrincipal
+              variante="header"
+              etiquetas={etiquetasNav}
+              ariaLabel={t("navegacionPrincipal")}
+            />
+          )}
         </div>
 
         {/* Derecha: ayuda, avisos y la cuenta */}
         <div className="flex items-center gap-1 shrink-0">
-          {activeId && (
-            <BotonPqrs
-              workspaceId={activeId}
-              contacto={{
-                email: perfil?.soporte_email ?? null,
-                whatsapp: perfil?.soporte_whatsapp ?? [],
-              }}
-            />
+          {activeId && !suspendido && (
+            <BotonPqrs workspaceId={activeId} contacto={contacto} />
           )}
-          {activeId && <CampanaNotificaciones />}
+          {activeId && !suspendido && <CampanaNotificaciones />}
           <MenuUsuario
             nombre={(userRow?.full_name as string | null | undefined) ?? null}
             email={user.email ?? ""}
@@ -178,15 +190,23 @@ export default async function MainLayout({
       />
 
       <div className="flex-1 pb-14 md:pb-0">
-        <ZonaHorariaProvider zona={zonaHoraria}>{children}</ZonaHorariaProvider>
+        {suspendido ? (
+          <WorkspaceSuspendido nombre={workspaceName} contacto={contacto} />
+        ) : (
+          <ZonaHorariaProvider zona={zonaHoraria}>
+            {children}
+          </ZonaHorariaProvider>
+        )}
       </div>
 
       {/* Móvil: las secciones en la barra inferior; lo demás, en el menú de cuenta */}
-      <NavPrincipal
-        variante="movil"
-        etiquetas={etiquetasNav}
-        ariaLabel={t("navegacionMovil")}
-      />
+      {!suspendido && (
+        <NavPrincipal
+          variante="movil"
+          etiquetas={etiquetasNav}
+          ariaLabel={t("navegacionMovil")}
+        />
+      )}
     </div>
   );
 }

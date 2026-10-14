@@ -29,7 +29,7 @@ type CheckOk = { ok: true; userId: string; role: WorkspaceRole };
 type CheckFail = {
   ok: false;
   status: 401 | 403;
-  reason?: "not_member" | "insufficient_role";
+  reason?: "not_member" | "insufficient_role" | "suspended";
 };
 
 /**
@@ -55,7 +55,7 @@ export async function checkWorkspaceMember(
 
   const { data: member } = await supabase
     .from("memberships")
-    .select("role")
+    .select("role, workspaces ( is_active )")
     .eq("workspace_id", workspaceId)
     .eq("user_id", user.id)
     .eq("is_active", true)
@@ -63,6 +63,21 @@ export async function checkWorkspaceMember(
 
   if (!member) {
     return { ok: false, status: 403, reason: "not_member" };
+  }
+
+  // Suspendido por Felrick (Agencia): nadie del workspace lo usa; el equipo
+  // de Felrick sí entra a revisarlo.
+  const ws = (member as { workspaces?: { is_active?: boolean } | null })
+    .workspaces;
+  if (ws?.is_active === false) {
+    const { data: fila } = await supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!fila?.is_super_admin) {
+      return { ok: false, status: 403, reason: "suspended" };
+    }
   }
 
   const role = member.role as WorkspaceRole;
@@ -84,7 +99,10 @@ export async function checkWorkspaceMember(
   // `opts.minRole` itself: a caller that bypasses the WorkspaceRole type (an
   // `any`-typed value from outside this module) must not silently authorize
   // just because the comparison against `undefined` is false either way.
-  if (rank === undefined || (opts?.minRole && (minRank === undefined || rank < minRank))) {
+  if (
+    rank === undefined ||
+    (opts?.minRole && (minRank === undefined || rank < minRank))
+  ) {
     return { ok: false, status: 403, reason: "insufficient_role" };
   }
 
@@ -120,7 +138,9 @@ export async function requireWorkspaceMember(
   const message =
     result.reason === "insufficient_role"
       ? "Permisos insuficientes"
-      : "Acceso denegado";
+      : result.reason === "suspended"
+        ? "Este workspace está suspendido. Escríbenos desde Soporte."
+        : "Acceso denegado";
   return {
     ok: false,
     response: NextResponse.json({ error: message }, { status: 403 }),

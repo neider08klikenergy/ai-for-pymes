@@ -1311,7 +1311,26 @@
       "eliminarTitulo": "Delete {nombre}?",
       "eliminarTexto": "Its conversations, contacts, orders, products and integrations are deleted forever, and its team loses access. This cannot be undone.",
       "eliminarEscribe": "To confirm, type",
-      "eliminarBoton": "Delete workspace"
+      "eliminarBoton": "Delete workspace",
+      "suspender": "Suspend",
+      "reactivar": "Reactivate",
+      "estadoSuspendido": "Suspended",
+      "suspendido": "Workspace suspended",
+      "reactivado": "Workspace reactivated",
+      "suspenderTitulo": "Suspend {nombre}?",
+      "suspenderTexto": "Its team won't be able to use the app and the agent stops replying. Its customers' messages are still saved, unanswered. Nothing is deleted: when reactivated, everything is where it was.",
+      "motivo": "Reason",
+      "cualMotivo": "Which one?",
+      "motivoPrivado": "The reason stays in Felrick's history. The client only sees that its workspace is suspended.",
+      "suspenderBoton": "Suspend workspace",
+      "reactivarTitulo": "Reactivate {nombre}?",
+      "reactivarTexto": "Its team can use the app again and the agent answers new messages. Those that arrived while suspended stay saved, unanswered.",
+      "reactivarBoton": "Reactivate workspace",
+      "motivos": {
+        "faltaDePago": "Non-payment",
+        "solicitudDelCliente": "Client request",
+        "otro": "Other"
+      }
     },
     "solicitudesPanel": {
       "solicitudesDeDemo": "Demo requests",

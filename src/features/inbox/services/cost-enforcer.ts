@@ -8,6 +8,7 @@ import {
 } from "@/shared/lib/db-errors";
 import { emitEventOncePerDay } from "./daily-events";
 import { createClient as createSbClient } from "@supabase/supabase-js";
+import { workspaceActivo } from "@/features/workspace/services/estado";
 
 function svc() {
   return createSbClient(
@@ -65,6 +66,11 @@ export async function enforceCostPolicy(
   workspaceId: string,
 ): Promise<CostPolicyResult> {
   const supabase = svc();
+
+  // Suspendido por Felrick: ninguna llamada de IA.
+  if (!(await workspaceActivo(workspaceId, supabase))) {
+    return { policy: "cut", reason: "workspace_suspendido" };
+  }
 
   const dayStart = new Date();
   dayStart.setUTCHours(0, 0, 0, 0);

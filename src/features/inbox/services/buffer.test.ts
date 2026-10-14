@@ -1264,3 +1264,26 @@ test("a turn that fails after the provider charged records an estimate in the bu
   assert.match(String(failedAttempts[0].error), /timeout/);
   assert.equal(batchUpdates().at(-1)!.status, "buffering");
 });
+
+test("a suspended workspace's batch is closed without a turn (no Jev, no model, no send)", async () => {
+  reset();
+  tables.workspaces = [{ id: "ws_1", is_active: false }];
+  const r = await processNextBatch();
+  assert.equal(r.processed, true);
+  for (const paso of ["decide", "jev", "enforceCostPolicy", "generate"]) {
+    assert.ok(!calls.includes(paso), `no debía llamar a ${paso}: ${calls.join(" → ")}`);
+  }
+  const batch = tables.message_batches.find((b) => b.id === "batch_1" && b.workspace_id === "ws_1");
+  assert.equal(batch?.status, "processed");
+});
+
+test("orphans of a suspended workspace are not revived", async () => {
+  reset();
+  const now = Date.now();
+  tables.workspaces = [{ id: "ws_1", is_active: false }];
+  tables.messages = [
+    { id: "o1", workspace_id: "ws_1", conversation_id: "conv_1", batch_id: null, direction: "in", created_at: new Date(now - 5 * 60_000).toISOString(), conversations: { ai_enabled: true, contact_id: "c1" } },
+  ];
+  assert.equal(await reconcileOrphanedMessages(), 0);
+  assert.ok(!rpcCalls.some((c) => c.fn === "upsert_batch_and_link_message"));
+});

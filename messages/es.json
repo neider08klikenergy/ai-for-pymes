@@ -1311,7 +1311,26 @@
       "eliminarTitulo": "¿Eliminar {nombre}?",
       "eliminarTexto": "Se borran para siempre sus conversaciones, contactos, pedidos, productos e integraciones, y su equipo pierde el acceso. No se puede deshacer.",
       "eliminarEscribe": "Para confirmar, escribe",
-      "eliminarBoton": "Eliminar workspace"
+      "eliminarBoton": "Eliminar workspace",
+      "suspender": "Suspender",
+      "reactivar": "Reactivar",
+      "estadoSuspendido": "Suspendido",
+      "suspendido": "Workspace suspendido",
+      "reactivado": "Workspace reactivado",
+      "suspenderTitulo": "¿Suspender {nombre}?",
+      "suspenderTexto": "Su equipo no podrá usar el panel y el agente deja de responder. Los mensajes de sus clientes se siguen guardando, sin respuesta. No se borra nada: al reactivar, todo sigue donde estaba.",
+      "motivo": "Motivo",
+      "cualMotivo": "¿Cuál?",
+      "motivoPrivado": "El motivo queda en el historial de Felrick. El cliente solo ve que su workspace está suspendido.",
+      "suspenderBoton": "Suspender workspace",
+      "reactivarTitulo": "¿Reactivar {nombre}?",
+      "reactivarTexto": "Su equipo vuelve a usar el panel y el agente responde los mensajes nuevos. Los que llegaron mientras estuvo suspendido quedan guardados, sin respuesta.",
+      "reactivarBoton": "Reactivar workspace",
+      "motivos": {
+        "faltaDePago": "Falta de pago",
+        "solicitudDelCliente": "Solicitud del cliente",
+        "otro": "Otro"
+      }
     },
     "solicitudesPanel": {
       "solicitudesDeDemo": "Solicitudes de demo",

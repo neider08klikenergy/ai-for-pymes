@@ -33,6 +33,7 @@ import {
 import { type NextRequest, NextResponse, after } from "next/server";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { mapTemplateStatus } from "@/features/inbox/services/templates";
+import { workspaceActivo } from "@/features/workspace/services/estado";
 import { checkRateLimits } from "@/features/inbox/services/cost-tracker";
 import { zernioWebhookSecret } from "@/features/inbox/services/zernio-client";
 import { applyMessageStatus } from "@/features/inbox/services/message-status";
@@ -230,6 +231,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
       : null;
+
+    // Workspace suspendido: el mensaje queda guardado, sin respuesta. El
+    // archivo se descarga para verlo al reactivar; transcribirlo no (la IA
+    // corta en enforceCostPolicy).
+    if (!(await workspaceActivo(workspaceId))) {
+      if (mediaJob) after(mediaJob);
+      return NextResponse.json({ received: true, suspended: true });
+    }
 
     // IA apagada: igual se guarda el archivo para que la persona lo vea.
     if (!conversation.ai_enabled) {

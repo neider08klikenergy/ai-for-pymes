@@ -304,6 +304,38 @@ export async function deleteWorkspaceForClient(
   return { ok: true };
 }
 
+/**
+ * Suspende o reactiva un workspace (p. ej. por falta de pago). La función de
+ * la base exige super admin y deja el historial con el motivo, que el cliente
+ * no ve.
+ */
+export async function cambiarEstadoWorkspace(
+  workspaceId: string,
+  activo: boolean,
+  motivo?: string,
+): Promise<{ error?: string; ok?: boolean }> {
+  const userId = await assertSuperAdmin();
+  if (!userId) return { error: "No autorizado" };
+  if (typeof workspaceId !== "string" || typeof activo !== "boolean") {
+    return { error: "Datos inválidos" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cambiar_estado_workspace", {
+    p_workspace_id: workspaceId,
+    p_activo: activo,
+    p_motivo: (motivo ?? "").slice(0, 500),
+  });
+  if (error) {
+    console.error("[agency] cambiarEstadoWorkspace:", error.message);
+    return {
+      error:
+        "No se pudo cambiar el estado. Revisa que la migración esté aplicada.",
+    };
+  }
+  return { ok: true };
+}
+
 export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> {
   const userId = await assertSuperAdmin();
   if (!userId) return { error: "No autorizado" };
@@ -313,7 +345,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   // Fetch all workspaces
   const { data: workspaces, error: wsError } = await service
     .from("workspaces")
-    .select("id, name, slug, created_at")
+    .select("id, name, slug, created_at, is_active")
     .order("created_at", { ascending: false });
 
   if (wsError) {
@@ -348,6 +380,25 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     .eq("enabled", true)
     .in("workspace_id", ids);
 
+  // Motivo de la última suspensión de los suspendidos (historial solo de Felrick)
+  const suspendidos = (workspaces as { id: string; is_active: boolean }[])
+    .filter((w) => !w.is_active)
+    .map((w) => w.id);
+  const { data: suspensiones } = suspendidos.length
+    ? await service
+        .from("workspace_suspensiones")
+        .select("workspace_id, motivo, created_at")
+        .eq("accion", "suspender")
+        .in("workspace_id", suspendidos)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+  const motivoMap = new Map<string, string | null>();
+  for (const s of suspensiones ?? []) {
+    const row = s as { workspace_id: string; motivo: string | null };
+    if (!motivoMap.has(row.workspace_id))
+      motivoMap.set(row.workspace_id, row.motivo);
+  }
+
   // Build lookup maps
   const memberMap = new Map<string, number>();
   for (const m of memberships ?? []) {
@@ -373,6 +424,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       name: string;
       slug: string;
       created_at: string;
+      is_active: boolean;
     }[]
   ).map((w) => ({
     id: w.id,
@@ -382,6 +434,8 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     member_count: memberMap.get(w.id) ?? 0,
     conversation_count: convMap.get(w.id) ?? 0,
     whatsapp_provider: whatsappMap.get(w.id) ?? null,
+    is_active: w.is_active,
+    motivo_suspension: motivoMap.get(w.id) ?? null,
   }));
 
   return { workspaces: result };
