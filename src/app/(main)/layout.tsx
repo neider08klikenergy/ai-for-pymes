@@ -59,6 +59,20 @@ export default async function MainLayout({
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
 
+  // El equipo de Felrick puede entrar a cualquier workspace: su selector los
+  // lista todos (RLS de workspaces ya lo permite); los demás, los suyos.
+  const { data: todos } = isSuperAdmin
+    ? await supabase.from("workspaces").select("id, name").order("name")
+    : { data: null };
+  const opcionesWorkspace = todos
+    ? (todos as { id: string; name: string }[]).map((w) => ({
+        workspace_id: w.id,
+        name: w.name,
+      }))
+    : memberships
+        .map((m) => ({ workspace_id: m.workspace_id, name: m.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "es"));
+
   // Zona horaria del negocio (Settings → Negocio) para mostrar horas locales.
   const { data: biRow } = active
     ? await supabase
@@ -103,13 +117,11 @@ export default async function MainLayout({
                 >
                   /
                 </span>
-                {memberships.length > 1 && activeId ? (
+                {activeId ? (
                   <WorkspaceSwitcher
-                    workspaces={memberships.map((m) => ({
-                      workspace_id: m.workspace_id,
-                      name: m.name,
-                    }))}
+                    workspaces={opcionesWorkspace}
                     activeId={activeId}
+                    verTodos={isSuperAdmin}
                   />
                 ) : (
                   <span
@@ -148,8 +160,10 @@ export default async function MainLayout({
             esSuperAdmin={isSuperAdmin}
             etiquetas={{
               cuenta: t("miCuenta"),
+              miCuenta: t("miCuenta"),
               settings: t("settings"),
               agencia: t("agencia"),
+              volverAlPanel: t("volverAlPanel"),
               idioma: t("idioma"),
               temaClaro: t("temaClaro"),
               temaOscuro: t("temaOscuro"),

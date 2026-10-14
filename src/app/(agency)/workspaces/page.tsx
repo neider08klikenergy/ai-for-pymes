@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
-import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
 import { Building2, Users, MessageCircle, Wifi } from "lucide-react";
+import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
+import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
 
 export const dynamic = "force-dynamic";
 

@@ -18,7 +18,6 @@ import type { JevSettings } from "@/features/jev-judge/components/jev-panel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AjustesPedidosPanel } from "@/features/pedidos/components/ajustes-pedidos";
 import { PreferenciasCorreo } from "@/features/email/components/preferencias-correo";
-import { CambiarContrasena } from "@/features/auth/components/cambiar-contrasena";
 
 interface ToolItem {
   id: string;
@@ -150,7 +149,7 @@ export function SettingsShell({
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
           {ajustesPedidos && (
-            <div className="mt-6 p-6 rounded-lg border border-border/60 bg-card">
+            <div className="mt-6">
               <AjustesPedidosPanel
                 workspaceId={workspaceId}
                 ajustes={ajustesPedidos}
@@ -187,7 +186,6 @@ export function SettingsShell({
         <TabsContent value="equipo">
           <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
             <PreferenciasCorreo workspaceId={workspaceId} />
-            <CambiarContrasena />
             <TeamTab workspaceId={workspaceId} />
           </div>
         </TabsContent>

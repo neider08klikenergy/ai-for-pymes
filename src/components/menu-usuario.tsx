@@ -1,29 +1,39 @@
 "use client";
 
 // Menú de la cuenta (esquina derecha del header): todo lo que no es una
-// sección del día a día. Configuración, Agencia (solo super admin), idioma,
-// tema y salir, agrupados.
+// sección. En el panel: Configuración y Agencia (solo super admin); en la
+// agencia: Volver al panel. Siempre idioma, tema y salir, agrupados.
 
+import {
+  Sun,
+  Moon,
+  LogOut,
+  Settings,
+  Building2,
+  LayoutGrid,
+  UserRound,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Building2, LogOut, Moon, Settings, Sun } from "lucide-react";
 import { logout } from "@/features/auth/services/actions";
 import { SelectorIdioma } from "@/components/selector-idioma";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export interface EtiquetasMenu {
   cuenta: string;
+  miCuenta: string;
   settings: string;
   agencia: string;
+  volverAlPanel: string;
   idioma: string;
   temaClaro: string;
   temaOscuro: string;
@@ -43,11 +53,14 @@ export function MenuUsuario({
   email,
   esSuperAdmin,
   etiquetas,
+  contexto = "panel",
 }: {
   nombre: string | null;
   email: string;
   esSuperAdmin: boolean;
   etiquetas: EtiquetasMenu;
+  /** Dónde está el menú: cambia los accesos del primer grupo. */
+  contexto?: "panel" | "agencia";
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [saliendo, startSalir] = useTransition();
@@ -68,22 +81,40 @@ export function MenuUsuario({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        <DropdownMenuGroup>
+        {/* Lo personal (para el super admin incluye la Configuración de Felrick) */}
+        <DropdownMenuItem asChild>
+          <Link href="/cuenta">
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+            {etiquetas.miCuenta}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+
+        {contexto === "agencia" ? (
           <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              {etiquetas.settings}
+            <Link href="/inbox">
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              {etiquetas.volverAlPanel}
             </Link>
           </DropdownMenuItem>
-          {esSuperAdmin && (
+        ) : (
+          <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href="/workspaces">
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                {etiquetas.agencia}
+              <Link href="/settings">
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                {etiquetas.settings}
               </Link>
             </DropdownMenuItem>
-          )}
-        </DropdownMenuGroup>
+            {esSuperAdmin && (
+              <DropdownMenuItem asChild>
+                <Link href="/workspaces">
+                  <Building2 className="h-4 w-4" aria-hidden="true" />
+                  {etiquetas.agencia}
+                </Link>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
+        )}
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>

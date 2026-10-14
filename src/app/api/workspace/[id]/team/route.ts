@@ -79,19 +79,45 @@ const LAST_ADMIN = () =>
     { status: 409 },
   );
 
+/** Equipo de Felrick: entra a cualquier workspace (ver switchWorkspace). */
+async function esSuperAdmin(
+  db: ReturnType<typeof svc>,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await db
+    .from("users")
+    .select("is_super_admin")
+    .eq("id", userId)
+    .maybeSingle();
+  return Boolean((data as { is_super_admin?: boolean } | null)?.is_super_admin);
+}
+
+/**
+ * The membership of `userId`. The Felrick team's access is not the client's
+ * to manage: for an actor who isn't super admin it reads as "not found".
+ */
 async function loadMembership(
   db: ReturnType<typeof svc>,
   workspaceId: string,
   userId: string,
+  actorId: string,
 ): Promise<{ role: Role; is_active: boolean } | null> {
   const { data, error } = await db
     .from("memberships")
-    .select("role, is_active")
+    .select("role, is_active, users ( is_super_admin )")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(`membership lookup failed: ${error.message}`);
-  return (data as { role: Role; is_active: boolean } | null) ?? null;
+  const row = data as {
+    role: Role;
+    is_active: boolean;
+    users?: { is_super_admin?: boolean } | null;
+  } | null;
+  if (!row) return null;
+  if (row.users?.is_super_admin && !(await esSuperAdmin(db, actorId)))
+    return null;
+  return { role: row.role, is_active: row.is_active };
 }
 
 /** True when `userId` is the only active admin and the change removes that. */
@@ -244,7 +270,7 @@ export async function GET(
       role,
       is_active,
       created_at,
-      users ( full_name, email )
+      users ( full_name, email, is_super_admin )
     `,
     )
     .eq("workspace_id", workspaceId)
@@ -259,24 +285,34 @@ export async function GET(
   }
 
   // Flatten nested users join into a flat member shape
-  const members = (
-    (data ?? []) as unknown as Array<{
-      id: string;
-      user_id: string;
-      role: string;
-      is_active: boolean;
-      created_at: string;
-      users: { full_name: string | null; email: string } | null;
-    }>
-  ).map((row) => ({
-    id: row.id,
-    user_id: row.user_id,
-    email: row.users?.email ?? "",
-    full_name: row.users?.full_name ?? null,
-    role: row.role,
-    is_active: row.is_active,
-    created_at: row.created_at,
-  }));
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    user_id: string;
+    role: string;
+    is_active: boolean;
+    created_at: string;
+    users: {
+      full_name: string | null;
+      email: string;
+      is_super_admin?: boolean;
+    } | null;
+  }>;
+  // The Felrick team (super admin) enters any workspace to give support; the
+  // client's team list doesn't show it.
+  const verEquipoFelrick =
+    !rows.some((r) => r.users?.is_super_admin) ||
+    (await esSuperAdmin(db, auth.userId));
+  const members = rows
+    .filter((row) => verEquipoFelrick || !row.users?.is_super_admin)
+    .map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      email: row.users?.email ?? "",
+      full_name: row.users?.full_name ?? null,
+      role: row.role,
+      is_active: row.is_active,
+      created_at: row.created_at,
+    }));
 
   // Pending invitations: only for whoever can manage the team.
   let invitaciones: Array<{
@@ -383,7 +419,12 @@ export async function POST(
   // Re-inviting an existing member rewrites their role: same ceiling as PATCH.
   let existing: { role: Role; is_active: boolean } | null;
   try {
-    existing = await loadMembership(db, workspaceId, provisioned.userId);
+    existing = await loadMembership(
+      db,
+      workspaceId,
+      provisioned.userId,
+      auth.userId,
+    );
     if (existing) {
       if (!withinCeiling(auth.role, existing.role)) return FORBIDDEN_ROLE();
       if (
@@ -482,7 +523,7 @@ export async function PATCH(
 
   let current: { role: Role; is_active: boolean } | null;
   try {
-    current = await loadMembership(db, workspaceId, userId);
+    current = await loadMembership(db, workspaceId, userId, auth.userId);
     if (!current) {
       return NextResponse.json(
         { error: "Miembro no encontrado" },
@@ -588,7 +629,7 @@ export async function DELETE(
   const db = svc();
 
   try {
-    const current = await loadMembership(db, workspaceId, userId);
+    const current = await loadMembership(db, workspaceId, userId, auth.userId);
     if (!current) {
       return NextResponse.json(
         { error: "Miembro no encontrado" },

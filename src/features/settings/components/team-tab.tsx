@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback } from "react";
+import { ConfirmarDialog } from "@/components/confirmar-dialog";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -185,6 +186,70 @@ export function TeamTab({ workspaceId }: Props) {
 
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [togglingActive, setTogglingActive] = useState<string | null>(null);
+  // Acción delicada a la espera de confirmación (un clic no basta).
+  const [porConfirmar, setPorConfirmar] = useState<
+    | { tipo: "rol"; member: TeamMember; role: WorkspaceRole }
+    | { tipo: "acceso"; member: TeamMember }
+    | { tipo: "invitacion"; inv: TeamInvitation }
+    | null
+  >(null);
+  const [confirmando, setConfirmando] = useState(false);
+
+  async function confirmar() {
+    if (!porConfirmar) return;
+    setConfirmando(true);
+    try {
+      if (porConfirmar.tipo === "rol") {
+        await handleRoleChange(porConfirmar.member.user_id, porConfirmar.role);
+      } else if (porConfirmar.tipo === "acceso") {
+        await handleToggleActive(porConfirmar.member);
+      } else {
+        await handleCancelInvitation(porConfirmar.inv);
+      }
+    } finally {
+      setConfirmando(false);
+      setPorConfirmar(null);
+    }
+  }
+
+  function textosConfirmacion() {
+    if (!porConfirmar) return null;
+    if (porConfirmar.tipo === "rol") {
+      const nombre = porConfirmar.member.full_name ?? porConfirmar.member.email;
+      return {
+        titulo: t("confirmarRolTitulo", { nombre }),
+        descripcion: t("confirmarRolTexto", {
+          de: ROLE_LABELS[porConfirmar.member.role],
+          a: ROLE_LABELS[porConfirmar.role],
+        }),
+        textoConfirmar: t("confirmarRolBoton"),
+        destructivo: false,
+      };
+    }
+    if (porConfirmar.tipo === "acceso") {
+      const nombre = porConfirmar.member.full_name ?? porConfirmar.member.email;
+      return porConfirmar.member.is_active
+        ? {
+            titulo: t("confirmarQuitarTitulo", { nombre }),
+            descripcion: t("confirmarQuitarTexto"),
+            textoConfirmar: t("confirmarQuitarBoton"),
+            destructivo: true,
+          }
+        : {
+            titulo: t("confirmarReactivarTitulo", { nombre }),
+            descripcion: t("confirmarReactivarTexto"),
+            textoConfirmar: t("confirmarReactivarBoton"),
+            destructivo: false,
+          };
+    }
+    return {
+      titulo: t("confirmarCancelarTitulo", { email: porConfirmar.inv.email }),
+      descripcion: t("confirmarCancelarTexto"),
+      textoConfirmar: t("cancelarInvitacion"),
+      destructivo: true,
+    };
+  }
+  const textos = textosConfirmacion();
 
   // ── Fetch team ─────────────────────────────────────────────────────────────
   const fetchTeam = useCallback(async () => {
@@ -317,7 +382,10 @@ export function TeamTab({ workspaceId }: Props) {
             : { userId: member.user_id },
         ),
       });
-      const json = (await res.json()) as { error?: string; invitacion?: boolean };
+      const json = (await res.json()) as {
+        error?: string;
+        invitacion?: boolean;
+      };
       if (!res.ok) throw new Error(json.error ?? "Error al actualizar");
       if (json.invitacion) {
         // A former member comes back only if they accept: they stay inactive
@@ -385,6 +453,16 @@ export function TeamTab({ workspaceId }: Props) {
 
   return (
     <div className="space-y-6">
+      {textos && (
+        <ConfirmarDialog
+          abierto
+          {...textos}
+          textoVolver={t("volver")}
+          ocupado={confirmando}
+          onConfirmar={confirmar}
+          onCerrar={() => setPorConfirmar(null)}
+        />
+      )}
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -470,7 +548,12 @@ export function TeamTab({ workspaceId }: Props) {
                   <Select
                     value={member.role}
                     onValueChange={(v) =>
-                      handleRoleChange(member.user_id, v as WorkspaceRole)
+                      v !== member.role &&
+                      setPorConfirmar({
+                        tipo: "rol",
+                        member,
+                        role: v as WorkspaceRole,
+                      })
                     }
                     disabled={
                       updatingRole === member.user_id || !member.is_active
@@ -500,7 +583,7 @@ export function TeamTab({ workspaceId }: Props) {
 
                   {/* Activate / Deactivate toggle */}
                   <button
-                    onClick={() => handleToggleActive(member)}
+                    onClick={() => setPorConfirmar({ tipo: "acceso", member })}
                     disabled={togglingActive === member.user_id}
                     aria-label={
                       member.is_active
@@ -550,7 +633,8 @@ export function TeamTab({ workspaceId }: Props) {
                     {inv.full_name ?? inv.email}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono truncate">
-                    {inv.email} · {t("venceEl", { fecha: formatDate(inv.vence_at) })}
+                    {inv.email} ·{" "}
+                    {t("venceEl", { fecha: formatDate(inv.vence_at) })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -563,10 +647,13 @@ export function TeamTab({ workspaceId }: Props) {
                     size="sm"
                     variant="ghost"
                     disabled={cancelando === inv.id}
-                    onClick={() => handleCancelInvitation(inv)}
+                    onClick={() => setPorConfirmar({ tipo: "invitacion", inv })}
                   >
                     {cancelando === inv.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <Loader2
+                        className="h-4 w-4 animate-spin"
+                        aria-hidden="true"
+                      />
                     ) : (
                       t("cancelarInvitacion")
                     )}
@@ -591,7 +678,7 @@ export function TeamTab({ workspaceId }: Props) {
               {t("invitarMiembro")}
             </DialogTitle>
           </DialogHeader>
-          {(
+          {
             <form onSubmit={handleInvite} className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <Label
@@ -692,7 +779,7 @@ export function TeamTab({ workspaceId }: Props) {
                 </Button>
               </DialogFooter>
             </form>
-          )}
+          }
         </DialogContent>
       </Dialog>
     </div>

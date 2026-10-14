@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef } from "react";
+import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 
@@ -16,7 +18,8 @@ export const WHATSAPP_LABEL: Record<WhatsAppProviderId, string> = {
 };
 
 /**
- * Zernio / Kapso as a segmented radio group. Keyboard follows the ARIA radio
+ * Zernio / Kapso as selectable cards (a radio group): each says which
+ * channels it connects and what it needs, so the choice is informed. Keyboard follows the ARIA radio
  * pattern: a single tab stop, and the arrow keys move to (and select) the
  * other option.
  */
@@ -51,39 +54,62 @@ export function WhatsAppProviderPicker({
     buttons.current[next]?.focus();
   }
 
+  const t = useTranslations("ui.integrationsTab");
+  const info: Record<WhatsAppProviderId, { canales: string; detalle: string }> =
+    {
+      zernio: { canales: t("canalesZernio"), detalle: t("detalleZernio") },
+      kapso: { canales: t("canalesKapso"), detalle: t("detalleKapso") },
+    };
+
   return (
     <div
       role="radiogroup"
       aria-labelledby={labelledBy}
-      className="inline-flex w-fit rounded-md border border-input p-0.5"
+      className="grid gap-3 sm:grid-cols-2"
     >
-      {options.map((p, i) => (
-        <button
-          key={p}
-          ref={(el) => {
-            buttons.current[i] = el;
-          }}
-          type="button"
-          role="radio"
-          aria-checked={value === p}
-          tabIndex={value === p ? 0 : -1}
-          onClick={() => onChange(p)}
-          onKeyDown={(e) => handleKeyDown(e, i)}
-          className={
-            "rounded px-3 py-1.5 text-sm transition-colors " +
-            (value === p
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground")
-          }
-        >
-          {WHATSAPP_LABEL[p]}
-          {active === p && (
-            <span className="ml-1.5 text-[10px] uppercase tracking-wide opacity-80">
-              activo
+      {options.map((p, i) => {
+        const elegido = value === p;
+        return (
+          <button
+            key={p}
+            ref={(el) => {
+              buttons.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={elegido}
+            tabIndex={elegido ? 0 : -1}
+            onClick={() => onChange(p)}
+            onKeyDown={(e) => handleKeyDown(e, i)}
+            className={cn(
+              "relative flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              elegido
+                ? "border-primary bg-primary/5"
+                : "border-border/60 hover:border-border hover:bg-muted/30",
+            )}
+          >
+            <span className="flex w-full items-center gap-2">
+              <span className="font-semibold">{WHATSAPP_LABEL[p]}</span>
+              {active === p && (
+                <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+                  {t("enUso")}
+                </span>
+              )}
+              {elegido && (
+                <Check
+                  className="ml-auto h-4 w-4 text-primary"
+                  aria-hidden="true"
+                />
+              )}
             </span>
-          )}
-        </button>
-      ))}
+            <span className="text-sm text-foreground">{info[p].canales}</span>
+            <span className="text-xs text-muted-foreground">
+              {info[p].detalle}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import type { WorkspaceWithStats } from "../types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateWorkspaceSheet } from "./create-workspace-sheet";
+import { ConfirmarDialog } from "@/components/confirmar-dialog";
 import { deleteWorkspaceForClient } from "../services/agency-actions";
 import { switchWorkspace } from "@/features/workspace/services/actions";
 
@@ -74,7 +75,7 @@ export function WorkspacesTable({ workspaces }: Props) {
     });
   }
 
-  // Permanently delete a client (cascade). Two-step confirm via `confirmId`.
+  // Permanently delete a client (cascade). Confirmed in a modal by typing its name.
   function handleDelete(workspaceId: string) {
     setConfirmId(null);
     startRefresh(async () => {
@@ -88,8 +89,25 @@ export function WorkspacesTable({ workspaces }: Props) {
     });
   }
 
+  const aEliminar = workspaces.find((w) => w.id === confirmId) ?? null;
+
   return (
     <>
+      {aEliminar && (
+        <ConfirmarDialog
+          abierto
+          destructivo
+          titulo={t("eliminarTitulo", { nombre: aEliminar.name })}
+          descripcion={t("eliminarTexto")}
+          etiquetaEscribir={t("eliminarEscribe")}
+          textoAEscribir={aEliminar.name}
+          textoConfirmar={t("eliminarBoton")}
+          textoVolver={t("cancelar")}
+          onConfirmar={() => handleDelete(aEliminar.id)}
+          onCerrar={() => setConfirmId(null)}
+        />
+      )}
+
       {/* Toolbar */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <Input
@@ -268,37 +286,15 @@ export function WorkspacesTable({ workspaces }: Props) {
                 </span>
               </Button>
 
-              {confirmId === workspace.id ? (
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-8 px-2.5 text-xs"
-                    aria-label={`Confirmar eliminación de ${workspace.name}`}
-                    onClick={() => handleDelete(workspace.id)}
-                  >
-                    {t("eliminar")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 px-2.5 text-xs text-muted-foreground"
-                    onClick={() => setConfirmId(null)}
-                  >
-                    {t("cancelar")}
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2.5 text-muted-foreground hover:text-destructive"
-                  aria-label={`Eliminar ${workspace.name}`}
-                  onClick={() => setConfirmId(workspace.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2.5 text-muted-foreground hover:text-destructive"
+                aria-label={`Eliminar ${workspace.name}`}
+                onClick={() => setConfirmId(workspace.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </Button>
             </div>
           </div>
         ))}

@@ -1,7 +1,7 @@
 "use client";
 
-// Agencia → Perfil: contacto de soporte que ven los workspaces en el botón
-// Soporte del panel.
+// Mi cuenta → Configuración de Felrick (solo super admin): contacto de
+// soporte que ven los workspaces en el botón Soporte del panel.
 
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -22,28 +22,31 @@ export function PerfilForm({ inicial }: { inicial: ContactoSoporte }) {
     e.preventDefault();
     startGuardar(async () => {
       const r = await guardarPerfilPlataforma({ email, whatsapp });
-      if (r.ok) toast.success("Perfil guardado");
+      if (r.ok) toast.success("Configuración de Felrick guardada");
       else toast.error(r.error);
     });
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
-      <div>
-        <h1 className="flex items-center gap-2 font-display text-xl font-semibold">
-          <Building className="h-5 w-5 text-primary" aria-hidden="true" />
-          Perfil de la startup
-        </h1>
+    <section
+      aria-labelledby="config-felrick-titulo"
+      className="rounded-xl border border-border/60 bg-card p-5"
+    >
+      <div className="mb-4">
+        <h2
+          id="config-felrick-titulo"
+          className="flex items-center gap-2 text-base font-semibold"
+        >
+          <Building className="h-4 w-4 text-primary" aria-hidden="true" />
+          Configuración de Felrick
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Lo que ven los workspaces en el botón Soporte del panel para
-          contactarlos.
+          Solo para el equipo de Felrick. Es el contacto de soporte que ven
+          todos los workspaces en el botón Soporte.
         </p>
       </div>
 
-      <form
-        onSubmit={guardar}
-        className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-5"
-      >
+      <form onSubmit={guardar} className="flex max-w-md flex-col gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="perfil-email">Correo de soporte</Label>
           <Input
@@ -82,6 +85,6 @@ export function PerfilForm({ inicial }: { inicial: ContactoSoporte }) {
           </Button>
         </div>
       </form>
-    </div>
+    </section>
   );
 }
