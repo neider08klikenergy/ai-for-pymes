@@ -1,7 +1,7 @@
 "use client";
 
 // Agencia → suspender un workspace: qué pasa (y qué no) y el motivo, que
-// queda en el historial de Felrick y el cliente no ve.
+// queda en el historial de Falvrick y el cliente no ve.
 
 import {
   Dialog,

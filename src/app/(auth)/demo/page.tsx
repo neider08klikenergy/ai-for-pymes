@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function DemoPage() {
-  // Enlace de Cal.com (ej: "felrick/demo"). Sin él, la página guarda la
+  // Enlace de Cal.com (ej: "falvrick/demo"). Sin él, la página guarda la
   // solicitud y avisa que el equipo se comunicará.
   return (
     <SolicitudDemo calLink={calLinkDe(process.env.NEXT_PUBLIC_CALCOM_LINK)} />

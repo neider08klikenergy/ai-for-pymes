@@ -2,7 +2,7 @@
 
 
 import { useTranslations } from "next-intl";
-// Panel de agencia → Solicitudes de demo. El equipo de Felrick ve quién pidió
+// Panel de agencia → Solicitudes de demo. El equipo de Falvrick ve quién pidió
 // la demo, sus datos y lleva el seguimiento (estado, fecha de la demo, notas).
 
 import {

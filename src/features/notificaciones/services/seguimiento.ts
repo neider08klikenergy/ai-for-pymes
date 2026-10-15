@@ -76,7 +76,7 @@ export async function revisarSeguimiento(
       | { settings: unknown; is_active?: boolean }[]
       | null;
   };
-  // El seguimiento apagado (y un workspace suspendido por Felrick) se
+  // El seguimiento apagado (y un workspace suspendido por Falvrick) se
   // descarta ANTES de repartir los cupos.
   const activas = ((convs ?? []) as Candidata[])
     .map((c) => {

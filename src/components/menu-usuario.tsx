@@ -81,7 +81,7 @@ export function MenuUsuario({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {/* Lo personal (para el super admin incluye la Configuración de Felrick) */}
+        {/* Lo personal (para el super admin incluye la Configuración de Falvrick) */}
         <DropdownMenuItem asChild>
           <Link href="/cuenta">
             <UserRound className="h-4 w-4" aria-hidden="true" />

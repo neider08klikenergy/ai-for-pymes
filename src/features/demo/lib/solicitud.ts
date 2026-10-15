@@ -1,6 +1,6 @@
-// Solicitudes de demo de Felrick: validación, textos y Cal.com.
+// Solicitudes de demo de Falvrick: validación, textos y Cal.com.
 // La página pública /demo guarda la solicitud y luego muestra el calendario
-// de Cal.com con los datos precargados. Las gestiona el equipo de Felrick en
+// de Cal.com con los datos precargados. Las gestiona el equipo de Falvrick en
 // el panel de agencia → Solicitudes.
 
 import { z } from "zod";
@@ -78,7 +78,7 @@ export function primerError(error: z.ZodError): string {
 
 /**
  * Enlace de Cal.com configurado (NEXT_PUBLIC_CALCOM_LINK). Acepta
- * "felrick/demo" o la URL completa "https://cal.com/felrick/demo".
+ * "falvrick/demo" o la URL completa "https://cal.com/falvrick/demo".
  * null si aún no hay cuenta de Cal.com.
  */
 export function calLinkDe(valor: string | undefined): string | null {

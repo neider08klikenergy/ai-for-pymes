@@ -26,12 +26,12 @@ test("SolicitudSchema rechaza correo, WhatsApp y canales inválidos", () => {
 });
 
 test("calLinkDe acepta el link corto o la URL completa", () => {
-  assert.equal(calLinkDe("felrick/demo"), "felrick/demo");
-  assert.equal(calLinkDe("https://cal.com/felrick/demo"), "felrick/demo");
-  assert.equal(calLinkDe("https://app.cal.com/felrick/demo/"), "felrick/demo");
+  assert.equal(calLinkDe("falvrick/demo"), "falvrick/demo");
+  assert.equal(calLinkDe("https://cal.com/falvrick/demo"), "falvrick/demo");
+  assert.equal(calLinkDe("https://app.cal.com/falvrick/demo/"), "falvrick/demo");
   assert.equal(calLinkDe(""), null);
   assert.equal(calLinkDe(undefined), null);
-  assert.equal(calLinkDe("felrick/demo?x=<script>"), null);
+  assert.equal(calLinkDe("falvrick/demo?x=<script>"), null);
 });
 
 test("notasParaCalcom resume solo lo que se llenó", () => {

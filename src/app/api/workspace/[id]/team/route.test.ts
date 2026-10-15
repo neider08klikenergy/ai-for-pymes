@@ -370,36 +370,36 @@ test("a manager cannot re-invite a former admin by reactivating them", async () 
   assert.equal(invitations.length, 0);
 });
 
-// The Felrick team (super admin) gets an admin membership when it enters a
+// The Falvrick team (super admin) gets an admin membership when it enters a
 // workspace for support: the client neither sees it nor can change it.
-const FELRICK = "00000000-0000-4000-8000-0000000000f1";
-function conFelrick() {
+const FALVRICK = "00000000-0000-4000-8000-0000000000f1";
+function conFalvrick() {
   memberships.push({
     workspace_id: "ws_1",
-    user_id: FELRICK,
+    user_id: FALVRICK,
     role: "admin",
     is_active: true,
-    users: { full_name: "Soporte Felrick", email: "soporte@felrick.co", is_super_admin: true },
+    users: { full_name: "Soporte Falvrick", email: "soporte@falvrick.co", is_super_admin: true },
   } as Membership);
 }
 
-test("the client's team list doesn't show the Felrick team", async () => {
+test("the client's team list doesn't show the Falvrick team", async () => {
   reset("agent"); // an agent does not load invitations
-  conFelrick();
+  conFalvrick();
   const res = await GET(new NextRequest("http://localhost/api/workspace/ws_1/team"), params);
   assert.equal(res.status, 200);
   const { members } = (await res.json()) as { members: Array<{ user_id: string }> };
   assert.ok(members.length > 0);
-  assert.ok(!members.some((m) => m.user_id === FELRICK));
+  assert.ok(!members.some((m) => m.user_id === FALVRICK));
 });
 
-test("a client admin can't change or remove the Felrick team (reads as not found)", async () => {
+test("a client admin can't change or remove the Falvrick team (reads as not found)", async () => {
   reset("admin");
-  conFelrick();
-  const patch = await PATCH(req("PATCH", { userId: FELRICK, role: "viewer" }), params);
+  conFalvrick();
+  const patch = await PATCH(req("PATCH", { userId: FALVRICK, role: "viewer" }), params);
   assert.equal(patch.status, 404);
-  const del = await DELETE(req("DELETE", { userId: FELRICK }), params);
+  const del = await DELETE(req("DELETE", { userId: FALVRICK }), params);
   assert.equal(del.status, 404);
   assert.equal(writes.length, 0);
-  assert.equal(memberships.find((m) => m.user_id === FELRICK)?.role, "admin");
+  assert.equal(memberships.find((m) => m.user_id === FALVRICK)?.role, "admin");
 });

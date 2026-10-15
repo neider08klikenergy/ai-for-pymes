@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migration: 20261027000000_suspender_workspace
--- Felrick (super admin) suspende o reactiva un workspace, por ejemplo por
+-- Falvrick (super admin) suspende o reactiva un workspace, por ejemplo por
 -- falta de pago. Usa workspaces.is_active (ya existía, sin uso).
 --
 -- Suspendido: el panel muestra un aviso genérico, los mensajes entrantes se
@@ -24,7 +24,7 @@ BEGIN
   IF current_user IN ('authenticated', 'anon')
      AND NEW.is_active IS DISTINCT FROM OLD.is_active
      AND NOT public.is_super_admin() THEN
-    RAISE EXCEPTION 'Solo el equipo de Felrick suspende o reactiva un workspace'
+    RAISE EXCEPTION 'Solo el equipo de Falvrick suspende o reactiva un workspace'
       USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
@@ -76,7 +76,7 @@ SET search_path = ''
 AS $$
 BEGIN
   IF NOT public.is_super_admin() THEN
-    RAISE EXCEPTION 'Solo el equipo de Felrick suspende o reactiva un workspace'
+    RAISE EXCEPTION 'Solo el equipo de Falvrick suspende o reactiva un workspace'
       USING ERRCODE = '42501';
   END IF;
 

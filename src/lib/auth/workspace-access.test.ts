@@ -178,9 +178,9 @@ test("a suspended workspace is denied to its members, with a clear message", asy
   }
 });
 
-test("the Felrick team (super admin) still enters a suspended workspace", async () => {
+test("the Falvrick team (super admin) still enters a suspended workspace", async () => {
   currentClient = fakeSupabase({
-    user: { id: "u_felrick" },
+    user: { id: "u_falvrick" },
     member: {
       role: "admin",
       workspaces: { is_active: false },

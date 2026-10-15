@@ -67,7 +67,7 @@ export async function enforceCostPolicy(
 ): Promise<CostPolicyResult> {
   const supabase = svc();
 
-  // Suspendido por Felrick: ninguna llamada de IA.
+  // Suspendido por Falvrick: ninguna llamada de IA.
   if (!(await workspaceActivo(workspaceId, supabase))) {
     return { policy: "cut", reason: "workspace_suspendido" };
   }

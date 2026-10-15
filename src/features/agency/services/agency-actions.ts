@@ -380,7 +380,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     .eq("enabled", true)
     .in("workspace_id", ids);
 
-  // Motivo de la última suspensión de los suspendidos (historial solo de Felrick)
+  // Motivo de la última suspensión de los suspendidos (historial solo de Falvrick)
   const suspendidos = (workspaces as { id: string; is_active: boolean }[])
     .filter((w) => !w.is_active)
     .map((w) => w.id);

@@ -41,7 +41,7 @@ export async function switchWorkspace(
     return { error: "No tienes acceso a este workspace." };
   }
 
-  // The Felrick team can enter any workspace. The app (and RLS) work with
+  // The Falvrick team can enter any workspace. The app (and RLS) work with
   // memberships, so it gets an admin one — hidden from the client's team list.
   if (!membership) {
     const svc = svcClient(

@@ -93,7 +93,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Primary source: globals.css CSS variables.
 // ============================================================
 const BRAND = {
-  name: "Felrick",
+  name: "Falvrick",
   primaryHex: "#B5F23D", // oklch(0.90 0.21 126) — Electric Lime
   accentHex: "#B5F23D",
   font: "Space Grotesk (display) · Geist Sans (body) · Geist Mono",
@@ -1108,7 +1108,7 @@ function PatternSidebar() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="font-display text-sm font-semibold">Felrick</span>
+            <span className="font-display text-sm font-semibold">Falvrick</span>
           </div>
           <nav className="flex-1 space-y-1">
             {NAV.map(({ icon: Icon, label, active }) => (
@@ -1226,7 +1226,7 @@ function PatternNavbar() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="font-display text-sm font-semibold">Felrick</span>
+            <span className="font-display text-sm font-semibold">Falvrick</span>
           </div>
           <nav className="hidden items-center gap-1 sm:flex">
             {["Inbox", "Contactos", "Agente", "Ajustes"].map((l, i) => (
