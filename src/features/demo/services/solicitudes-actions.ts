@@ -4,7 +4,7 @@
 // descarta bots (campo trampa) y limita por correo, por conexión (IP, guardada
 // solo como hash) y en total por hora; inserta con el service
 // role porque anon no tiene permisos en la tabla. Gestionarlas es solo del
-// equipo de Felrick (super admin): RLS lo exige y aquí se revisa antes para
+// equipo de Falvrick (super admin): RLS lo exige y aquí se revisa antes para
 // dar un mensaje claro.
 
 import { z } from "zod";
@@ -79,7 +79,7 @@ export async function crearSolicitudDemo(input: unknown): Promise<ResultadoSolic
   return { ok: true };
 }
 
-// ── Gestión (equipo de Felrick) ──────────────────────────────────────────────
+// ── Gestión (equipo de Falvrick) ──────────────────────────────────────────────
 
 const CambioSchema = z.object({
   id: z.string().uuid(),
@@ -109,7 +109,7 @@ async function esSuperAdmin(): Promise<boolean> {
 }
 
 export async function actualizarSolicitud(input: unknown): Promise<ResultadoSolicitud> {
-  if (!(await esSuperAdmin())) return { ok: false, error: "Solo el equipo de Felrick puede gestionar solicitudes" };
+  if (!(await esSuperAdmin())) return { ok: false, error: "Solo el equipo de Falvrick puede gestionar solicitudes" };
   const parsed = CambioSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: primerError(parsed.error) };
 

@@ -1,9 +1,9 @@
 -- ============================================================
 -- Migration: 20261026000000_perfil_plataforma
--- Perfil de Felrick (la startup): datos de contacto de soporte que ven los
+-- Perfil de Falvrick (la startup): datos de contacto de soporte que ven los
 -- workspaces en el botón Soporte del panel.
 --
--- Una sola fila (id = true). La edita el equipo de Felrick (super admin) en
+-- Una sola fila (id = true). La edita el equipo de Falvrick (super admin) en
 -- Agencia → Perfil; cualquier usuario con sesión la lee.
 -- ============================================================
 

@@ -65,8 +65,8 @@ export async function checkWorkspaceMember(
     return { ok: false, status: 403, reason: "not_member" };
   }
 
-  // Suspendido por Felrick (Agencia): nadie del workspace lo usa; el equipo
-  // de Felrick sí entra a revisarlo.
+  // Suspendido por Falvrick (Agencia): nadie del workspace lo usa; el equipo
+  // de Falvrick sí entra a revisarlo.
   const ws = (member as { workspaces?: { is_active?: boolean } | null })
     .workspaces;
   if (ws?.is_active === false) {

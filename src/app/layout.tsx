@@ -19,7 +19,7 @@ const spaceGrotesk = Space_Grotesk({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common");
   return {
-    // Cada página pone su título y queda "Iniciar sesión — Felrick"
+    // Cada página pone su título y queda "Iniciar sesión — Falvrick"
     title: { default: APP_NAME, template: `%s — ${APP_NAME}` },
     description: t("descripcionApp"),
   };

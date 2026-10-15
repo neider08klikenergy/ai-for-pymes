@@ -9,7 +9,7 @@ export const IDIOMAS = ["es", "en"] as const;
 export type Idioma = (typeof IDIOMAS)[number];
 
 export const IDIOMA_POR_DEFECTO: Idioma = "es";
-export const COOKIE_IDIOMA = "felrick_idioma";
+export const COOKIE_IDIOMA = "falvrick_idioma";
 
 export const NOMBRE_IDIOMA: Record<Idioma, string> = {
   es: "Español",

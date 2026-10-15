@@ -1,7 +1,7 @@
 // Nombre de la plataforma (la startup). Se usa en títulos, cabeceras, el
 // remitente de los correos y la identificación ante proveedores (OpenRouter,
 // Zernio). Los workspaces (clientes) tienen su propio nombre aparte.
-export const APP_NAME = "Felrick";
+export const APP_NAME = "Falvrick";
 export const APP_DESCRIPTION =
   "Agentes de IA que atienden, cotizan y toman pedidos por WhatsApp, Instagram y Facebook";
 

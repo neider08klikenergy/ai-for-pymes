@@ -1,6 +1,6 @@
 "use client";
 
-// Agencia → PQRS: lo que reportan los workspaces. El equipo de Felrick lee el
+// Agencia → PQRS: lo que reportan los workspaces. El equipo de Falvrick lee el
 // detalle (con la imagen y el contexto) y cambia el estado.
 
 import {

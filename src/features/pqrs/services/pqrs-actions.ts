@@ -1,6 +1,6 @@
 "use server";
 
-// Agencia → PQRS: el equipo de Felrick cambia el estado. RLS exige super
+// Agencia → PQRS: el equipo de Falvrick cambia el estado. RLS exige super
 // admin; aquí se revisa antes para dar un mensaje claro.
 
 import { z } from "zod";
@@ -34,7 +34,7 @@ export async function actualizarEstadoPqrs(
   if (!fila?.is_super_admin)
     return {
       ok: false,
-      error: "Solo el equipo de Felrick puede gestionar PQRS",
+      error: "Solo el equipo de Falvrick puede gestionar PQRS",
     };
 
   const { data, error } = await supabase

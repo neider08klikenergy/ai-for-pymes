@@ -79,7 +79,7 @@ const LAST_ADMIN = () =>
     { status: 409 },
   );
 
-/** Equipo de Felrick: entra a cualquier workspace (ver switchWorkspace). */
+/** Equipo de Falvrick: entra a cualquier workspace (ver switchWorkspace). */
 async function esSuperAdmin(
   db: ReturnType<typeof svc>,
   userId: string,
@@ -93,7 +93,7 @@ async function esSuperAdmin(
 }
 
 /**
- * The membership of `userId`. The Felrick team's access is not the client's
+ * The membership of `userId`. The Falvrick team's access is not the client's
  * to manage: for an actor who isn't super admin it reads as "not found".
  */
 async function loadMembership(
@@ -297,13 +297,13 @@ export async function GET(
       is_super_admin?: boolean;
     } | null;
   }>;
-  // The Felrick team (super admin) enters any workspace to give support; the
+  // The Falvrick team (super admin) enters any workspace to give support; the
   // client's team list doesn't show it.
-  const verEquipoFelrick =
+  const verEquipoFalvrick =
     !rows.some((r) => r.users?.is_super_admin) ||
     (await esSuperAdmin(db, auth.userId));
   const members = rows
-    .filter((row) => verEquipoFelrick || !row.users?.is_super_admin)
+    .filter((row) => verEquipoFalvrick || !row.users?.is_super_admin)
     .map((row) => ({
       id: row.id,
       user_id: row.user_id,

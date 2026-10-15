@@ -1,4 +1,4 @@
-// Lo que ve el equipo de un workspace suspendido por Felrick: un aviso
+// Lo que ve el equipo de un workspace suspendido por Falvrick: un aviso
 // genérico (sin el motivo) y cómo contactar a soporte.
 
 import {

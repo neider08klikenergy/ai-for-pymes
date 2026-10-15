@@ -1,11 +1,11 @@
 -- ============================================================
 -- Migration: 20261015000000_solicitudes_demo
--- Solicitudes de demo de Felrick (nivel plataforma, no de un workspace).
+-- Solicitudes de demo de Falvrick (nivel plataforma, no de un workspace).
 --
 -- Las crea la página pública /demo (un negocio que quiere conocer el
 -- producto) antes de elegir la hora en Cal.com. Se guardan aunque no
 -- terminen de agendar, para no perder el contacto. Las gestiona el equipo
--- de Felrick (super admin) en el panel de agencia → Solicitudes.
+-- de Falvrick (super admin) en el panel de agencia → Solicitudes.
 --
 -- Cuando se conecte el webhook de Cal.com (pendiente), la reserva podrá
 -- marcar la solicitud como 'agendada' y guardar la fecha de la demo.
@@ -42,7 +42,7 @@ DROP TRIGGER IF EXISTS trg_solicitudes_demo_updated_at ON public.solicitudes_dem
 CREATE TRIGGER trg_solicitudes_demo_updated_at BEFORE UPDATE ON public.solicitudes_demo
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- Solo el equipo de Felrick (super admin) las ve y las gestiona. La página
+-- Solo el equipo de Falvrick (super admin) las ve y las gestiona. La página
 -- pública inserta desde el servidor con el service role (con validación y
 -- límite por correo), así que anon no tiene ningún permiso.
 ALTER TABLE public.solicitudes_demo ENABLE ROW LEVEL SECURITY;

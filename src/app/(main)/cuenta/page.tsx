@@ -22,7 +22,7 @@ export default async function CuentaPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Configuración de Felrick: solo el super admin la ve (RLS exige lo mismo al guardar).
+  // Configuración de Falvrick: solo el super admin la ve (RLS exige lo mismo al guardar).
   const { data: plataforma } = perfil?.is_super_admin
     ? await supabase
         .from("perfil_plataforma")

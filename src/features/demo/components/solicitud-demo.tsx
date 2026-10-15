@@ -29,7 +29,7 @@ import { CalendarCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { crearSolicitudDemo } from "../services/solicitudes-actions";
 
 interface Props {
-  /** Enlace de Cal.com ("felrick/demo"), o null si aún no hay cuenta. */
+  /** Enlace de Cal.com ("falvrick/demo"), o null si aún no hay cuenta. */
   calLink: string | null;
 }
 

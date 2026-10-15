@@ -1,10 +1,10 @@
 -- ============================================================
 -- Migration: 20261025000000_pqrs
--- PQRS de los workspaces hacia el equipo de Felrick (MVP).
+-- PQRS de los workspaces hacia el equipo de Falvrick (MVP).
 --
 -- Un miembro del workspace (casi siempre el admin) reporta una petición,
 -- queja, reclamo, sugerencia o falla desde el panel, con una imagen opcional.
--- El equipo de Felrick (super admin) las ve en Agencia → PQRS y les cambia el
+-- El equipo de Falvrick (super admin) las ve en Agencia → PQRS y les cambia el
 -- estado. El workspace no ve su lista: el seguimiento es interno.
 --
 -- Se crean desde el servidor (POST /api/pqrs) con el service role, después de
@@ -32,7 +32,7 @@ DROP TRIGGER IF EXISTS trg_pqrs_updated_at ON public.pqrs;
 CREATE TRIGGER trg_pqrs_updated_at BEFORE UPDATE ON public.pqrs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- Solo el equipo de Felrick las ve y cambia su estado.
+-- Solo el equipo de Falvrick las ve y cambia su estado.
 ALTER TABLE public.pqrs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS pqrs_super_admin ON public.pqrs;

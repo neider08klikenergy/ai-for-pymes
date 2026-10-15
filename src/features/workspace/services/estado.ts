@@ -1,4 +1,4 @@
-// ¿El workspace está activo? Felrick lo suspende desde Agencia → Workspaces
+// ¿El workspace está activo? Falvrick lo suspende desde Agencia → Workspaces
 // (por ejemplo, por falta de pago). Suspendido: los mensajes entrantes se
 // guardan pero el agente no responde, no sale ningún envío y no se gasta IA.
 //

@@ -51,7 +51,7 @@ export default async function MainLayout({
     listMemberships(supabase, user.id),
     // Invitaciones al equipo que esta persona todavía no respondió.
     supabase.rpc("mis_invitaciones"),
-    // Contacto de soporte de Felrick (Agencia → Perfil) para el botón Soporte.
+    // Contacto de soporte de Falvrick (Agencia → Perfil) para el botón Soporte.
     supabase
       .from("perfil_plataforma")
       .select("soporte_email, soporte_whatsapp")
@@ -60,7 +60,7 @@ export default async function MainLayout({
 
   const isSuperAdmin = userRow?.is_super_admin ?? false;
 
-  // El equipo de Felrick puede entrar a cualquier workspace: su selector los
+  // El equipo de Falvrick puede entrar a cualquier workspace: su selector los
   // lista todos (RLS de workspaces ya lo permite); los demás, los suyos.
   const { data: todos } = isSuperAdmin
     ? await supabase.from("workspaces").select("id, name").order("name")
@@ -89,8 +89,8 @@ export default async function MainLayout({
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
 
-  // Suspendido por Felrick: el equipo del workspace ve un aviso genérico (el
-  // servidor ya le niega las rutas); el equipo de Felrick entra normal.
+  // Suspendido por Falvrick: el equipo del workspace ve un aviso genérico (el
+  // servidor ya le niega las rutas); el equipo de Falvrick entra normal.
   const { data: wsEstado } = activeId
     ? await supabase
         .from("workspaces")

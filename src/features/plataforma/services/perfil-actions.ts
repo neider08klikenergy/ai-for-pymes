@@ -1,6 +1,6 @@
 "use server";
 
-// Agencia → Perfil: el equipo de Felrick guarda el contacto de soporte. RLS
+// Agencia → Perfil: el equipo de Falvrick guarda el contacto de soporte. RLS
 // exige super admin; aquí se revisa antes para dar un mensaje claro.
 
 import { revalidatePath } from "next/cache";
@@ -32,7 +32,7 @@ export async function guardarPerfilPlataforma(
   if (!fila?.is_super_admin)
     return {
       ok: false,
-      error: "Solo el equipo de Felrick puede editar el perfil",
+      error: "Solo el equipo de Falvrick puede editar el perfil",
     };
 
   const { data, error } = await supabase

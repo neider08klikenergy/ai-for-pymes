@@ -106,7 +106,7 @@ export function LoginForm({ message }: { message?: string }) {
       </form>
 
       {/* No hay registro público: el super admin lo crea seed-admin y las
-          demás cuentas las crea el equipo de Felrick. */}
+          demás cuentas las crea el equipo de Falvrick. */}
       <p className="text-center text-sm text-muted-foreground">
         {t("login.aunSinCuenta")}{" "}
         <Link

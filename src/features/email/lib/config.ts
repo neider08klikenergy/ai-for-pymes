@@ -1,4 +1,4 @@
-// Marca y remitente de los correos. Los envía la plataforma (Felrick) a
+// Marca y remitente de los correos. Los envía la plataforma (Falvrick) a
 // los usuarios de cada workspace, así que la marca es la nuestra; el nombre
 // del negocio va dentro del correo. Todo se ajusta con variables de entorno.
 
